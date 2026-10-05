@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment / Secrets
+.env
+.env.*
+secrets.json
+credentials.json
+
+# Data files (may contain PII / lead data)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Keep these JSON configs
+!package.json
+!tsconfig.json
+scratch/
+poised-eye-509816-a4-5444ff3f8520.json
+scratch/
