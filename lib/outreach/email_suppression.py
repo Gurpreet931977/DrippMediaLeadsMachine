@@ -126,7 +126,13 @@ class EmailSuppressionManager:
 
             # 2. Email Unsubscribe / Suppression
             if stype == SuppressionType.EMAIL_UNSUBSCRIBE and target == clean_email:
-                return True, f"Email '{clean_email}' is suppressed: {s.get('reason', 'Recipient opted out / unsubscribed')}"
+                raw_reason = s.get("reason", "Recipient opted out / unsubscribed")
+                # Normalise HARD_BOUNCE prefix for human-readable display
+                if raw_reason.upper().startswith("HARD_BOUNCE:"):
+                    display_reason = "Hard bounce: " + raw_reason[len("HARD_BOUNCE:"):].strip()
+                else:
+                    display_reason = raw_reason
+                return True, f"Email '{clean_email}' is suppressed: {display_reason}"
 
             # 3. Domain Suppression
             if stype == SuppressionType.DOMAIN_SUPPRESSION and clean_domain and target == clean_domain:

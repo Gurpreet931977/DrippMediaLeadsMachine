@@ -23,17 +23,28 @@ from typing import Dict, Any, Tuple, Optional, List
 TEMPLATE_VERSION_V1 = "WEBSITE_EMAIL_V1"
 
 # Prohibited speculative claims (Section 21)
+# Prohibited claims grouped by human-readable category name (used in reason strings)
+PROHIBITED_CLAIM_CATEGORIES: Dict[str, List[str]] = {
+    "customer complaints": [
+        r"customer complaints",
+        r"slow website",
+        r"booking problems",
+        r"broken booking system",
+        r"poor conversion",
+        r"low engagement",
+    ],
+    "lost sales": [
+        r"lost sales",
+        r"losing (?:money|sales|customers)",
+        r"missing out on (?:thousands|revenue|customers)",
+    ],
+    "unsupported guarantees": [
+        r"guaranteed? (?:revenue|sales|ranking|growth)",
+    ],
+}
+# Flat list kept for simple iteration (legacy compatibility)
 PROHIBITED_CLAIM_PATTERNS = [
-    r"lost sales",
-    r"losing (?:money|sales|customers)",
-    r"poor conversion",
-    r"slow website",
-    r"customer complaints",
-    r"low engagement",
-    r"booking problems",
-    r"missing out on (?:thousands|revenue|customers)",
-    r"guaranteed? (?:revenue|sales|ranking|growth)",
-    r"broken booking system",
+    pat for pats in PROHIBITED_CLAIM_CATEGORIES.values() for pat in pats
 ]
 
 # Prohibited internal leakage patterns
@@ -179,17 +190,28 @@ class EmailTemplateEngine:
 
         # 2. Sender Identity Check
         if "dripp media" not in actual_body.lower():
-            failed.append("SENDER_IDENTITY_MISSING: Message fails to identify Dripp Media")
+            failed.append("sender identity missing: message fails to identify Dripp Media")
 
-        # 3. Unsubscribe Mechanism Check
-        if "unsubscribe" not in actual_body.lower():
-            failed.append("UNSUBSCRIBE_LINK_MISSING: Message missing mandatory opt-out / unsubscribe mechanism")
+        # 3. Unsubscribe Mechanism Check — must have both the word and a valid URL
+        unsub_in_body = "unsubscribe" in actual_body.lower()
+        if unsubscribe_link and unsubscribe_link.strip():
+            unsub_url_in_body = unsubscribe_link.strip() in actual_body
+        else:
+            unsub_url_in_body = bool(re.search(r"https?://[^\s]+", actual_body))
+        if not unsub_in_body or not unsub_url_in_body:
+            failed.append("unsubscribe link missing: message missing mandatory opt-out link")
 
         # 4. Anti-Hallucination & Unsupported Claims Check (Section 21)
         combined_text = f"{actual_subject}\n{actual_body}".lower()
-        for pat in PROHIBITED_CLAIM_PATTERNS:
-            if re.search(pat, combined_text):
-                failed.append(f"UNSUPPORTED_CLAIM_DETECTED: Message contains prohibited claim matching '{pat}'")
+        found_categories: List[str] = []
+        for category, patterns in PROHIBITED_CLAIM_CATEGORIES.items():
+            for pat in patterns:
+                if re.search(pat, combined_text):
+                    if category not in found_categories:
+                        found_categories.append(category)
+                    break
+        for category in found_categories:
+            failed.append(f"unsupported claim detected: {category}")
 
         # 5. Internal Leaks & Malformed Variables Check
         for pat in INTERNAL_LEAK_PATTERNS:

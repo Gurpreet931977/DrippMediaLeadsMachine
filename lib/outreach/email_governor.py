@@ -87,13 +87,18 @@ class EmailGovernor:
     # -------------------------------------------------------------------------
     # 1. Rate Limiting (Section 17)
     # -------------------------------------------------------------------------
-    def check_rate_limits(self, domain: str) -> Tuple[bool, Optional[str]]:
+    def check_rate_limits(self, domain_or_email: str) -> Tuple[bool, Optional[str]]:
         """
         Validates sending against minute, hour, day, and per-domain limits.
-        Returns:
-            (allowed, pause_reason)
+        Accepts either a domain (e.g. 'acme.co.uk') or a full email address
+        (e.g. 'first@acme.co.uk') — domain is auto-extracted from emails.
+        Returns: (allowed, pause_reason)
         """
-        clean_domain = domain.strip().lower()
+        raw = domain_or_email.strip()
+        if "@" in raw:
+            clean_domain = raw.split("@")[-1].lower()
+        else:
+            clean_domain = raw.lower()
         now = datetime.now(timezone.utc)
         data = self._load_rate_data()
         sends = data.get("sends", [])
@@ -124,21 +129,28 @@ class EmailGovernor:
                 min_count += 1
 
         if min_count >= self.limit_per_minute:
-            return False, f"RATE_LIMIT_PAUSE: Per-minute limit reached ({min_count}/{self.limit_per_minute})"
+            return False, f"Per-minute rate limit reached ({min_count}/{self.limit_per_minute})"
         if hour_count >= self.limit_per_hour:
-            return False, f"RATE_LIMIT_PAUSE: Per-hour limit reached ({hour_count}/{self.limit_per_hour})"
+            return False, f"Per-hour rate limit reached ({hour_count}/{self.limit_per_hour})"
         if day_count >= self.limit_per_day:
-            return False, f"RATE_LIMIT_PAUSE: Daily send limit reached ({day_count}/{self.limit_per_day})"
+            return False, f"Daily send limit reached ({day_count}/{self.limit_per_day})"
         if domain_day_count >= self.limit_per_domain:
-            return False, f"RATE_LIMIT_PAUSE: Domain daily limit reached for @{clean_domain} ({domain_day_count}/{self.limit_per_domain})"
+            return False, f"Per-domain rate limit reached for @{clean_domain} ({domain_day_count}/{self.limit_per_domain})"
 
         return True, None
 
-    def record_send(self, recipient: str, domain: str) -> None:
+    def record_send(self, recipient: str, domain: Optional[str] = None) -> None:
         """
         Atomically records an initiated send and purges entries older than 24h.
+        If domain is not provided, it is auto-extracted from the recipient email.
         """
-        clean_domain = domain.strip().lower()
+        clean_email = recipient.strip()
+        if domain:
+            clean_domain = domain.strip().lower()
+        else:
+            # Auto-extract domain from email address
+            parts = clean_email.split("@")
+            clean_domain = parts[-1].lower() if len(parts) > 1 else clean_email.lower()
         now = datetime.now(timezone.utc)
         one_day_ago = now - timedelta(days=1)
         lock_file = f"{self.rate_limit_path}.lock"
@@ -182,6 +194,28 @@ class EmailGovernor:
         clean_email = email.strip().lower()
         return f"{lead_id}:{clean_email}:{campaign_id}:{template_version}:{attempt_number}"
 
+    @classmethod
+    def generate_send_key(
+        cls,
+        lead_id: str,
+        email: str,
+        campaign_id: str,
+        template_version: str,
+        attempt_number: int = 1,
+    ) -> str:
+        """Alias for generate_idempotency_key(). Generates deterministic send key."""
+        return cls.generate_idempotency_key(
+            lead_id=lead_id,
+            email=email,
+            campaign_id=campaign_id,
+            template_version=template_version,
+            attempt_number=attempt_number,
+        )
+
+    def is_duplicate_send(self, send_key: str) -> bool:
+        """Returns True if this send_key has already been processed (duplicate guard)."""
+        return self.get_idempotent_record(send_key) is not None
+
     def get_idempotent_record(self, send_key: str) -> Optional[Dict[str, Any]]:
         """
         Returns prior execution record if this key has already been processed.
@@ -199,6 +233,20 @@ class EmailGovernor:
             data[send_key] = record
             atomic_write_json(self.idempotency_path, data)
 
+    def get_cached_send(self, send_key: str) -> Optional[Dict[str, Any]]:
+        """Alias for get_idempotent_record()."""
+        return self.get_idempotent_record(send_key)
+
+    def record_idempotency(self, send_key: str, result: Optional[Dict[str, Any]] = None, **kwargs) -> None:
+        """Alias for record_idempotent_dispatch(). Persists idempotency record by send_key."""
+        rec = dict(result or {})
+        rec.update(kwargs)
+        self.record_idempotent_dispatch(send_key, rec)
+
+    def _load_rate_limits(self) -> Dict[str, Any]:
+        """Alias for _load_rate_data(). Returns the full rate-limit data store."""
+        return self._load_rate_data()
+
     # -------------------------------------------------------------------------
     # 3. Retries (Section 19)
     # -------------------------------------------------------------------------
@@ -206,27 +254,53 @@ class EmailGovernor:
     def can_retry(
         cls,
         status: str,
+        current_attempt: int = 1,
+        attempt_number: Optional[int] = None,
+        is_retryable_error: bool = True,
+    ) -> bool:
+        """
+        Evaluates whether a failed send may be retried.
+        Returns bool for convenience; use can_retry_with_reason() for the full tuple.
+        """
+        # Support both kwarg names: attempt_number (tests) and current_attempt (internal)
+        effective_attempt = attempt_number if attempt_number is not None else current_attempt
+
+        # Maximum 2 retries (attempt 1 -> retry 1 -> retry 2 -> halt)
+        if effective_attempt > MAX_RETRIES:
+            return False
+
+        # Strictly non-retryable statuses
+        if status in ("UNSUBSCRIBED", "BOUNCED", "REJECTED", "INVALID_RECIPIENT", "SUPPRESSED", "COMPLIANCE_BLOCKED"):
+            return False
+
+        # Ambiguous unknown result: do not immediately retry
+        if status == "UNKNOWN":
+            return False
+
+        if is_retryable_error or status in ("RATE_LIMITED", "FAILED"):
+            return True
+
+        return False
+
+    @classmethod
+    def can_retry_with_reason(
+        cls,
+        status: str,
         current_attempt: int,
         is_retryable_error: bool = False,
     ) -> Tuple[bool, str]:
         """
-        Evaluates whether a failed send may be retried.
+        Full retry evaluation returning (allowed, reason).
+        Used internally by the executor pipeline.
         """
-        # Maximum 2 retries (attempt 1 -> retry 1 -> retry 2 -> halt)
         if current_attempt >= (MAX_RETRIES + 1):
             return False, f"MAX_RETRIES_REACHED: Attempt {current_attempt} exceeds max limit of {MAX_RETRIES}"
-
-        # Strictly non-retryable statuses
         if status in ("UNSUBSCRIBED", "BOUNCED", "REJECTED", "INVALID_RECIPIENT", "SUPPRESSED", "COMPLIANCE_BLOCKED"):
             return False, f"NON_RETRYABLE_STATUS: {status} must never be retried"
-
-        # Ambiguous unknown result: do not immediately retry
         if status == "UNKNOWN":
             return False, "AMBIGUOUS_UNKNOWN_RESULT: Unconfirmed delivery state, do not immediately retry"
-
         if is_retryable_error:
             return True, f"RETRY_PERMITTED: Attempt {current_attempt + 1} of {MAX_RETRIES + 1}"
-
         return False, "NON_RETRYABLE_ERROR"
 
     # -------------------------------------------------------------------------
@@ -236,21 +310,33 @@ class EmailGovernor:
         self,
         email: str,
         lead_id: str,
-        bounce_evidence: str,
+        bounce_evidence: str = "",
         is_hard_bounce: bool = True,
+        bounce_type: Optional[str] = None,
+        provider_reason: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Processes a bounce event:
         1. Hard bounce -> suppresses specific email address.
         2. Preserves domain (does not suppress domain from one bad email).
         3. Returns audit dictionary.
+
+        Accepts both:
+          - is_hard_bounce=True/False (original API)
+          - bounce_type="HARD_BOUNCE"|"SOFT_BOUNCE" (test-facing API)
         """
+        # Reconcile bounce_type kwarg with is_hard_bounce flag
+        if bounce_type is not None:
+            is_hard_bounce = bounce_type.upper() == "HARD_BOUNCE"
+
+        evidence = provider_reason or bounce_evidence
         clean_email = email.strip().lower()
+
         if is_hard_bounce:
             supp_record = self.suppression_manager.suppress_email(
                 clean_email,
-                reason=f"HARD_BOUNCE: {bounce_evidence}",
-                metadata={"lead_id": lead_id, "evidence": bounce_evidence},
+                reason=f"HARD_BOUNCE: {evidence}",
+                metadata={"lead_id": lead_id, "evidence": evidence},
             )
             return {
                 "status": "BOUNCE_PROCESSED",

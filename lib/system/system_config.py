@@ -180,6 +180,15 @@ class SystemConfig:
             )
 
     @classmethod
+    def assert_commercial_action_allowed(cls, action_name: str = "commercial_action") -> None:
+        """
+        Singular alias for assert_commercial_actions_allowed().
+        Guards all outbound commercial execution points.
+        Raises CommercialActionForbiddenError if commercial actions are locked.
+        """
+        cls.assert_commercial_actions_allowed(action_name)
+
+    @classmethod
     def get_status_dict(cls) -> Dict[str, Any]:
         """Returns structured dictionary of current system safety and operational controls."""
         return {

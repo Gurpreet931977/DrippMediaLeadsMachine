@@ -120,7 +120,7 @@ class EnhancedEmailProvider:
                 )
 
             # Genuine sandbox submission
-            sandbox_mid = f"SANDBOX-{idempotency_key or 'MSG'}-{int(datetime.now(timezone.utc).timestamp())}"
+            sandbox_mid = f"sandbox-{idempotency_key or 'msg'}-{int(datetime.now(timezone.utc).timestamp())}"
             return EmailProviderResult(
                 status=ProviderDeliveryStatus.SUBMITTED,
                 provider="SANDBOX",
@@ -226,6 +226,88 @@ class EnhancedEmailProvider:
             provider_message_id=None,
             response_text=provider_resp,
             error=err_msg,
+            submitted_at=_now_utc(),
+            is_retryable=False,
+        )
+
+    def classify_smtp_error(self, exception: Exception) -> EmailProviderResult:
+        """
+        Classifies an SMTP exception into a canonical EmailProviderResult.
+        Used for unit-testing bounce and error classification logic without
+        a real send attempt. Does NOT perform any network I/O.
+        """
+        err_text = str(exception).lower()
+
+        # 1. Permanent rejection / policy rejection (checked before generic bounce)
+        if any(c in err_text for c in ["5.1.1", "recipient address rejected", "501", "502", "503", "authentication", "channel_not_configured"]):
+            return EmailProviderResult(
+                status=ProviderDeliveryStatus.REJECTED,
+                provider="SMTP",
+                provider_message_id=None,
+                response_text=str(exception),
+                error=str(exception),
+                submitted_at=_now_utc(),
+                is_retryable=False,
+            )
+
+        # 2. Rate limit / throttle
+        if any(c in err_text for c in ["rate limit", "rate limited", "too many requests", "throttled", "429"]):
+            return EmailProviderResult(
+                status=ProviderDeliveryStatus.RATE_LIMITED,
+                provider="SMTP",
+                provider_message_id=None,
+                response_text=str(exception),
+                error=str(exception),
+                submitted_at=_now_utc(),
+                is_retryable=True,
+            )
+
+        # 3. Transient failure (e.g. 421 Temporary system failure)
+        if any(c in err_text for c in ["421", "temporary system failure"]):
+            return EmailProviderResult(
+                status=ProviderDeliveryStatus.FAILED,
+                provider="SMTP",
+                provider_message_id=None,
+                response_text=str(exception),
+                error=str(exception),
+                submitted_at=_now_utc(),
+                is_retryable=True,
+            )
+
+        # 4. Hard bounce
+        if any(c in err_text for c in ["550", "551", "552", "553", "554", "user unknown",
+                                        "mailbox not found", "does not exist", "delivery error", "no such user"]):
+            return EmailProviderResult(
+                status=ProviderDeliveryStatus.BOUNCED,
+                provider="SMTP",
+                provider_message_id=None,
+                response_text=str(exception),
+                error=str(exception),
+                submitted_at=_now_utc(),
+                is_retryable=False,
+            )
+
+        # 5. Transient / temporary network errors
+        if any(c in err_text for c in ["timeout", "connection refused", "reset by peer",
+                                        "temporary", "451", "452", "4.7.1",
+                                        "service unavailable", "try again"]):
+            return EmailProviderResult(
+                status=ProviderDeliveryStatus.UNKNOWN,
+                provider="SMTP",
+                provider_message_id=None,
+                response_text=str(exception),
+                error=str(exception),
+                submitted_at=_now_utc(),
+                is_retryable=True,
+            )
+
+        # 6. Unknown / ambiguous — do not immediately retry
+        return EmailProviderResult(
+            status=ProviderDeliveryStatus.UNKNOWN,
+            provider="SMTP",
+            provider_message_id=None,
+            response_text=str(exception),
+            error=str(exception),
             submitted_at=_now_utc(),
             is_retryable=False,
         )

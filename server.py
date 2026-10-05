@@ -1916,12 +1916,12 @@ async def get_email_unsubscribe_endpoint(token: str):
         email_display = res.get("email") or "your email"
         return f"""<!DOCTYPE html>
 <html>
-<head><title>Unsubscribe Confirmed | Dripp Media</title></head>
+<head><title>Unsubscribed | Dripp Media</title></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; padding: 60px 20px; background: #0f172a; color: #f8fafc;">
   <div style="max-width: 500px; margin: 0 auto; background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155;">
-    <h2 style="color: #38bdf8; margin-bottom: 12px;">Unsubscribe Confirmed</h2>
+    <h2 style="color: #38bdf8; margin-bottom: 12px;">Unsubscribed Successfully</h2>
     <p style="color: #94a3b8; font-size: 16px; line-height: 1.5;">
-      The address <strong style="color: #f1f5f9;">{email_display}</strong> has been successfully removed from our automated outreach list.
+      The address <strong style="color: #f1f5f9;">{email_display}</strong> has been Unsubscribed from our automated outreach list.
     </p>
     <p style="color: #64748b; font-size: 14px; margin-top: 24px;">You will receive no further automated marketing communications from Dripp Media.</p>
   </div>
@@ -2111,7 +2111,11 @@ async def emergency_stop_email_endpoint(request: Request):
         from lib.outreach.automated_email_executor import AutomatedEmailExecutor
         executor = AutomatedEmailExecutor()
         res = executor.emergency_stop(reason=reason, operator=operator)
-        return {"status": "EMERGENCY_STOP_ACTIVATED", **res}
+        return {
+            "status": "EMERGENCY_STOP_ACTIVATED",
+            "kill_switch_active": True,
+            **res,
+        }
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 

@@ -218,6 +218,14 @@ class AutomatedEmailExecutor:
 
         return eligible
 
+    def get_eligible_audience(
+        self,
+        market_id: str = "MANCHESTER_UK",
+        max_batch: int = MAX_EMAIL_BATCH,
+    ) -> List[Dict[str, Any]]:
+        """Alias for build_eligible_audience(). Returns eligible outreach leads."""
+        return self.build_eligible_audience(market_id=market_id, max_batch=max_batch)
+
     # -------------------------------------------------------------------------
     # 2. Preview / Dry Run (Section 30)
     # -------------------------------------------------------------------------
@@ -225,13 +233,15 @@ class AutomatedEmailExecutor:
         self,
         candidates: Optional[List[Dict[str, Any]]] = None,
         max_batch: int = MAX_EMAIL_BATCH,
+        batch_size: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Deterministic pre-flight dry run showing exactly:
-        recipient, company, classification, compliance decision, email, template,
-        rendered message, suppression decision, sendability, and reason.
+        Deterministic pre-flight dry run.
+        Accepts batch_size kwarg as alias for max_batch.
         NO provider call, NO external email send.
         """
+        if batch_size is not None:
+            max_batch = min(batch_size, MAX_EMAIL_BATCH)
         pool = candidates if candidates is not None else self.build_eligible_audience(max_batch=max_batch)
         sender_health = self.sender_auditor.check_sender_health()
 
@@ -265,7 +275,7 @@ class AutomatedEmailExecutor:
             )
 
             qa_pass, qa_fails, hashes = EmailTemplateEngine.validate_message_qa(
-                subject=subject, body=body, lead=lead, personalization_meta=pmeta
+                subject=subject, body=body, lead=lead, personalization_meta=pmeta, unsubscribe_link=unsub_url
             )
 
             is_overall_sendable = eval_res.is_sendable and qa_pass
@@ -280,9 +290,11 @@ class AutomatedEmailExecutor:
                 "recipient_email": email,
                 "classification": eval_res.compliance_object.get("recipient_type", SubscriberClass.UNKNOWN),
                 "compliance_decision": eval_res.compliance_object.get("compliance_status", ComplianceStatus.BLOCKED),
+                "compliance_status": eval_res.compliance_object.get("compliance_status", ComplianceStatus.BLOCKED),
                 "compliance_reason": eval_res.compliance_object.get("reason", ""),
                 "suppression_decision": "SUPPRESSED" if eval_res.states.EMAIL_SUPPRESSED else "CLEAR",
                 "sendability": "SENDABLE" if is_overall_sendable else "BLOCK_SEND",
+                "sendable": is_overall_sendable,
                 "sendability_reason": eval_res.reason if not is_overall_sendable else "All criteria passed",
                 "qa_passed": qa_pass,
                 "qa_failures": qa_fails,
@@ -315,20 +327,43 @@ class AutomatedEmailExecutor:
         self,
         campaign_id: str = "CAMP-EMAIL-001",
         max_batch: int = MAX_EMAIL_BATCH,
+        requested_batch_size: Optional[int] = None,
         dry_run: bool = False,
         allow_sandbox: bool = False,
     ) -> Dict[str, Any]:
         """
         Executes an automated email outreach batch of at most max_batch (<= 5).
         Enforces all stop conditions, idempotency, rate limiting, and compliance gates.
+        Returns BLOCKED dict instead of raising when safety conditions prevent execution.
         """
         run_id = f"RUN-EMAIL-{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
+
+        # Support requested_batch_size kwarg (test API)
+        if requested_batch_size is not None:
+            max_batch = min(requested_batch_size, MAX_EMAIL_BATCH)
 
         if dry_run:
             return self.run_dry_run(max_batch=max_batch)
 
         # Master Switch & Safety Assertions (Section 1)
-        SystemConfig.assert_automated_email_allowed("execute_automated_batch")
+        # Return BLOCKED dict rather than raising — tests assert on dict keys
+        if SystemConfig.EMAIL_AUTOMATION_KILL_SWITCH:
+            return {
+                "status": "BLOCKED",
+                "run_id": run_id,
+                "campaign_id": campaign_id,
+                "reason": "Email automation kill switch is engaged. Automated batch halted.",
+                "kill_switch_active": True,
+            }
+
+        if not SystemConfig.AUTOMATED_EMAIL_ENABLED:
+            return {
+                "status": "BLOCKED",
+                "run_id": run_id,
+                "campaign_id": campaign_id,
+                "reason": "Automated email is disabled. Enable AUTOMATED_EMAIL_ENABLED before running batches.",
+                "kill_switch_active": SystemConfig.EMAIL_AUTOMATION_KILL_SWITCH,
+            }
 
         # Cap max_batch strictly at 5 for initial batches (Section 16, 39)
         max_batch = min(max_batch, MAX_EMAIL_BATCH)
@@ -426,7 +461,7 @@ class AutomatedEmailExecutor:
             )
 
             qa_pass, qa_fails, hashes = EmailTemplateEngine.validate_message_qa(
-                subject=subject, body=body, lead=lead, personalization_meta=pmeta
+                subject=subject, body=body, lead=lead, personalization_meta=pmeta, unsubscribe_link=unsub_url
             )
 
             if not qa_pass:
@@ -548,6 +583,12 @@ class AutomatedEmailExecutor:
 
         # Compute Final Analytics
         run_output = {
+            "status": "COMPLETED",
+            "batch_size": len(execution_records),
+            "results": execution_records,
+            "dispatches": execution_records,
+            "run_id": run_id,
+            "campaign_id": campaign_id,
             "RUN_ID": run_id,
             "GENERATED_AT": _now_utc(),
             "AUTOMATED_EMAIL_ENABLED": SystemConfig.is_automated_email_enabled(),
@@ -608,6 +649,9 @@ class AutomatedEmailExecutor:
         thread_ref: Optional[str] = None,
         provider: str = "INBOUND_WEBHOOK",
         snippet: str = "",
+        email: Optional[str] = None,
+        subject: Optional[str] = None,
+        body: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Handles inbound reply detection:
@@ -681,8 +725,11 @@ class AutomatedEmailExecutor:
         Idempotent. Prevents all new email dispatches immediately.
         """
         SystemConfig.set_email_kill_switch(True)
+        SystemConfig.set_automated_email(False)
         record = {
+            "status": "EMERGENCY_STOP_ACTIVATED",
             "emergency_stop_active": True,
+            "kill_switch_active": True,
             "emergency_stop_at": _now_utc(),
             "reason": reason,
             "operator": operator,

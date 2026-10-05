@@ -16,8 +16,8 @@ Implements Sections 10 and 11:
 
 import os
 import re
-from dataclasses import dataclass, asdict
-from typing import Dict, Any, Optional
+from dataclasses import dataclass, field, asdict
+from typing import Dict, Any, Optional, List
 
 DEFAULT_SENDER_NAME = "Dripp Media"
 DEFAULT_SENDER_EMAIL = os.environ.get("EMAIL_FROM") or os.environ.get("SMTP_USER") or "outreach@drippmedia.com"
@@ -42,6 +42,27 @@ class SenderIdentityConfig:
     postal_address: str
     privacy_notice_url: str
     has_credentials: bool
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class DnsHealthReport:
+    """
+    Structured result of DNS record evaluation. Supports attribute-access
+    used in tests (report.spf, report.healthy, report.issues, etc).
+    """
+    spf: str
+    dkim: str
+    dmarc: str
+    mx: str
+    healthy: bool
+    overall_status: str
+    issues: List[str] = field(default_factory=list)
+    sender_identity_configured: bool = True
+    credentials_configured: bool = True
+    can_send_automated: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -169,3 +190,117 @@ class EmailSenderHealthAuditor:
             "can_send_automated": can_send_automated,
             "identity": identity.to_dict(),
         }
+
+    def evaluate_dns_records(
+        self,
+        domain: Optional[str] = None,
+        txt_records: Optional[List[str]] = None,
+        mx_records: Optional[List[str]] = None,
+        spf: Optional[str] = None,
+        dkim: Optional[str] = None,
+        dmarc: Optional[str] = None,
+        mx: Optional[str] = None,
+        sender_email: Optional[str] = None,
+    ) -> DnsHealthReport:
+        """
+        Evaluates DNS records for SPF, DKIM, DMARC, and MX.
+        Primary API for tests: evaluate_dns_records(domain, txt_records, mx_records).
+        Returns DnsHealthReport with attribute access (report.spf, report.healthy, etc).
+        """
+        issues: List[str] = []
+
+        if txt_records is not None or mx_records is not None:
+            txt = txt_records or []
+            mx_list = mx_records or []
+
+            has_spf = any(r.strip().lower().startswith("v=spf1") for r in txt)
+            spf_status = AuthCheckStatus.PASS if has_spf else AuthCheckStatus.FAIL
+            if not has_spf:
+                issues.append("SPF record missing")
+
+            has_dkim = any("v=dkim1" in r.lower() for r in txt)
+            dkim_status = AuthCheckStatus.PASS if has_dkim else AuthCheckStatus.FAIL
+            if not has_dkim:
+                issues.append("DKIM record missing")
+
+            has_dmarc = any(r.strip().lower().startswith("v=dmarc1") for r in txt)
+            dmarc_status = AuthCheckStatus.PASS if has_dmarc else AuthCheckStatus.FAIL
+            if not has_dmarc:
+                issues.append("DMARC record missing")
+
+            has_mx = len(mx_list) > 0
+            mx_status = AuthCheckStatus.PASS if has_mx else AuthCheckStatus.FAIL
+            if not has_mx:
+                issues.append("MX record missing")
+
+            has_failure = any(s == AuthCheckStatus.FAIL for s in [spf_status, dkim_status, dmarc_status, mx_status])
+            overall = "FAILED" if has_failure else "HEALTHY"
+            return DnsHealthReport(
+                spf=spf_status, dkim=dkim_status, dmarc=dmarc_status, mx=mx_status,
+                healthy=not has_failure, overall_status=overall,
+                issues=issues, can_send_automated=not has_failure,
+            )
+
+        # Legacy env-override path
+        set_keys: List[str] = []
+        for env_key, val in [("SENDER_SPF_STATUS", spf), ("SENDER_DKIM_STATUS", dkim),
+                              ("SENDER_DMARC_STATUS", dmarc), ("SENDER_MX_STATUS", mx)]:
+            if val is not None:
+                os.environ[env_key] = val
+                set_keys.append(env_key)
+
+        orig = self.sender_email
+        if sender_email is not None:
+            self.sender_email = sender_email
+        try:
+            d = self.check_sender_health()
+        finally:
+            for key in set_keys:
+                os.environ.pop(key, None)
+            self.sender_email = orig
+
+        return DnsHealthReport(
+            spf=d.get("SPF", AuthCheckStatus.UNKNOWN),
+            dkim=d.get("DKIM", AuthCheckStatus.UNKNOWN),
+            dmarc=d.get("DMARC", AuthCheckStatus.UNKNOWN),
+            mx=d.get("MX", AuthCheckStatus.UNKNOWN),
+            healthy=d.get("healthy", False),
+            overall_status=d.get("overall_status", "UNKNOWN"),
+            can_send_automated=d.get("can_send_automated", False),
+        )
+
+    def audit_sender_health(
+        self,
+        sender_config: Optional[Dict[str, Any]] = None,
+    ) -> DnsHealthReport:
+        """
+        Validates sender identity configuration.
+        Returns DnsHealthReport; populates .issues for missing fields.
+        """
+        issues: List[str] = []
+        if sender_config is not None:
+            if not sender_config.get("sender_name", ""):
+                issues.append("Missing required sender field: sender_name")
+            if not sender_config.get("physical_address", ""):
+                issues.append("Missing required sender field: physical_address")
+            if not sender_config.get("sender_email", ""):
+                issues.append("Missing required sender field: sender_email")
+            ok = len(issues) == 0
+            return DnsHealthReport(
+                spf=AuthCheckStatus.UNKNOWN, dkim=AuthCheckStatus.UNKNOWN,
+                dmarc=AuthCheckStatus.UNKNOWN, mx=AuthCheckStatus.UNKNOWN,
+                healthy=ok, overall_status="HEALTHY" if ok else "FAILED",
+                issues=issues, sender_identity_configured=ok,
+            )
+        d = self.check_sender_health()
+        return DnsHealthReport(
+            spf=d.get("SPF", AuthCheckStatus.UNKNOWN),
+            dkim=d.get("DKIM", AuthCheckStatus.UNKNOWN),
+            dmarc=d.get("DMARC", AuthCheckStatus.UNKNOWN),
+            mx=d.get("MX", AuthCheckStatus.UNKNOWN),
+            healthy=d.get("healthy", False),
+            overall_status=d.get("overall_status", "UNKNOWN"),
+            sender_identity_configured=d.get("sender_identity_configured", True),
+            credentials_configured=d.get("credentials_configured", True),
+            can_send_automated=d.get("can_send_automated", False),
+        )
