@@ -48,6 +48,11 @@ from lib.outreach.campaign_dashboard import get_campaign_dashboard, get_all_camp
 # ──────────────────────────────────────────────────────────────────────────
 
 LEAD_ID     = "LEAD-MAN-4DB3EF"
+_msg_hist_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "message_history.json")
+_INITIAL_MESSAGE_HISTORY = None
+if os.path.exists(_msg_hist_path):
+    with open(_msg_hist_path, "r", encoding="utf-8") as f:
+        _INITIAL_MESSAGE_HISTORY = f.read()
 CAMPAIGN_ID = "OUT-MAN-2026-002"
 CHANNEL     = "Email"
 RECIPIENT   = "seoulkimchi@gmail.com"
@@ -468,6 +473,15 @@ def cleanup_reset_to_accurate_state():
             print("  [Cleanup] Sheets reset to accurate state.")
         except Exception as e:
             print(f"  [Cleanup] Sheets reset failed (non-fatal): {e}")
+
+    # 4. Restore message history to accurate state
+    if _INITIAL_MESSAGE_HISTORY is not None:
+        try:
+            with open(_msg_hist_path, "w", encoding="utf-8") as f:
+                f.write(_INITIAL_MESSAGE_HISTORY)
+            print("  [Cleanup] Message history reset to accurate state.")
+        except Exception as e:
+            print(f"  [Cleanup] Message history reset failed (non-fatal): {e}")
 
 
 # ──────────────────────────────────────────────────────────────────────────

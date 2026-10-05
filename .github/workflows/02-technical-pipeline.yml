@@ -1,0 +1,127 @@
+name: "02 - Technical Lead Acquisition Pipeline"
+
+'on':
+  workflow_dispatch:
+    inputs:
+      market:
+        description: "Target Market Registry ID"
+        required: true
+        default: "MANCHESTER_UK"
+        type: string
+      country:
+        description: "Target Country"
+        required: true
+        default: "United Kingdom"
+        type: string
+      city:
+        description: "Target City"
+        required: true
+        default: "Manchester"
+        type: string
+      lead_limit:
+        description: "Lead Acquisition Target Limit"
+        required: true
+        default: "10"
+        type: string
+      dry_run:
+        description: "DRY RUN MODE (Strictly Safe: No CRM mutations)"
+        required: true
+        default: true
+        type: boolean
+      refresh_existing:
+        description: "Refresh Existing Leads"
+        required: false
+        default: false
+        type: boolean
+      enable_research:
+        description: "Enable Website & Business Research Stage"
+        required: true
+        default: true
+        type: boolean
+      enable_contactability:
+        description: "Enable Contactability Assessment Stage"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: technical-pipeline-production
+  cancel-in-progress: false
+
+jobs:
+  run-technical-pipeline:
+    name: "Execute Technical Pipeline"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Mandatory Production Safety Controls (Enforced in Code and Workflow)
+      TRAVEL_MODE: "true"
+      COMMERCIAL_ACTIONS_ENABLED: "false"
+      AUTOMATED_EMAIL_ENABLED: "false"
+      TECHNICAL_AUTOMATION_ENABLED: "true"
+      TZ: "UTC"
+      # Google Sheets Secrets Contract
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: "Install Python Dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: "Set up Gosom Scraper"
+        run: |
+          python scripts/setup_gosom.py
+
+      - name: "Bootstrap Storage Readiness"
+        run: |
+          python -c "from lib.system.storage_bootstrap import bootstrap_storage_baseline; bootstrap_storage_baseline()"
+
+      - name: "Enforce Production Safety Invariants"
+        run: |
+          python -c "
+          from lib.system.system_config import SystemConfig
+          assert SystemConfig.TRAVEL_MODE, 'CRITICAL: TRAVEL_MODE must be ACTIVE'
+          assert not SystemConfig.COMMERCIAL_ACTIONS_ENABLED, 'CRITICAL: COMMERCIAL_ACTIONS must be DISABLED'
+          assert not SystemConfig.AUTOMATED_EMAIL_ENABLED, 'CRITICAL: AUTOMATED_EMAIL must be DISABLED'
+          assert not SystemConfig.can_execute_commercial_actions(), 'CRITICAL: Outbound commercial actions strictly forbidden'
+          print('✓ Mandatory safety invariants enforced: All commercial actions locked.')
+          "
+
+      - name: "Execute Technical Acquisition Pipeline"
+        run: |
+          DRY_RUN_ARG="${{ inputs.dry_run && '--dry-run' || '--no-dry-run' }}"
+          python scripts/run_technical_pipeline.py \
+            --market "${{ inputs.market }}" \
+            --country "${{ inputs.country }}" \
+            --city "${{ inputs.city }}" \
+            --limit "${{ inputs.lead_limit }}" \
+            $DRY_RUN_ARG
+
+      - name: "Upload Pipeline Run Artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "technical-pipeline-run-reports"
+          path: |
+            data/latest_technical_pipeline_report.json
+            data/latest_technical_pipeline_summary.md
+            data/market_runs/
+          retention-days: 14

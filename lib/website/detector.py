@@ -28,7 +28,10 @@ class NodeWebsiteDetectionProvider:
     tests live domain reachability, and interfaces with the Node.js website auditor.
     """
     def __init__(self, node_auditor_dir: Optional[str] = None):
-        self.node_auditor_dir = node_auditor_dir or "/Users/metagurpreet/.gemini/antigravity-ide/scratch/apify-workspace"
+        self.node_auditor_dir = node_auditor_dir or os.environ.get(
+            "NODE_AUDITOR_DIR",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scratch", "apify-workspace")
+        )
 
     def is_platform_url(self, url: str) -> Tuple[bool, Optional[str]]:
         if not url:

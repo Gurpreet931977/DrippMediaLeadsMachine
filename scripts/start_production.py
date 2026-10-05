@@ -60,15 +60,17 @@ def startup_check(verbose: bool = True) -> bool:
     else:
         print("  ✓ Core environment and storage validated.")
 
-    # 2. Storage Directory Writable
-    print("\n[2/9] Validating Storage Readiness...")
+    # 2. Storage Directory Writable & Baseline Bootstrapped
+    print("\n[2/9] Validating Storage Readiness & Baseline...")
     data_dir = os.path.join(PROJECT_ROOT, "data")
+    from lib.system.storage_bootstrap import bootstrap_storage_baseline
+    boot_res = bootstrap_storage_baseline(data_dir=data_dir)
     backups_dir = os.path.join(data_dir, "backups")
     if not (os.path.exists(data_dir) and os.access(data_dir, os.W_OK)):
         critical_failures.append(f"Data directory '{data_dir}' not writable.")
     if not os.path.exists(backups_dir):
         os.makedirs(backups_dir, exist_ok=True)
-    print(f"  ✓ Storage directory verified at {data_dir}")
+    print(f"  ✓ Storage directory verified at {data_dir} (bootstrapped: {boot_res['initialized_files_count']} files)")
 
     # 3. Schema & Data Store Integrity
     print("\n[3/9] Validating Schema & JSON Store Integrity...")

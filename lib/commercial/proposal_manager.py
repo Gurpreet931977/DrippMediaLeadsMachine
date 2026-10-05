@@ -330,12 +330,16 @@ class ProposalManager:
 
         # Find lead company name from cache or parameter
         leads = self.load_leads()
-        resolved_name = company_name or "Unknown Business"
+        resolved_name = company_name or ""
         for l in leads:
             if l.get("lead_id") == lead_id:
-                resolved_name = company_name or l.get("company_name", resolved_name)
+                resolved_name = company_name or l.get("company_name", "")
                 break
-        company_name = resolved_name
+        if not resolved_name:
+            comm_records = self.load_commercial_records()
+            if lead_id in comm_records:
+                resolved_name = comm_records[lead_id].get("company_name", "")
+        company_name = resolved_name or "Unknown Business"
 
         # Load package defaults if package specified
         packages_cfg = self.load_packages().get("packages", {})

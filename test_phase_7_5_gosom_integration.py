@@ -65,6 +65,8 @@ from lib.qualification.lead_scoring import LeadScoringProvider
 class TestPhase75GosomIntegration(unittest.TestCase):
 
     def setUp(self):
+        self.old_env = dict(os.environ)
+        os.environ["GOSOM_REVIEW_FRESHNESS_FALLBACK_ENABLED"] = "true"
         self.test_dir = tempfile.mkdtemp()
         self.config = GosomFallbackConfig(
             enabled=True,
@@ -77,6 +79,8 @@ class TestPhase75GosomIntegration(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
+        os.environ.clear()
+        os.environ.update(self.old_env)
 
     # ──────────────────────────────────────────────────────────────────────────
     # A. FEATURE FLAG OFF

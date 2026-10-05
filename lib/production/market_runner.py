@@ -1139,3 +1139,6 @@ class MarketRunner:
         print(f"  OUTREACH SENDS:        {s['outreach_sends_count']} (Ceiling: 0)")
         print(f"  CAMPAIGNS ARMED:       {s['campaigns_armed_count']} (Ceiling: 0)")
         print("=" * 65 + "\n")
+
+
+ProductionScaleEngine = MarketRunner

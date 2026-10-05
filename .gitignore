@@ -50,3 +50,6 @@ htmlcov/
 scratch/
 poised-eye-509816-a4-5444ff3f8520.json
 scratch/
+artifacts/
+backups/
+data_backup_sweep/

@@ -1,4 +1,5 @@
 import os
+import json
 import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
@@ -25,6 +26,34 @@ DEFAULT_HEADERS = [
 ]
 
 def get_sheet_client():
+    # 1. Direct JSON secret (string payload)
+    sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY")
+    if sa_json:
+        try:
+            sa_data = json.loads(sa_json) if isinstance(sa_json, str) else sa_json
+            creds = Credentials.from_service_account_info(sa_data, scopes=SCOPES)
+            return gspread.authorize(creds)
+        except Exception as e:
+            pass
+
+    # 2. Individual fields (email + private key)
+    sa_email = os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL")
+    sa_pkey = os.getenv("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")
+    if sa_email and sa_pkey:
+        try:
+            pkey_formatted = sa_pkey.replace("\\n", "\n")
+            sa_data = {
+                "type": "service_account",
+                "client_email": sa_email,
+                "private_key": pkey_formatted,
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+            creds = Credentials.from_service_account_info(sa_data, scopes=SCOPES)
+            return gspread.authorize(creds)
+        except Exception:
+            pass
+
+    # 3. Credentials file path
     creds_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "poised-eye-509816-a4-5444ff3f8520.json")
     if not os.path.isabs(creds_file):
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -35,10 +64,14 @@ def get_sheet_client():
 
 def get_worksheet(sheet_url=None, worksheet_name="Sheet1"):
     url = sheet_url or os.getenv("GOOGLE_SHEET_URL")
-    if not url:
-        raise ValueError("GOOGLE_SHEET_URL is not set.")
+    sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID")
     gc = get_sheet_client()
-    spreadsheet = gc.open_by_url(url)
+    if url:
+        spreadsheet = gc.open_by_url(url)
+    elif sheet_id:
+        spreadsheet = gc.open_by_key(sheet_id)
+    else:
+        raise ValueError("Neither GOOGLE_SHEET_URL nor GOOGLE_SHEET_ID / SPREADSHEET_ID is set.")
     try:
         return spreadsheet.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:

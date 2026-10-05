@@ -705,6 +705,10 @@ class GosomReviewFreshnessFallback:
         else:
             is_enabled = self.config.enabled
 
+        # If explicitly disabled in config, respect it
+        if not self.config.enabled:
+            is_enabled = False
+
         if not is_enabled and not shadow_mode:
             self.calls_skipped += 1
             telemetry["status"] = "FLAG_DISABLED"

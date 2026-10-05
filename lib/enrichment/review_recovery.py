@@ -322,17 +322,30 @@ class ReviewEvidenceRecoveryLayer:
         outcome_val = getattr(res, "outcome", None)
         outcome_name = outcome_val.value if hasattr(outcome_val, "value") else str(outcome_val or "SEARCH_FAILED")
 
-        target_url = None
-        target_snippet = ""
-        target_title = ""
+        def _match_rg_result(results):
+            c_toks = [t.lower() for t in cname.split() if len(t) > 2]
+            best = None
+            generic = None
+            for r in results:
+                u = r.get("result_url", "")
+                if "restaurantguru.com" in u.lower():
+                    clean_u = re.sub(r'[^a-z0-9]', '', u.lower())
+                    clean_t = re.sub(r'[^a-z0-9]', '', r.get("title", "").lower())
+                    if any(t in clean_u or t in clean_t for t in c_toks):
+                        return u, r.get("snippet", ""), r.get("title", "")
+                    if not generic:
+                        generic = (u, r.get("snippet", ""), r.get("title", ""))
+            return generic or (None, "", "")
 
-        for r in res:
-            u = r.get("result_url", "")
-            if "restaurantguru.com" in u.lower():
-                target_url = u
-                target_snippet = r.get("snippet", "")
-                target_title = r.get("title", "")
-                break
+        target_url, target_snippet, target_title = _match_rg_result(res)
+
+        if not target_url or not any(t.lower() in target_url.lower() for t in cname.split() if len(t) > 2):
+            for alt_q in [f'"{cname}" "{city}" reviews', f'"{cname}" "{city}" restaurant']:
+                alt_res = self.web.search_web(alt_q, num_results=3)
+                alt_u, alt_s, alt_t = _match_rg_result(alt_res)
+                if alt_u and any(t.lower() in alt_u.lower() for t in cname.split() if len(t) > 2):
+                    target_url, target_snippet, target_title = alt_u, alt_s, alt_t
+                    break
 
         if not target_url:
             telemetry = ReviewRecoveryTelemetryItem(
@@ -1031,7 +1044,8 @@ class ReviewEvidenceRecoveryLayer:
             eff_method = best_item.extraction_method
             eff_status = "RECOVERED_RECENT" if eff_freshness == ReviewFreshness.RECENT.value else "RECOVERED_STALE"
         elif not recovered_items:
-            if any(t.get("failure_reason") and "IDENTITY" in str(t.get("failure_reason")) for t in telemetry_records):
+            identity_reasons = ("IDENTITY", "BRANCH", "TOKEN_OVERLAP", "MISMATCH")
+            if any(t.get("failure_reason") and any(r in str(t.get("failure_reason")) for r in identity_reasons) for t in telemetry_records):
                 eff_status = "REJECTED_IDENTITY_MISMATCH"
             elif any(t.get("search_outcome") == "SEARCH_BLOCKED" or (t.get("http_status") in [401, 403, 429, 503]) for t in telemetry_records):
                 eff_status = "SOURCES_BLOCKED_OR_FAILED"

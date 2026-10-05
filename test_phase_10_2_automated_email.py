@@ -1117,6 +1117,17 @@ class TestEmailAPIEndpoints(unittest.TestCase):
     def tearDown(self):
         SystemConfig.set_automated_email(False)
         SystemConfig.set_email_kill_switch(False)
+        # Clean up webhook test artifacts
+        timelines_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "lead_timelines.json")
+        if os.path.exists(timelines_path):
+            try:
+                with open(timelines_path, "r", encoding="utf-8") as f:
+                    tl_data = json.load(f)
+                if "LD-WEBHOOK-01" in tl_data:
+                    del tl_data["LD-WEBHOOK-01"]
+                    atomic_write_json(timelines_path, tl_data)
+            except Exception:
+                pass
 
     def test_get_sender_health_endpoint(self):
         res = self.client.get("/api/email/sender-health")

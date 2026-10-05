@@ -55,13 +55,37 @@ class ConfigValidator:
             }
 
         # 2. Google Sheets CRM Integration
+        sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON") or os.environ.get("GOOGLE_SERVICE_ACCOUNT_KEY")
         sa_env = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-        # Also check common default service account file in root
         default_sa = os.path.join(PROJECT_ROOT, "poised-eye-509816-a4-5444ff3f8520.json")
         sa_path = sa_env if (sa_env and os.path.exists(sa_env)) else (default_sa if os.path.exists(default_sa) else None)
 
-        sheet_id = os.environ.get("SPREADSHEET_ID") or os.environ.get("GOOGLE_SHEET_ID")
-        if sa_path and os.path.exists(sa_path):
+        sheet_id = os.environ.get("SPREADSHEET_ID") or os.environ.get("GOOGLE_SHEET_ID") or os.environ.get("GOOGLE_SHEET_URL")
+        if sa_json:
+            try:
+                sa_data = json.loads(sa_json) if isinstance(sa_json, str) else sa_json
+                client_email = sa_data.get("client_email", "")
+                masked_email = client_email[:4] + "***" + client_email[-12:] if len(client_email) > 16 else "[MASKED]"
+                results["google_sheets"] = {
+                    "status": "CONFIGURED",
+                    "details": f"Service account verified from env ({masked_email})",
+                    "critical": False,
+                }
+            except Exception as e:
+                results["google_sheets"] = {
+                    "status": "INVALID",
+                    "details": f"Failed reading GOOGLE_SERVICE_ACCOUNT_JSON: {e}",
+                    "critical": False,
+                }
+        elif os.environ.get("GOOGLE_SERVICE_ACCOUNT_EMAIL") and os.environ.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"):
+            client_email = os.environ.get("GOOGLE_SERVICE_ACCOUNT_EMAIL", "")
+            masked_email = client_email[:4] + "***" + client_email[-12:] if len(client_email) > 16 else "[MASKED]"
+            results["google_sheets"] = {
+                "status": "CONFIGURED",
+                "details": f"Service account verified from individual env vars ({masked_email})",
+                "critical": False,
+            }
+        elif sa_path and os.path.exists(sa_path):
             try:
                 with open(sa_path, "r", encoding="utf-8") as f:
                     sa_data = json.load(f)
@@ -86,7 +110,14 @@ class ConfigValidator:
             }
 
         # 3. Gosom Local Review Scraper
-        gosom_path = os.environ.get("GOSOM_BINARY_PATH") or shutil_which("gosom")
+        default_scraper = os.path.join(PROJECT_ROOT, "scratch", "google_maps_scraper")
+        gosom_path = (
+            os.environ.get("GOSOM_BINARY_PATH")
+            or os.environ.get("GOSOM_SCRAPER_BIN")
+            or (default_scraper if os.path.exists(default_scraper) else None)
+            or shutil_which("gosom")
+            or shutil_which("google_maps_scraper")
+        )
         if gosom_path and os.path.exists(gosom_path):
             results["gosom"] = {
                 "status": "CONFIGURED",
@@ -96,7 +127,7 @@ class ConfigValidator:
         else:
             results["gosom"] = {
                 "status": "DISABLED",
-                "details": "Gosom binary not in PATH (using local review cache & provider fallback)",
+                "details": "Gosom binary not found (using local review cache & provider fallback)",
                 "critical": False,
             }
 

@@ -223,43 +223,50 @@ class TestBounceHandling(unittest.TestCase):
     # ──────────────────────────────────────────────────────────────────────
     def test_06_contact_history_preserves_sent_to_bounced(self):
         """Contact timeline preserves the initial SENT record and appends BOUNCED outcome."""
-        lead_id = f"LEAD-HIST-TEST-{os.getpid()}"
-        email = f"user-{os.getpid()}@example.co.uk"
-        mid = f"<test-{os.getpid()}@dripp.media>"
+        import uuid
+        uid = uuid.uuid4().hex[:12]
+        lead_id = f"LEAD-HIST-TEST-{uid}"
+        email = f"user-{uid}@example.co.uk"
+        mid = f"<test-{uid}@dripp.media>"
 
-        # Step 1: Initial transmission
-        ContactHistoryManager.record_attempt(
-            lead_id=lead_id,
-            campaign_id="CAMP-HIST-01",
-            channel="Email",
-            recipient=email,
-            message_id=mid,
-            status="SENT",
-            outcome="ACCEPTED",
-            message_body="Original outreach pitch",
-            error=""
-        )
+        try:
+            # Step 1: Initial transmission
+            ContactHistoryManager.record_attempt(
+                lead_id=lead_id,
+                campaign_id="CAMP-HIST-01",
+                channel="Email",
+                recipient=email,
+                message_id=mid,
+                status="SENT",
+                outcome="ACCEPTED",
+                message_body="Original outreach pitch",
+                error=""
+            )
 
-        # Step 2: Later bounce received
-        later_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat() + "Z"
-        ContactHistoryManager.record_bounce(
-            lead_id=lead_id,
-            campaign_id="CAMP-HIST-01",
-            recipient=email,
-            bounce_code="550 5.1.1",
-            bounce_reason="Mailbox does not exist",
-            bounce_provider="Gmail SMTP",
-            message_id=mid,
-            bounced_at=later_ts
-        )
+            # Step 2: Later bounce received
+            later_ts = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat() + "Z"
+            ContactHistoryManager.record_bounce(
+                lead_id=lead_id,
+                campaign_id="CAMP-HIST-01",
+                recipient=email,
+                bounce_code="550 5.1.1",
+                bounce_reason="Mailbox does not exist",
+                bounce_provider="Gmail SMTP",
+                message_id=mid,
+                bounced_at=later_ts
+            )
 
-        timeline = ContactHistoryManager.get_lead_timeline(lead_id)
-        self.assertEqual(len(timeline), 2, "Timeline must contain both SENT and BOUNCED events")
-        self.assertEqual(timeline[0]["status"], "SENT")
-        self.assertEqual(timeline[0]["outcome"], "ACCEPTED")
-        self.assertEqual(timeline[1]["status"], "BOUNCED")
-        self.assertEqual(timeline[1]["outcome"], "BOUNCED")
-        self.assertEqual(timeline[1]["bounce_code"], "550 5.1.1")
+            timeline = ContactHistoryManager.get_lead_timeline(lead_id)
+            self.assertEqual(len(timeline), 2, "Timeline must contain both SENT and BOUNCED events")
+            self.assertEqual(timeline[0]["status"], "SENT")
+            self.assertEqual(timeline[0]["outcome"], "ACCEPTED")
+            self.assertEqual(timeline[1]["status"], "BOUNCED")
+            self.assertEqual(timeline[1]["outcome"], "BOUNCED")
+            self.assertEqual(timeline[1]["bounce_code"], "550 5.1.1")
+        finally:
+            history = ContactHistoryManager._load()
+            filtered = [h for h in history if h.get("lead_id") != lead_id]
+            ContactHistoryManager._save(filtered)
 
     # ──────────────────────────────────────────────────────────────────────
     # 7. CAMPAIGN ANALYTICS COUNT BOUNCE

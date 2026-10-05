@@ -1,3 +1,4 @@
+import os
 import re
 from typing import Dict, Any, Optional, List
 from lib.types import DiscoveredBusiness
@@ -115,7 +116,7 @@ class OutreachAngleGenerator:
         elif revs >= 50:
             return (
                 f"No dedicated official website was identified in our checks for {business.company_name}. "
-                f"Your business has an established customer presence with {revs} reviews ({rating}★) in {city}. "
+                f"Your business has an established physical location in {city} with {revs} reviews ({rating}★). "
                 f"A dedicated website could {website_value}."
             )
         else:

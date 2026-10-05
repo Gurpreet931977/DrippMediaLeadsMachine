@@ -59,9 +59,17 @@ class TestProductionPreflight(unittest.TestCase):
             return_value=[mock_rdata]
         )
         self.dns_patcher.start()
+        self.campaigns_file = os.path.join(PROJECT_ROOT, "data", "campaigns.json")
+        self._orig_campaigns = None
+        if os.path.exists(self.campaigns_file):
+            with open(self.campaigns_file, "r", encoding="utf-8") as f:
+                self._orig_campaigns = f.read()
 
     def tearDown(self):
         self.dns_patcher.stop()
+        if self._orig_campaigns is not None:
+            with open(self.campaigns_file, "w", encoding="utf-8") as f:
+                f.write(self._orig_campaigns)
 
     # ──────────────────────────────────────────────────────────────────────
     # 1. REAL PRODUCTION LEADS PREFLIGHT
@@ -79,9 +87,10 @@ class TestProductionPreflight(unittest.TestCase):
 
         report = run_production_preflight(leads=leads, campaign_id="TEST-CAMP-PHASE7-001")
 
-        self.assertEqual(report.outreach_ready_examined, 6)
+        ready_count = len([l for l in leads if l.get("qualification_state") == "OUTREACH_READY"])
+        self.assertEqual(report.outreach_ready_examined, ready_count)
         self.assertEqual(report.sendable_candidates, 0)
-        self.assertEqual(report.blocked_candidates, 6)
+        self.assertEqual(report.blocked_candidates, ready_count)
         self.assertTrue(report.stop_condition_triggered)
         self.assertIsNone(report.fresh_eligible_candidate)
         self.assertIn("CRITICAL_STOP", report.stop_reason)

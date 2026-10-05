@@ -1,0 +1,97 @@
+name: "01 - Test & Security Regression Suite"
+
+'on':
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-and-verify:
+    name: "Regression & Compatibility Verification"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      TRAVEL_MODE: "true"
+      COMMERCIAL_ACTIONS_ENABLED: "false"
+      AUTOMATED_EMAIL_ENABLED: "false"
+      TECHNICAL_AUTOMATION_ENABLED: "true"
+      TZ: "UTC"
+
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: "Install Python Dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: "Set up Node.js 20"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: "Install Node Dependencies"
+        run: |
+          npm ci || npm install
+
+      - name: "Run Repository Security Scan"
+        run: |
+          python scripts/security_secret_scan.py
+
+      - name: "Set up Gosom Google Maps Scraper"
+        run: |
+          python scripts/setup_gosom.py
+
+      - name: "Verify System Storage Readiness"
+        run: |
+          python -c "from lib.system.storage_bootstrap import bootstrap_storage_baseline; bootstrap_storage_baseline()"
+
+      - name: "Run Pre-flight Startup Health Checks"
+        run: |
+          python scripts/start_production.py --check-only
+
+      - name: "Run System Health Audit"
+        run: |
+          python scripts/system_health_check.py
+
+      - name: "Run GitHub Actions Compatibility & Safety Tests"
+        run: |
+          pytest -v test_phase_11_0_github_actions_compatibility.py
+
+      - name: "Run Production Hardening & Core Regression Suites"
+        run: |
+          pytest -v \
+            test_production_preflight.py \
+            test_phase_10_1_production_hardening.py \
+            test_phase_10_2_automated_email.py \
+            test_score_decoupling.py \
+            test_search_hardening.py \
+            test_uk_entity_contactability.py
+
+      - name: "Upload Verification Artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "test-verification-reports"
+          path: |
+            data/latest_health_report.json
+            data/latest_health_summary.md
+          retention-days: 7

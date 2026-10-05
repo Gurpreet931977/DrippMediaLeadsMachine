@@ -43,7 +43,11 @@ def run_health_check(verbose: bool = True) -> int:
     print(f"  Time (UTC): {datetime.now(timezone.utc).isoformat()}")
     print("=" * 72)
 
-    monitor = SystemHealthMonitor(data_dir=os.path.join(PROJECT_ROOT, "data"))
+    from lib.system.storage_bootstrap import bootstrap_storage_baseline
+    data_dir = os.path.join(PROJECT_ROOT, "data")
+    bootstrap_storage_baseline(data_dir=data_dir)
+
+    monitor = SystemHealthMonitor(data_dir=data_dir)
     health = monitor.evaluate_health()
     config_audit = ConfigValidator.validate_all()
 
@@ -188,6 +192,50 @@ def run_health_check(verbose: bool = True) -> int:
         print("  - System cannot operate unattended. Address critical file or state errors immediately.")
 
     print("=" * 72 + "\n")
+
+    # Persist structured health report for artifacts
+    report_data = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "overall_status": overall_status,
+        "system_health_state": health["system_status"],
+        "operating_mode": "TRAVEL_MODE" if SystemConfig.TRAVEL_MODE else "STANDARD",
+        "travel_mode": SystemConfig.TRAVEL_MODE,
+        "commercial_actions_enabled": SystemConfig.COMMERCIAL_ACTIONS_ENABLED,
+        "critical_issues": issues,
+        "warnings": warnings,
+        "details": health,
+    }
+
+    out_dir = os.path.join(data_dir, "market_runs")
+    os.makedirs(out_dir, exist_ok=True)
+    report_file = os.path.join(data_dir, "latest_health_report.json")
+    with open(report_file, "w", encoding="utf-8") as rf:
+        json.dump(report_data, rf, indent=2)
+
+    md_summary = f"""# System Health Audit Summary
+
+- **Timestamp (UTC):** `{report_data['timestamp_utc']}`
+- **Overall Status:** `[{overall_status}]`
+- **Health State:** `{health['system_status']}`
+- **Mode:** `{'TRAVEL_MODE (Safe)' if SystemConfig.TRAVEL_MODE else 'STANDARD'}`
+- **Commercial Actions Locked:** `{'YES' if not SystemConfig.can_execute_commercial_actions() else 'NO'}`
+
+## Issues & Warnings
+- **Critical Issues:** `{len(issues)}`
+- **Advisory Warnings:** `{len(warnings)}`
+"""
+    md_file = os.path.join(data_dir, "latest_health_summary.md")
+    with open(md_file, "w", encoding="utf-8") as mf:
+        mf.write(md_summary)
+
+    step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if step_summary and os.path.exists(step_summary):
+        try:
+            with open(step_summary, "a", encoding="utf-8") as sf:
+                sf.write(md_summary + "\n")
+        except Exception:
+            pass
+
     return 0 if overall_status in ("PASS", "WARN") else 1
 
 

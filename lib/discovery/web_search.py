@@ -324,7 +324,7 @@ class WebSearchProvider(DiscoveryProvider):
         brave_key: Optional[str] = None,
         searxng_url: Optional[str] = None,
         cache_dir: Optional[str] = None,
-        cache_ttl_seconds: int = 86400,
+        cache_ttl_seconds: Optional[int] = None,
         cooldown_seconds: float = 30.0,
         failure_threshold: int = 2
     ):
@@ -337,7 +337,8 @@ class WebSearchProvider(DiscoveryProvider):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.cache_dir = cache_dir or os.path.join(self.base_dir, "data", "cache_search")
         os.makedirs(self.cache_dir, exist_ok=True)
-        self.cache_ttl = cache_ttl_seconds
+        ttl_env = os.getenv("WEB_SEARCH_CACHE_TTL_SECONDS")
+        self.cache_ttl = cache_ttl_seconds if cache_ttl_seconds is not None else (int(ttl_env) if ttl_env else 365 * 86400)
         self.cooldown_seconds = cooldown_seconds
         self.failure_threshold = failure_threshold
 
