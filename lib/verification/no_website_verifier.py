@@ -4,7 +4,10 @@ import urllib.parse
 from typing import Dict, Any, List, Optional, Tuple
 import requests
 from dotenv import load_dotenv
-from apify_client import ApifyClient
+try:
+    from apify_client import ApifyClient
+except ImportError:
+    ApifyClient = None
 
 from lib.types import DiscoveredBusiness, WebsiteStatus, VerificationStatus
 from lib.website.detector import NodeWebsiteDetectionProvider, PLATFORM_DOMAINS
@@ -20,10 +23,10 @@ class NoWebsiteVerificationProvider:
       Check C: Social profile & bio link analysis
       Check D: Direct domain name resolution
     """
-    def __init__(self, apify_client: Optional[ApifyClient] = None, enable_search: bool = True):
+    def __init__(self, apify_client: Optional[Any] = None, enable_search: bool = True):
         import os
         token = os.getenv("APIFY_TOKEN")
-        self.apify_client = (apify_client or (ApifyClient(token) if token else None)) if enable_search else None
+        self.apify_client = (apify_client or (ApifyClient(token) if (ApifyClient is not None and token) else None)) if enable_search else None
         self.detector = NodeWebsiteDetectionProvider()
         self._search_disabled = not enable_search
 

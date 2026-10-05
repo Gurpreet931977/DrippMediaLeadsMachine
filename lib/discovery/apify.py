@@ -2,7 +2,10 @@ import os
 import re
 from typing import List, Optional, Tuple, Dict
 from dotenv import load_dotenv
-from apify_client import ApifyClient
+try:
+    from apify_client import ApifyClient
+except ImportError:
+    ApifyClient = None
 from lib.discovery.base import DiscoveryProvider
 from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
 from lib.validation.country_validator import CountryValidator
@@ -21,7 +24,7 @@ class ApifyDiscoveryProvider(DiscoveryProvider):
         self.token = token or os.getenv("APIFY_TOKEN")
         env_enabled = os.getenv("APIFY_ENABLED", "false").lower() in ["true", "1", "yes"]
         self.enabled = enabled if enabled is not None else env_enabled
-        self.client = ApifyClient(self.token) if (self.token and self.enabled) else None
+        self.client = ApifyClient(self.token) if (ApifyClient is not None and self.token and self.enabled) else None
         self.country_validator = CountryValidator()
 
     def get_query_rounds(self, city: str, country: str, industry: str) -> List[List[str]]:
