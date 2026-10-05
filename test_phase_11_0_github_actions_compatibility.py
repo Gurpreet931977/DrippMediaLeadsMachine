@@ -311,6 +311,118 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
             self.assertIsNotNone(concurrency, f"Missing concurrency in {wfile}")
             self.assertFalse(concurrency.get("cancel-in-progress", True), f"cancel-in-progress must be false in {wfile}")
 
+    # -------------------------------------------------------------------------
+    # 17. Importing lib.system Succeeds Without apify_client
+    # -------------------------------------------------------------------------
+    def test_17_import_lib_system_without_apify_client(self):
+        import sys
+        # Artificially mask apify_client from import system
+        sys.modules["apify_client"] = None
+        try:
+            import importlib
+            import lib.system
+            importlib.reload(lib.system)
+            from lib.system.storage_bootstrap import bootstrap_storage_baseline
+            self.assertTrue(callable(bootstrap_storage_baseline))
+        finally:
+            sys.modules.pop("apify_client", None)
+
+    # -------------------------------------------------------------------------
+    # 18. Importing lib.discovery Succeeds Without apify_client
+    # -------------------------------------------------------------------------
+    def test_18_import_lib_discovery_without_apify_client(self):
+        import sys
+        sys.modules["apify_client"] = None
+        try:
+            import importlib
+            import lib.discovery
+            importlib.reload(lib.discovery)
+            from lib.discovery import OpenStreetMapProvider, HybridDiscoveryEngine
+            self.assertIsNotNone(OpenStreetMapProvider)
+            self.assertIsNotNone(HybridDiscoveryEngine)
+        finally:
+            sys.modules.pop("apify_client", None)
+
+    # -------------------------------------------------------------------------
+    # 19. Normal Production Discovery Does Not Require Apify
+    # -------------------------------------------------------------------------
+    def test_19_normal_production_discovery_does_not_require_apify(self):
+        from lib.discovery.hybrid import HybridDiscoveryEngine, DiscoveryMode
+        engine = HybridDiscoveryEngine(mode=DiscoveryMode.FREE_LOCAL)
+        self.assertFalse(engine.apify_enabled)
+        self.assertIsNone(engine.apify)
+        health = engine.health_check()
+        self.assertEqual(health["apify_enabled"], False)
+
+    # -------------------------------------------------------------------------
+    # 20. Normal Technical Pipeline Does Not Require Apify
+    # -------------------------------------------------------------------------
+    def test_20_normal_technical_pipeline_does_not_require_apify(self):
+        import sys
+        sys.modules["apify_client"] = None
+        try:
+            from scripts.run_technical_pipeline import run_pipeline
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                report = run_pipeline(
+                    market_id="MANCHESTER_UK",
+                    lead_limit=1,
+                    dry_run=True,
+                    report_path=os.path.join(tmp_dir, "apify_free_report.json"),
+                    data_dir=tmp_dir,
+                )
+                self.assertTrue(report["dry_run"])
+                self.assertEqual(report["stats"]["crm_written_count"], 0)
+        finally:
+            sys.modules.pop("apify_client", None)
+
+    # -------------------------------------------------------------------------
+    # 21. Gosom Path Operates Without Apify
+    # -------------------------------------------------------------------------
+    def test_21_gosom_path_operates_without_apify(self):
+        from lib.enrichment.gosom_fallback import GosomReviewFreshnessFallback
+        fallback = GosomReviewFreshnessFallback()
+        self.assertIsNotNone(fallback)
+        self.assertFalse(hasattr(fallback, "apify_client"))
+
+    # -------------------------------------------------------------------------
+    # 22. OpenStreetMap Path Operates Without Apify
+    # -------------------------------------------------------------------------
+    def test_22_openstreetmap_path_operates_without_apify(self):
+        from lib.discovery.osm import OpenStreetMapProvider
+        osm = OpenStreetMapProvider()
+        self.assertIsNotNone(osm)
+        self.assertEqual(osm.name, "OpenStreetMap")
+        self.assertFalse(hasattr(osm, "apify_client"))
+
+    # -------------------------------------------------------------------------
+    # 23. Apify Adapter Fails Gracefully When Dependency Is Missing
+    # -------------------------------------------------------------------------
+    def test_23_apify_adapter_fails_gracefully_when_invoked_without_dependency(self):
+        import sys
+        sys.modules["apify_client"] = None
+        try:
+            from lib.discovery.apify import ApifyDiscoveryProvider
+            provider = ApifyDiscoveryProvider(enabled=True)
+            self.assertIsNone(provider.client)
+            self.assertFalse(provider.enabled)
+            health = provider.health_check()
+            self.assertEqual(health["status"], "DISABLED")
+            self.assertIn("disabled", health["reason"].lower())
+            
+            # Discover round returns empty without exception
+            results, queries = provider.discover_round(
+                round_number=1,
+                country="United Kingdom",
+                cities=["Manchester"],
+                industry="restaurant",
+                limit=5
+            )
+            self.assertEqual(results, [])
+            self.assertEqual(queries, [])
+        finally:
+            sys.modules.pop("apify_client", None)
+
 
 if __name__ == "__main__":
     unittest.main()
+

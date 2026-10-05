@@ -4,11 +4,6 @@ import urllib.parse
 from typing import Dict, Any, List, Optional, Tuple
 import requests
 from dotenv import load_dotenv
-try:
-    from apify_client import ApifyClient
-except ImportError:
-    ApifyClient = None
-
 from lib.types import DiscoveredBusiness, WebsiteStatus, VerificationStatus
 from lib.website.detector import NodeWebsiteDetectionProvider, PLATFORM_DOMAINS
 
@@ -26,9 +21,17 @@ class NoWebsiteVerificationProvider:
     def __init__(self, apify_client: Optional[Any] = None, enable_search: bool = True):
         import os
         token = os.getenv("APIFY_TOKEN")
-        self.apify_client = (apify_client or (ApifyClient(token) if (ApifyClient is not None and token) else None)) if enable_search else None
+        self.apify_client = None
+        if apify_client is not None:
+            self.apify_client = apify_client
+        elif enable_search and token:
+            try:
+                from apify_client import ApifyClient
+                self.apify_client = ApifyClient(token)
+            except ImportError:
+                self.apify_client = None
         self.detector = NodeWebsiteDetectionProvider()
-        self._search_disabled = not enable_search
+        self._search_disabled = not enable_search or self.apify_client is None
 
     def _normalize_name(self, name: str) -> str:
         clean = re.sub(r'[^a-zA-Z0-9\s]', '', name).lower()

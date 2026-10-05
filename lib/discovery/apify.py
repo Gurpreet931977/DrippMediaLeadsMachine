@@ -2,10 +2,6 @@ import os
 import re
 from typing import List, Optional, Tuple, Dict
 from dotenv import load_dotenv
-try:
-    from apify_client import ApifyClient
-except ImportError:
-    ApifyClient = None
 from lib.discovery.base import DiscoveryProvider
 from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
 from lib.validation.country_validator import CountryValidator
@@ -24,7 +20,14 @@ class ApifyDiscoveryProvider(DiscoveryProvider):
         self.token = token or os.getenv("APIFY_TOKEN")
         env_enabled = os.getenv("APIFY_ENABLED", "false").lower() in ["true", "1", "yes"]
         self.enabled = enabled if enabled is not None else env_enabled
-        self.client = ApifyClient(self.token) if (ApifyClient is not None and self.token and self.enabled) else None
+        self.client = None
+        if self.token and self.enabled:
+            try:
+                from apify_client import ApifyClient
+                self.client = ApifyClient(self.token)
+            except ImportError:
+                self.client = None
+                self.enabled = False
         self.country_validator = CountryValidator()
 
     def get_query_rounds(self, city: str, country: str, industry: str) -> List[List[str]]:
@@ -416,7 +419,16 @@ class ApifyDiscoveryProvider(DiscoveryProvider):
                 "provider": "Apify",
                 "status": "DISABLED",
                 "enabled": False,
-                "reason": "APIFY_ENABLED=false (Safe Free Mode active - 0 spend)"
+                "reason": "Apify is disabled / exhausted (Safe Free Mode active - 0 spend)"
+            }
+        try:
+            from apify_client import ApifyClient
+        except ImportError:
+            return {
+                "provider": "Apify",
+                "status": "DISABLED",
+                "enabled": False,
+                "reason": "apify_client package not installed (Apify disabled)"
             }
         if not self.token:
             return {

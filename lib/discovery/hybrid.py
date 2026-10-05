@@ -25,7 +25,6 @@ from lib.discovery.osm import OpenStreetMapProvider
 from lib.discovery.foursquare import FoursquareProvider
 from lib.discovery.web_search import WebSearchProvider
 from lib.discovery.crawler import CrawlEngine
-from lib.discovery.apify import ApifyDiscoveryProvider
 from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
 from lib.validation.country_validator import CountryValidator
 from lib.validation.creator_evidence import CreatorEvidenceValidator
@@ -66,7 +65,13 @@ class HybridDiscoveryEngine(DiscoveryProvider):
         self.foursquare = FoursquareProvider()
         self.web_search = WebSearchProvider()
         self.crawler = CrawlEngine(max_pages_per_business=max_pages_per_business)
-        self.apify = ApifyDiscoveryProvider(enabled=(self.apify_enabled and self.mode in [DiscoveryMode.HYBRID, DiscoveryMode.APIFY]))
+        self.apify = None
+        if self.apify_enabled and self.mode in [DiscoveryMode.HYBRID, DiscoveryMode.APIFY]:
+            try:
+                from lib.discovery.apify import ApifyDiscoveryProvider
+                self.apify = ApifyDiscoveryProvider(enabled=True)
+            except Exception:
+                self.apify = None
         self.country_validator = CountryValidator()
 
         # Budgets
@@ -115,7 +120,12 @@ class HybridDiscoveryEngine(DiscoveryProvider):
         fsq_h = self.foursquare.health_check()
         web_h = self.web_search.health_check()
         crawl_h = self.crawler.health_check()
-        apify_h = self.apify.health_check()
+        apify_h = self.apify.health_check() if self.apify else {
+            "provider": "Apify",
+            "status": "DISABLED",
+            "enabled": False,
+            "reason": "Apify provider is disabled / exhausted"
+        }
 
         # Update dynamic boundary state
         b_feat = self.osm.boundary_validator.get_or_fetch_boundary("Birmingham", "United Kingdom")
@@ -370,8 +380,8 @@ class HybridDiscoveryEngine(DiscoveryProvider):
 
         # Mode APIFY (Explicitly enabled only)
         if self.mode == DiscoveryMode.APIFY:
-            if not self.apify_enabled:
-                print("[HybridDiscovery] Apify mode requested but APIFY_ENABLED=false. Falling back to FREE_LOCAL.")
+            if not self.apify_enabled or not self.apify:
+                print("[HybridDiscovery] Apify mode requested but Apify is unavailable or disabled. Falling back to FREE_LOCAL.")
             else:
                 apify_candidates, ap_queries = self.apify.discover_round(round_number, country, cities, industry, limit)
                 for cand in apify_candidates:
@@ -420,7 +430,7 @@ class HybridDiscoveryEngine(DiscoveryProvider):
             self.transparency_stats["by_source"]["WEB_SEARCH"] += len(web_results)
 
         # Step 4: Optional Apify fallback ONLY if explicitly enabled
-        if self.apify_enabled and self.mode == DiscoveryMode.HYBRID and len(pool) < (limit // 2):
+        if self.apify and self.apify_enabled and self.mode == DiscoveryMode.HYBRID and len(pool) < (limit // 2):
             print(f"[HybridDiscovery] Free providers returned {len(pool)} candidates. Invoking enabled Apify fallback...")
             ap_candidates, _ = self.apify.discover_round(round_number, country, cities, industry, limit - len(pool))
             for cand in ap_candidates:

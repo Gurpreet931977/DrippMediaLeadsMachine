@@ -29,7 +29,6 @@ from lib.types import (
     CallOutcome,
     SourceFamily,
 )
-from lib.discovery.apify import ApifyDiscoveryProvider
 from lib.discovery.hybrid import HybridDiscoveryEngine
 from lib.website.detector import NodeWebsiteDetectionProvider
 from lib.verification.no_website_verifier import NoWebsiteVerificationProvider
