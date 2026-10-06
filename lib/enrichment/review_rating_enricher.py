@@ -28,7 +28,7 @@ import hashlib
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass, asdict, field
 from enum import Enum
-from typing import Dict, Any, List, Optional, Tuple, Set
+from typing import Dict, Any, List, Optional, Tuple, Set, Union
 
 from lib.types import DiscoveredBusiness
 from lib.discovery.web_search import WebSearchProvider, check_searxng_health
