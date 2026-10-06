@@ -573,3 +573,50 @@ class ResearchLogEntry:
                 val_str = f"'{val_str}"
             row.append(val_str)
         return row
+
+
+class ResearchFailureState(str, Enum):
+    """
+    Phase 11.1 Differentiated Research & Review Failure States.
+    Distinguishes the 8 failure states to prevent collapsing into generic 'missing reviews'.
+    """
+    NO_EVIDENCE_FOUND = "NO_EVIDENCE_FOUND"              # A. Genuinely no evidence found
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"        # B. Provider unavailable (connection refused / network)
+    PROVIDER_NOT_CONFIGURED = "PROVIDER_NOT_CONFIGURED"  # C. Provider not configured (keys missing)
+    PROVIDER_FAILED = "PROVIDER_FAILED"                  # D. Provider failed (circuit open / HTTP error)
+    PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"                # E. Provider timed out
+    EXTRACTION_FAILED = "EXTRACTION_FAILED"              # F. Evidence extraction failed (unparseable)
+    IDENTITY_MISMATCH = "IDENTITY_MISMATCH"              # G. Identity mismatch (wrong branch / rejected)
+    EVIDENCE_CONFLICT = "EVIDENCE_CONFLICT"              # H. Evidence conflict (reconciliation conflict)
+    NONE = "NONE"                                        # Evidence recovered successfully
+
+
+@dataclass
+class ResearchTelemetry:
+    """
+    Phase 11.1 Candidate-level research telemetry.
+    Records granular provider attempts, results, signals, and failure reasons.
+    """
+    candidate: str
+    provider_attempted: List[str] = field(default_factory=list)
+    provider_result: str = "NOT_ATTEMPTED"
+    evidence_found: str = "NONE"
+    operational_signal_found: str = "NONE"
+    fallback_attempted: str = "NONE"
+    fallback_result: str = "NOT_ATTEMPTED"
+    failure_reason: str = ResearchFailureState.NONE.value
+    details: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "candidate": self.candidate,
+            "provider_attempted": list(self.provider_attempted),
+            "provider_result": self.provider_result,
+            "evidence_found": self.evidence_found,
+            "operational_signal_found": self.operational_signal_found,
+            "fallback_attempted": self.fallback_attempted,
+            "fallback_result": self.fallback_result,
+            "failure_reason": self.failure_reason,
+            "details": dict(self.details),
+        }
+

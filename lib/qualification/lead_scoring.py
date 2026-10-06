@@ -14,7 +14,8 @@ from lib.types import (
     QualificationState,
     DisqualificationReason,
     CreatorEvidenceStatus,
-    CreatorEvidenceConfidence
+    CreatorEvidenceConfidence,
+    ResearchFailureState,
 )
 from lib.validation.social_validator import SocialIdentityValidator
 from lib.validation.operational_validator import OperationalValidator
@@ -415,11 +416,33 @@ class LeadScoringProvider:
                 qualification_reason = f"Manual Review: Review data is stale ({review_enrich.get('review_evidence_date', 'historic')}). Current operational traction unverified."
                 priority = Priority.MANUAL_REVIEW.value
 
-            # Check 0C: Missing / Unknown Review Data -> RESEARCH_ONLY
+            # Check 0C: Missing / Unknown Review Data -> RESEARCH_ONLY (Differentiated per Phase 11.1)
             elif revs is None:
                 qualification_state = QualificationState.RESEARCH_ONLY.value
-                qualification_reason = "Research Only: Review data unknown / missing. Insufficient verified customer traction for outreach."
                 priority = Priority.RESEARCH_ONLY.value
+
+                res_telem = getattr(business, "raw_data", {}).get("research_telemetry", {}) if isinstance(getattr(business, "raw_data", None), dict) else {}
+                fail_state = res_telem.get("failure_reason") or getattr(business, "research_failure_state", None)
+
+                if fail_state == ResearchFailureState.PROVIDER_NOT_CONFIGURED.value:
+                    qualification_reason = "Research Only: Review research provider not configured (Tavily/Brave/SearXNG missing). Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.PROVIDER_UNAVAILABLE.value:
+                    qualification_reason = "Research Only: Review research provider unavailable (connection refused or network unreachable). Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.PROVIDER_TIMEOUT.value:
+                    qualification_reason = "Research Only: Review research provider timed out. Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.PROVIDER_FAILED.value:
+                    qualification_reason = "Research Only: Review research provider failed (HTTP error or circuit open). Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.EXTRACTION_FAILED.value:
+                    qualification_reason = "Research Only: Review evidence extraction failed from discovered sources. Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.IDENTITY_MISMATCH.value:
+                    qualification_reason = "Research Only: Discovered review sources rejected due to identity/branch mismatch. Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.EVIDENCE_CONFLICT.value:
+                    qualification_reason = "Research Only: Conflicting review evidence detected across sources. Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.NO_EVIDENCE_FOUND.value:
+                    qualification_reason = "Research Only: Genuinely no review evidence found across verified sources. Insufficient verified customer traction for outreach."
+                else:
+                    qualification_reason = "Research Only: Review data unknown / missing. Insufficient verified customer traction for outreach."
+
 
             # Check 1: Very low review count (0-9 reviews) -> RESEARCH_ONLY
             elif revs < 10:

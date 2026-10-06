@@ -50,6 +50,8 @@ from lib.types import (
     EvidenceFreshness,
     OutreachStatus,
     OutreachMode,
+    ResearchFailureState,
+    ResearchTelemetry,
 )
 from lib.discovery.osm import OpenStreetMapProvider
 from lib.discovery.boundary_validator import CityBoundaryValidator
@@ -58,6 +60,7 @@ from lib.website.detector import NodeWebsiteDetectionProvider
 from lib.verification.no_website_verifier import NoWebsiteVerificationProvider
 from lib.validation.operational_validator import OperationalValidator
 from lib.enrichment.review_rating_enricher import ReviewRatingEnricher
+from lib.enrichment.review_recovery import ReviewEvidenceRecoveryLayer
 from lib.qualification.lead_scoring import LeadScoringProvider
 from lib.outreach.contactability import ContactabilityAssessor, ContactabilityState
 from lib.outreach.phase_8_5_qualification import (
@@ -408,6 +411,8 @@ class MarketRunner:
         detector: Optional[NodeWebsiteDetectionProvider] = None,
         verifier: Optional[NoWebsiteVerificationProvider] = None,
         review_enricher: Optional[ReviewRatingEnricher] = None,
+        review_recovery: Optional[ReviewEvidenceRecoveryLayer] = None,
+        enable_research: bool = True,
         operational_validator: Optional[OperationalValidator] = None,
         scorer: Optional[LeadScoringProvider] = None,
         contact_assessor: Optional[ContactabilityAssessor] = None,
@@ -436,6 +441,12 @@ class MarketRunner:
         self.detector = detector or NodeWebsiteDetectionProvider()
         self.verifier = verifier or NoWebsiteVerificationProvider()
         self.review_enricher = review_enricher or ReviewRatingEnricher()
+        self.review_recovery = review_recovery or ReviewEvidenceRecoveryLayer(
+            web_search_provider=getattr(self.review_enricher, "web", None),
+            matcher=self.identity_matcher
+        )
+        self.enable_research = enable_research
+        self.research_telemetry_records: List[Dict[str, Any]] = []
         self.operational_validator = operational_validator or OperationalValidator()
         self.scorer = scorer or LeadScoringProvider()
         self.contact_assessor = contact_assessor or ContactabilityAssessor()
@@ -723,6 +734,226 @@ class MarketRunner:
 
         return self.get_summary()
 
+    def _enrich_and_recover_reviews(
+        self,
+        biz: DiscoveredBusiness,
+        cand_dict: Dict[str, Any],
+        log: Callable[[str], None],
+    ) -> ResearchTelemetry:
+        """
+        Phase 11.1: Executes review enrichment & multi-source evidence recovery for a candidate.
+        Captures detailed internal diagnostic telemetry per candidate.
+        Distinguishes 8 failure states:
+          A. NO_EVIDENCE_FOUND
+          B. PROVIDER_UNAVAILABLE
+          C. PROVIDER_NOT_CONFIGURED
+          D. PROVIDER_FAILED
+          E. PROVIDER_TIMEOUT
+          F. EXTRACTION_FAILED
+          G. IDENTITY_MISMATCH
+          H. EVIDENCE_CONFLICT
+        Never fabricates review evidence. Enforces quota limits and safety locks.
+        """
+        cname = biz.company_name
+        city = biz.city or self.market_config.city
+
+        # 1. Identify operational signals already discovered from OSM
+        signals = []
+        if biz.phone:
+            signals.append("PHONE")
+        if biz.address or getattr(biz, "street", None):
+            signals.append("ADDRESS")
+        if getattr(biz, "opening_hours", None):
+            signals.append("OPENING_HOURS")
+        if biz.raw_website:
+            signals.append("WEBSITE")
+        op_signal_found = ", ".join(signals) if signals else "NONE"
+
+        # 2. Check if research stage is enabled
+        if not getattr(self, "enable_research", True):
+            telem = ResearchTelemetry(
+                candidate=cname,
+                provider_attempted=["NONE"],
+                provider_result="RESEARCH_DISABLED",
+                evidence_found="NONE",
+                operational_signal_found=op_signal_found,
+                fallback_attempted="GOSOM: NOT_ATTEMPTED",
+                fallback_result="NOT_ATTEMPTED",
+                failure_reason=ResearchFailureState.PROVIDER_NOT_CONFIGURED.value,
+                details={"reason": "Research stage disabled by configuration"},
+            )
+            biz.raw_data = getattr(biz, "raw_data", {}) or {}
+            biz.raw_data["research_telemetry"] = telem.to_dict()
+            return telem
+
+        # 3. Identify Search Providers Configured in WebSearch cascade
+        web_provider = getattr(self.review_enricher, "web", None)
+        providers_attempted: List[str] = []
+        tavily_ok = False
+        brave_ok = False
+        searxng_health = "NOT_CONNECTED"
+        ddg_state = "CLOSED"
+
+        if web_provider:
+            tavily_ok = bool(getattr(web_provider, "tavily_key", None))
+            brave_ok = bool(getattr(web_provider, "brave_key", None))
+            searxng_url = getattr(web_provider, "searxng_url", "")
+            if hasattr(web_provider, "check_searxng_health"):
+                searxng_health = web_provider.check_searxng_health()
+            ddg_cb = web_provider.circuit_breakers.get("DUCKDUCKGO_FALLBACK") if hasattr(web_provider, "circuit_breakers") else None
+            ddg_state = ddg_cb.status if ddg_cb else "CLOSED"
+
+            if tavily_ok:
+                providers_attempted.append("TAVILY")
+            if brave_ok:
+                providers_attempted.append("BRAVE")
+            if searxng_url:
+                providers_attempted.append("SEARXNG")
+            providers_attempted.append("DUCKDUCKGO_FALLBACK")
+        else:
+            providers_attempted.append("NONE")
+
+        # 4. Check Quota Budget
+        if not self.quota.can_consume("search", 1):
+            log(f"  [Quota] Search quota exhausted. Cannot research '{cname}'.")
+            telem = ResearchTelemetry(
+                candidate=cname,
+                provider_attempted=providers_attempted,
+                provider_result="QUOTA_EXHAUSTED",
+                evidence_found="NONE",
+                operational_signal_found=op_signal_found,
+                fallback_attempted="GOSOM: NOT_ATTEMPTED",
+                fallback_result="NOT_ATTEMPTED",
+                failure_reason=ResearchFailureState.PROVIDER_FAILED.value,
+                details={"quota_remaining": self.quota.search_remaining},
+            )
+            biz.raw_data = getattr(biz, "raw_data", {}) or {}
+            biz.raw_data["research_telemetry"] = telem.to_dict()
+            return telem
+
+        # 5. Check if candidate already has verified review count and rating
+        already_has_reviews = (biz.review_count is not None and (biz.review_count or 0) > 0 and biz.rating is not None)
+        enrich_res = None
+        rec_res = None
+
+        if not already_has_reviews:
+            # Consume Quota & Execute Research
+            self.quota.consume("search", 1)
+
+            # Stage 1: ReviewRatingEnricher
+            try:
+                biz = self.review_enricher.enrich_candidate(biz)
+                enrich_res = getattr(biz, "raw_data", {}).get("review_enrichment")
+            except Exception as ex:
+                log(f"  [Research Warning] enrich_candidate exception for '{cname}': {ex}")
+
+            # Stage 2: ReviewEvidenceRecoveryLayer (if reviews still missing or missing date)
+            if biz.review_count is None or not getattr(biz, "latest_review_date", None):
+                try:
+                    rec_res = self.review_recovery.recover_candidate(cand_dict)
+                    if rec_res and rec_res.recovered_review_count is not None:
+                        biz.review_count = rec_res.recovered_review_count
+                        biz.rating = rec_res.recovered_rating
+                        if rec_res.recovered_date:
+                            biz.latest_review_date = rec_res.recovered_date
+                        if not hasattr(biz, "raw_data") or not isinstance(biz.raw_data, dict):
+                            biz.raw_data = {}
+                        biz.raw_data["review_recovery"] = rec_res.to_dict()
+                except Exception as rec_ex:
+                    log(f"  [Recovery Warning] recover_candidate exception for '{cname}': {rec_ex}")
+
+        # 6. Differentiate Failure Reason and Outcome
+        if biz.review_count is not None and (biz.review_count or 0) > 0:
+            provider_result = "SEARCH_SUCCEEDED"
+            evidence_str = f"{biz.review_count} reviews, {biz.rating or 'N/A'}★ (date: {getattr(biz, 'latest_review_date', None) or 'NONE'})"
+            failure_reason = ResearchFailureState.NONE.value
+        else:
+            evidence_str = "NONE"
+            provider_result = "NO_EVIDENCE"
+            failure_reason = ResearchFailureState.NO_EVIDENCE_FOUND.value
+
+            # Check for Identity Mismatch (wrong branch / low similarity)
+            if rec_res and rec_res.status == "REJECTED_IDENTITY_MISMATCH":
+                provider_result = "REJECTED_IDENTITY_MISMATCH"
+                failure_reason = ResearchFailureState.IDENTITY_MISMATCH.value
+
+            # Check for Evidence Conflict across sources
+            elif (rec_res and rec_res.status == "REJECTED_CONFLICT") or (
+                enrich_res and enrich_res.get("review_confidence") == "CONFLICT"
+            ):
+                provider_result = "REJECTED_CONFLICT"
+                failure_reason = ResearchFailureState.EVIDENCE_CONFLICT.value
+
+            # Check if search failed due to extraction error
+            elif (
+                enrich_res and enrich_res.get("review_status") == "EXTRACTION_FAILED"
+            ) or (rec_res and rec_res.failure_reason == "EXTRACTION_FAILED"):
+                provider_result = "EXTRACTION_FAILED"
+                failure_reason = ResearchFailureState.EXTRACTION_FAILED.value
+
+            # Check provider infrastructure states
+            elif web_provider:
+                # Did search queries timeout?
+                has_timeout = False
+                if rec_res and rec_res.telemetry:
+                    has_timeout = any(
+                        t.get("search_outcome") == "SEARCH_TIMEOUT" or "TIMEOUT" in str(t.get("failure_reason", "")).upper()
+                        for t in rec_res.telemetry
+                    )
+
+                if has_timeout or (enrich_res and "TIMEOUT" in str(enrich_res.get("review_evidence", "")).upper()):
+                    provider_result = "SEARCH_TIMEOUT"
+                    failure_reason = ResearchFailureState.PROVIDER_TIMEOUT.value
+
+                # Is connection refused / unavailable?
+                elif not tavily_ok and not brave_ok and searxng_health == "NOT_CONNECTED":
+                    provider_result = "PROVIDER_UNAVAILABLE"
+                    failure_reason = ResearchFailureState.PROVIDER_UNAVAILABLE.value
+
+                # Are all providers unconfigured?
+                elif not tavily_ok and not brave_ok and not getattr(web_provider, "searxng_url", ""):
+                    provider_result = "PROVIDER_NOT_CONFIGURED"
+                    failure_reason = ResearchFailureState.PROVIDER_NOT_CONFIGURED.value
+
+                # Did circuit open or provider fail?
+                elif ddg_state == "OPEN" or (
+                    rec_res and any(t.get("search_outcome") in ("SEARCH_CIRCUIT_OPEN", "SEARCH_FAILED", "SEARCH_BLOCKED") for t in (rec_res.telemetry or []))
+                ):
+                    provider_result = "PROVIDER_FAILED"
+                    failure_reason = ResearchFailureState.PROVIDER_FAILED.value
+
+        telem = ResearchTelemetry(
+            candidate=cname,
+            provider_attempted=providers_attempted,
+            provider_result=provider_result,
+            evidence_found=evidence_str,
+            operational_signal_found=op_signal_found,
+            fallback_attempted="GOSOM: NOT_ATTEMPTED",
+            fallback_result="NOT_ATTEMPTED",
+            failure_reason=failure_reason,
+            details={
+                "city": city,
+                "review_count": biz.review_count,
+                "rating": biz.rating,
+                "latest_review_date": getattr(biz, "latest_review_date", None),
+            },
+        )
+
+        if not hasattr(biz, "raw_data") or not isinstance(biz.raw_data, dict):
+            biz.raw_data = {}
+        biz.raw_data["research_telemetry"] = telem.to_dict()
+
+        log(f"  [Research Telemetry] Candidate: '{cname}'")
+        log(f"    • provider attempted: {', '.join(telem.provider_attempted) or 'NONE'}")
+        log(f"    • provider result   : {telem.provider_result}")
+        log(f"    • review evidence   : {telem.evidence_found}")
+        log(f"    • operational signal: {telem.operational_signal_found}")
+        log(f"    • fallback attempted: {telem.fallback_attempted}")
+        log(f"    • fallback result   : {telem.fallback_result}")
+        log(f"    • failure reason    : {telem.failure_reason}")
+
+        return telem
+
     def _process_single_candidate(self, biz: DiscoveredBusiness, log: Callable[[str], None]) -> None:
         """
         Executes full pipeline stages for one candidate business.
@@ -842,6 +1073,10 @@ class MarketRunner:
             ver_reason = "No website identified in primary discovery source"
             self.no_website_count += 1
             self.website_opportunity_count += 1
+
+        # Step D2: Research & Review Evidence Recovery (Phase 11.1)
+        res_telem = self._enrich_and_recover_reviews(biz, cand_dict, log=log)
+        self.research_telemetry_records.append(res_telem.to_dict())
 
         # Step E: Operational Verification (Rule A & Rule B independent corroboration)
         soc_audit = {
@@ -1096,6 +1331,7 @@ class MarketRunner:
             "commercial_prospects_pool": self.commercial_prospects_pool,
             "review_queue_pool": self.review_queue_pool,
             "research_log_pool": self.research_log_pool,
+            "research_telemetry": self.research_telemetry_records,
             "failed_candidates": [f.to_dict() for f in self.failed_candidates],
         }
 

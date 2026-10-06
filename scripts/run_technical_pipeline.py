@@ -135,6 +135,7 @@ def run_pipeline(
             batch_controller=controller,
             quota_budget=quota_budget,
             checkpoint_dir=os.path.join(target_data_dir, "job_checkpoints"),
+            enable_research=enable_research,
         )
 
         # Execute single bounded acquisition pass
@@ -143,6 +144,7 @@ def run_pipeline(
 
     elapsed = round(time.time() - start_time, 2)
     stats = run_result.get("stats", {})
+    research_telemetry = run_result.get("research_telemetry", [])
 
     report = {
         "run_id": engine.run_id,
@@ -170,6 +172,7 @@ def run_pipeline(
             "crm_written_count": stats.get("crm_written_count", 0),
             "outreach_dispatched_count": 0,
         },
+        "research_telemetry": research_telemetry,
         "errors": run_result.get("errors", []),
     }
 
@@ -183,6 +186,19 @@ def run_pipeline(
 
     # Markdown Summary for GitHub Step Summary
     md_summary_path = os.path.join(out_dir, f"technical_pipeline_summary_{engine.run_id}.md")
+
+    # Build Telemetry Rows
+    telem_rows = []
+    for t in research_telemetry:
+        c_name = t.get("candidate", "Unknown")
+        prov_att = ", ".join(t.get("provider_attempted", [])) or "NONE"
+        prov_res = t.get("provider_result", "N/A")
+        ev_found = t.get("evidence_found", "NONE")
+        op_sig = t.get("operational_signal_found", "NONE")
+        fail_re = t.get("failure_reason", "NONE")
+        telem_rows.append(f"| {c_name} | {prov_att} | {prov_res} | {ev_found} | {op_sig} | {fail_re} |")
+    telem_table = "\n".join(telem_rows) if telem_rows else "| None | - | - | - | - | - |"
+
     md_content = f"""# Technical Pipeline Execution Summary
 
 - **Run ID:** `{engine.run_id}`
@@ -212,6 +228,11 @@ def run_pipeline(
 | Contactable Leads | {report['stats']['contactable_count']} |
 | CRM Writes Performed | {report['stats']['crm_written_count']} |
 | Outreach Dispatches | 0 |
+
+## Research & Review Diagnostics (Phase 11.1)
+| Candidate | Provider Attempted | Provider Result | Review Evidence | Operational Signal | Diagnostic Failure Reason |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+{telem_table}
 """
     with open(md_summary_path, "w", encoding="utf-8") as f:
         f.write(md_content)
