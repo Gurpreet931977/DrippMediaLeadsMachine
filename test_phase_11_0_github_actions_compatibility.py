@@ -422,7 +422,39 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         finally:
             sys.modules.pop("apify_client", None)
 
+    # -------------------------------------------------------------------------
+    # 24. CI Guard: No Top-Level apify_client Imports in Production Code
+    # -------------------------------------------------------------------------
+    def test_24_ci_guard_no_top_level_apify_imports_in_production_code(self):
+        import ast
+        lib_dir = os.path.join(PROJECT_ROOT, "lib")
+        offending_files = []
+
+        for root, _, files in os.walk(lib_dir):
+            for file in files:
+                if file.endswith(".py"):
+                    file_path = os.path.join(root, file)
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        tree = ast.parse(f.read(), filename=file_path)
+                    
+                    # Inspect only module-level statements (body of the module)
+                    for node in tree.body:
+                        if isinstance(node, ast.Import):
+                            for alias in node.names:
+                                if "apify" in alias.name:
+                                    offending_files.append((file_path, alias.name, node.lineno))
+                        elif isinstance(node, ast.ImportFrom):
+                            if node.module and "apify" in node.module:
+                                offending_files.append((file_path, node.module, node.lineno))
+
+        self.assertEqual(
+            offending_files,
+            [],
+            f"Found forbidden top-level apify imports in production code: {offending_files}"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

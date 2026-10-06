@@ -17,8 +17,11 @@ from lib.discovery.address_normalizer import (
 def __getattr__(name: str):
     """Lazily load legacy Apify adapter only when explicitly referenced."""
     if name in ("ApifyDiscoveryProvider", "ApifyProvider"):
-        from lib.discovery.apify import ApifyDiscoveryProvider
-        return ApifyDiscoveryProvider
+        try:
+            from lib.discovery.apify import ApifyDiscoveryProvider
+            return ApifyDiscoveryProvider
+        except Exception as e:
+            raise AttributeError(f"Apify adapter unavailable: {e}")
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 __all__ = [
@@ -28,8 +31,6 @@ __all__ = [
     "FoursquareProvider",
     "WebSearchProvider",
     "CrawlEngine",
-    "ApifyDiscoveryProvider",
-    "ApifyProvider",
     "HybridDiscoveryEngine",
     "DiscoveryMode",
     "GeoProvider",
