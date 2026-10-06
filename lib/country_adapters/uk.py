@@ -10,7 +10,7 @@ Implements UK localization adapters:
 """
 
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from lib.country_adapters.base import (
     BusinessRegistryAdapter,
     ComplianceAdapter,

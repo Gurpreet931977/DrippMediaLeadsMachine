@@ -465,6 +465,81 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertIn("as_of", hints)
         self.assertIn("return", hints)
 
+    # -------------------------------------------------------------------------
+    # 26. CI Guard: No Undefined Typing Imports Across Entire Repository
+    # -------------------------------------------------------------------------
+    def test_26_ci_guard_no_undefined_typing_imports_in_entire_repository(self):
+        import ast
+        import builtins
+        import typing
+
+        typing_names = {k for k in dir(typing) if not k.startswith("_")}
+        missing_typing = []
+
+        for root, _, files in os.walk(PROJECT_ROOT):
+            if any(p in root for p in [".venv", ".git", "scratch", "__pycache__", "build", "dist"]):
+                continue
+            for f in files:
+                if not f.endswith(".py"):
+                    continue
+                filepath = os.path.join(root, f)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as fp:
+                        tree = ast.parse(fp.read(), filename=filepath)
+                except Exception:
+                    continue
+
+                defined_names = set()
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            defined_names.add(alias.asname or alias.name)
+                    elif isinstance(node, ast.ImportFrom):
+                        for alias in node.names:
+                            defined_names.add(alias.asname or alias.name)
+                    elif isinstance(node, ast.ClassDef):
+                        defined_names.add(node.name)
+                    elif isinstance(node, ast.FunctionDef):
+                        defined_names.add(node.name)
+                    elif isinstance(node, ast.Assign):
+                        for target in node.targets:
+                            if isinstance(target, ast.Name):
+                                defined_names.add(target.id)
+
+                class AnnotationChecker(ast.NodeVisitor):
+                    def visit_Name(self, node):
+                        if node.id in typing_names and node.id not in defined_names and not hasattr(builtins, node.id):
+                            missing_typing.append((filepath, node.lineno, node.id))
+
+                class FunctionVisitor(ast.NodeVisitor):
+                    def visit_FunctionDef(self, node):
+                        if node.returns:
+                            AnnotationChecker().visit(node.returns)
+                        for arg in node.args.args + node.args.kwonlyargs:
+                            if arg.annotation:
+                                AnnotationChecker().visit(arg.annotation)
+                        if node.args.vararg and node.args.vararg.annotation:
+                            AnnotationChecker().visit(node.args.vararg.annotation)
+                        if node.args.kwarg and node.args.kwarg.annotation:
+                            AnnotationChecker().visit(node.args.kwarg.annotation)
+                        self.generic_visit(node)
+
+                    def visit_AsyncFunctionDef(self, node):
+                        self.visit_FunctionDef(node)
+
+                    def visit_AnnAssign(self, node):
+                        if node.annotation:
+                            AnnotationChecker().visit(node.annotation)
+                        self.generic_visit(node)
+
+                FunctionVisitor().visit(tree)
+
+        self.assertEqual(
+            missing_typing,
+            [],
+            f"Found missing typing imports in repository: {missing_typing}"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
