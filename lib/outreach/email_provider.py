@@ -132,6 +132,14 @@ class EnhancedEmailProvider:
             )
 
         # 2. Real Production Dispatch via EmailAdapter
+        from lib.system.system_config import SystemConfig, _is_legacy_test
+        from lib.system.runtime_mode import RuntimeModeManager
+
+        if not _is_legacy_test:
+            SystemConfig.assert_automated_email_allowed(action_name="EnhancedEmailProvider.send_email")
+            SystemConfig.assert_commercial_actions_allowed(action_name="EnhancedEmailProvider.send_email")
+            RuntimeModeManager.assert_live_dispatch_allowed(action_name="EnhancedEmailProvider.send_email")
+
         try:
             raw_res = EmailAdapter.send(
                 recipient=clean_recipient,

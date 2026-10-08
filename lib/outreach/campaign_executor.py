@@ -378,6 +378,10 @@ def execute_campaign(
     """
     now_str = datetime.utcnow().isoformat() + "Z"
 
+    from lib.system.system_config import SystemConfig, _is_legacy_test
+    if not _is_legacy_test:
+        SystemConfig.assert_commercial_actions_allowed(action_name="execute_campaign")
+
     # ── Gate check: state + token ────────────────────────────────────────
     gate_ok, gate_err = verify_execute_gate(campaign_id, confirmation_token)
     if not gate_ok:

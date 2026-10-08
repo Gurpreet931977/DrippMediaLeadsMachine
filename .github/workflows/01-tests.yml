@@ -68,6 +68,7 @@ jobs:
       - name: "Run Pre-flight Startup Health Checks"
         run: |
           python scripts/start_production.py --check-only
+          python scripts/production_preflight.py
 
       - name: "Run System Health Audit"
         run: |
@@ -86,6 +87,7 @@ jobs:
             test_phase_10_3_production_monitoring.py \
             test_phase_10_4_lead_freshness.py \
             test_phase_10_5_security_and_integrity.py \
+            test_phase_10_6_production_readiness.py \
             test_phase_11_1_research_recovery.py \
             test_phase_11_2_tavily_provider.py \
             test_score_decoupling.py \

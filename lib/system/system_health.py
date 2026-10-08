@@ -175,6 +175,8 @@ class SystemHealthMonitor:
             "incidents_summary": self.incident_mgr.get_summary(),
             "active_incidents": [i.to_dict() for i in active_incidents],
             "operating_mode": "TRAVEL_MODE" if SystemConfig.TRAVEL_MODE else "STANDARD",
+            "runtime_mode": SystemConfig.get_status_dict().get("runtime_mode", "STAGING"),
+            "operational_state": SystemConfig.get_status_dict().get("operational_state", "RUNNING"),
             "travel_mode": SystemConfig.TRAVEL_MODE,
             "commercial_actions_enabled": SystemConfig.COMMERCIAL_ACTIONS_ENABLED,
             "commercial_actions_locked": not SystemConfig.can_execute_commercial_actions(),

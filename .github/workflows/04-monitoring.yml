@@ -57,6 +57,7 @@ jobs:
       - name: "Run Production Startup Pre-flight"
         run: |
           python scripts/start_production.py --check-only
+          python scripts/production_preflight.py
 
       - name: "Run Comprehensive Health & Invariant Audit"
         run: |

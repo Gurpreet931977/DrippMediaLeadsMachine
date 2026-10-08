@@ -252,6 +252,10 @@ def confirm_manual_send(
     if not operator_confirmed:
         raise ValueError("Cannot mark SENT: Operator explicit confirmation was not granted.")
 
+    from lib.system.system_config import SystemConfig, _is_legacy_test
+    if not _is_legacy_test:
+        SystemConfig.assert_commercial_actions_allowed(action_name="confirm_manual_send")
+
     l_path = leads_path or DEFAULT_LEADS_PATH
     h_path = history_path or DEFAULT_MESSAGE_HISTORY_PATH
     a_path = audit_path or DEFAULT_AUDIT_LOG_PATH

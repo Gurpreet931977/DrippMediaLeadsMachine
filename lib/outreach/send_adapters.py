@@ -79,6 +79,13 @@ class InstagramDMAdapter:
 
     @classmethod
     def send(cls, recipient: str, message_body: str, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+        from lib.system.system_config import SystemConfig, _is_legacy_test
+        from lib.system.runtime_mode import RuntimeModeManager
+
+        if not _is_legacy_test:
+            SystemConfig.assert_commercial_actions_allowed(action_name="InstagramDMAdapter.send")
+            RuntimeModeManager.assert_live_dispatch_allowed(action_name="InstagramDMAdapter.send")
+
         if not cls.is_configured():
             return _result(False, cls.PROVIDER, error="CHANNEL_NOT_CONFIGURED: No META_ACCESS_TOKEN or INSTAGRAM_GRAPH_TOKEN in .env")
 
@@ -150,6 +157,13 @@ class FacebookMessengerAdapter:
 
     @classmethod
     def send(cls, recipient: str, message_body: str, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+        from lib.system.system_config import SystemConfig, _is_legacy_test
+        from lib.system.runtime_mode import RuntimeModeManager
+
+        if not _is_legacy_test:
+            SystemConfig.assert_commercial_actions_allowed(action_name="FacebookMessengerAdapter.send")
+            RuntimeModeManager.assert_live_dispatch_allowed(action_name="FacebookMessengerAdapter.send")
+
         if not cls.is_configured():
             return _result(False, cls.PROVIDER, error="CHANNEL_NOT_CONFIGURED: No META_PAGE_ACCESS_TOKEN or META_ACCESS_TOKEN in .env")
 
@@ -228,6 +242,13 @@ class EmailAdapter:
         message_body: str,
         idempotency_key: Optional[str] = None
     ) -> Dict[str, Any]:
+        from lib.system.system_config import SystemConfig, _is_legacy_test
+        from lib.system.runtime_mode import RuntimeModeManager
+
+        if not _is_legacy_test:
+            SystemConfig.assert_commercial_actions_allowed(action_name="EmailAdapter.send")
+            RuntimeModeManager.assert_live_dispatch_allowed(action_name="EmailAdapter.send")
+
         if not cls.is_configured():
             return _result(False, cls.PROVIDER, error="CHANNEL_NOT_CONFIGURED: No SMTP_HOST or SENDGRID_API_KEY in .env")
 
@@ -344,6 +365,13 @@ def dispatch_send(
     All supported channels must be real + configured.
     Returns structured result dict — never fakes a send.
     """
+    from lib.system.system_config import SystemConfig, _is_legacy_test
+    from lib.system.runtime_mode import RuntimeModeManager
+
+    if not _is_legacy_test:
+        SystemConfig.assert_commercial_actions_allowed(action_name=f"dispatch_send_{channel}")
+        RuntimeModeManager.assert_live_dispatch_allowed(action_name=f"dispatch_send_{channel}")
+
     ch = (channel or "").lower().strip()
 
     if "instagram" in ch:

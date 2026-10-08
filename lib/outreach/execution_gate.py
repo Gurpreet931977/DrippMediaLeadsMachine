@@ -219,6 +219,10 @@ def arm_campaign(campaign_id: str) -> Dict[str, Any]:
     Only valid from PREVIEWED (or PARTIAL/FAILED for re-arm after issues).
     Blocks if campaign is RUNNING or COMPLETED.
     """
+    from lib.system.system_config import SystemConfig, _is_legacy_test
+    if not _is_legacy_test:
+        SystemConfig.assert_commercial_actions_allowed(action_name="arm_campaign")
+
     campaigns = _load_campaigns()
     campaign = next((c for c in campaigns if c.get("campaign_id") == campaign_id), None)
     if not campaign:
@@ -261,6 +265,10 @@ def verify_execute_gate(
     Full pre-execute gate check. Called by execute_campaign before processing.
     Returns (ok, error_reason).
     """
+    from lib.system.system_config import SystemConfig, _is_legacy_test
+    if not _is_legacy_test:
+        SystemConfig.assert_commercial_actions_allowed(action_name="verify_execute_gate")
+
     campaigns = _load_campaigns()
     campaign = next((c for c in campaigns if c.get("campaign_id") == campaign_id), None)
     if not campaign:
