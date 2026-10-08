@@ -399,47 +399,57 @@
       stroke: #000000;
     }
 
+    /* Interactive Feature Tour Guide Component */
     .guide-backdrop {
       position: fixed;
       inset: 0;
       z-index: 300;
-      background: rgba(0, 0, 0, 0.78);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: transparent;
       opacity: 0;
+      display: none;
       pointer-events: none;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .guide-backdrop.active {
+      display: block;
       opacity: 1;
       pointer-events: auto;
     }
-    .guide-spotlight-frame {
+    .guide-svg-stage {
       position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
       pointer-events: none;
-      border: 2px solid var(--accent-yellow);
-      border-radius: var(--radius-md);
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.78), 0 0 40px rgba(255, 229, 0, 0.5), inset 0 0 25px rgba(255, 229, 0, 0.14);
-      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       z-index: 301;
-      display: none;
+    }
+    .guide-cutout-rect,
+    .guide-border-rect {
+      transition: x 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  y 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  width 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  height 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  rx 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  ry 0.32s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .guide-popover-card {
       position: fixed;
-      z-index: 302;
-      width: 440px;
+      z-index: 310;
+      width: 420px;
       max-width: calc(100vw - 32px);
       background: rgba(12, 12, 12, 0.96);
       backdrop-filter: var(--glass-blur-lg);
       -webkit-backdrop-filter: var(--glass-blur-lg);
       border: 1px solid rgba(255, 229, 0, 0.35);
       border-radius: var(--radius-md);
-      padding: 1.5rem;
+      padding: 1.4rem;
       box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 229, 0, 0.18);
-      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: top 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  left 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.2s ease;
       display: none;
       flex-direction: column;
-      gap: 1.15rem;
+      gap: 1.1rem;
     }
     .guide-card-header {
       display: flex;
@@ -2628,7 +2638,21 @@
        INTERACTIVE FEATURE TOUR GUIDE COMPONENT
        ======================================================================== -->
   <div id="featureGuideBackdrop" class="guide-backdrop" onclick="closeFeatureGuide()">
-    <div id="guideSpotlightFrame" class="guide-spotlight-frame"></div>
+    <svg id="guideSvgStage" class="guide-svg-stage" width="100%" height="100%">
+      <defs>
+        <mask id="guideCutoutMask">
+          <!-- White background = dimmed overlay -->
+          <rect x="0" y="0" width="100%" height="100%" fill="white" />
+          <!-- Black cutout hole = 100% transparent opening revealing live UI -->
+          <rect id="guideHoleCutout" class="guide-cutout-rect" x="0" y="0" width="0" height="0" rx="14" ry="14" fill="black" />
+        </mask>
+      </defs>
+      <!-- Dark backdrop dimmed with mask -->
+      <rect x="0" y="0" width="100%" height="100%" fill="rgba(5, 5, 5, 0.78)" mask="url(#guideCutoutMask)" />
+      <!-- Glowing brand yellow border ring -->
+      <rect id="guideHoleBorder" class="guide-border-rect" x="0" y="0" width="0" height="0" rx="14" ry="14" fill="none" stroke="#FFE500" stroke-width="2" style="filter: drop-shadow(0 0 10px rgba(255, 229, 0, 0.65));" />
+    </svg>
+    <div id="guideSpotlightFrame" style="display:none;"></div>
     <div id="guidePopoverCard" class="guide-popover-card" onclick="event.stopPropagation()">
       <div class="guide-card-header">
         <div class="guide-step-badge">
@@ -3297,11 +3321,11 @@
         placement: 'top'
       },
       {
-        target: '.primary-nav-items',
+        target: '.nav-floating-pill',
         view: 'home',
         tag: 'SPEEDRUN NAV',
         title: 'Move at terminal velocity',
-        desc: 'Hop between Home, Leads, Pipeline, and System in milliseconds. Pro operator hack: press keys 1, 2, 3, or 4 on your keyboard to switch views without touching your trackpad. Speedrun approved.',
+        desc: 'Hop between Home, Leads, Pipeline, and System in milliseconds. The animated yellow slider tracks active spaces in real time. Pro operator hack: press keys 1, 2, 3, or 4 on your keyboard to switch views without touching your mouse.',
         placement: 'bottom'
       },
       {
@@ -3313,12 +3337,12 @@
         placement: 'bottom'
       },
       {
-        target: '#leadsSearchInput',
+        target: '.lead-workspace-split',
         view: 'leads',
         tag: 'DEEP DOSSIERS',
         title: 'Deep dive like an absolute boss',
         desc: 'Filter by qualification status, search instantly, and use keyboard J / K to cycle leads or Enter to open the 6-point narrative evidence dossier. You are now officially certified to operate the machine. Let us cook!',
-        placement: 'bottom'
+        placement: 'top'
       }
     ];
 
@@ -3329,7 +3353,11 @@
       currentGuideStepIdx = 0;
       isGuideActive = true;
       const backdrop = document.getElementById('featureGuideBackdrop');
-      if (backdrop) backdrop.classList.add('active');
+      if (backdrop) {
+        backdrop.style.display = 'block';
+        void backdrop.offsetWidth;
+        backdrop.classList.add('active');
+      }
       renderGuideStep(currentGuideStepIdx);
     }
 
@@ -3344,10 +3372,14 @@
         navigateTo(step.view);
       }
 
-      document.getElementById('guideStepCounter').innerText = 'STEP 0' + (idx + 1) + ' OF 0' + featureGuideSteps.length;
-      document.getElementById('guideStepTag').innerText = step.tag;
-      document.getElementById('guideStepTitle').innerText = step.title;
-      document.getElementById('guideStepDesc').innerText = step.desc;
+      const counter = document.getElementById('guideStepCounter');
+      if (counter) counter.innerText = 'STEP 0' + (idx + 1) + ' OF 0' + featureGuideSteps.length;
+      const tag = document.getElementById('guideStepTag');
+      if (tag) tag.innerText = step.tag;
+      const title = document.getElementById('guideStepTitle');
+      if (title) title.innerText = step.title;
+      const desc = document.getElementById('guideStepDesc');
+      if (desc) desc.innerText = step.desc;
 
       const backBtn = document.getElementById('guideBackBtn');
       if (backBtn) backBtn.disabled = (idx === 0);
@@ -3370,17 +3402,21 @@
 
       setTimeout(() => {
         positionGuideElements(step);
-      }, 120);
+      }, 150);
     }
 
     function positionGuideElements(step) {
       const el = document.querySelector(step.target);
-      const frame = document.getElementById('guideSpotlightFrame');
+      const hole = document.getElementById('guideHoleCutout');
+      const border = document.getElementById('guideHoleBorder');
       const card = document.getElementById('guidePopoverCard');
-      if (!frame || !card) return;
+      if (!hole || !border || !card) return;
 
       if (!el) {
-        frame.style.display = 'none';
+        hole.setAttribute('width', '0');
+        hole.setAttribute('height', '0');
+        border.setAttribute('width', '0');
+        border.setAttribute('height', '0');
         card.style.display = 'flex';
         card.style.top = '50%';
         card.style.left = '50%';
@@ -3388,55 +3424,43 @@
         return;
       }
 
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
       setTimeout(() => {
         const rect = el.getBoundingClientRect();
         const pad = 10;
-        frame.style.display = 'block';
-        frame.style.top = Math.max(8, rect.top - pad) + 'px';
-        frame.style.left = Math.max(8, rect.left - pad) + 'px';
-        frame.style.width = (rect.width + (pad * 2)) + 'px';
-        frame.style.height = (rect.height + (pad * 2)) + 'px';
+        const x = Math.max(4, rect.left - pad);
+        const y = Math.max(4, rect.top - pad);
+        const w = rect.width + pad * 2;
+        const h = rect.height + pad * 2;
+        const r = 16;
+
+        hole.setAttribute('x', x);
+        hole.setAttribute('y', y);
+        hole.setAttribute('width', w);
+        hole.setAttribute('height', h);
+        hole.setAttribute('rx', r);
+        hole.setAttribute('ry', r);
+
+        border.setAttribute('x', x);
+        border.setAttribute('y', y);
+        border.setAttribute('width', w);
+        border.setAttribute('height', h);
+        border.setAttribute('rx', r);
+        border.setAttribute('ry', r);
 
         card.style.display = 'flex';
-        card.style.transform = 'none';
+        card.style.left = '50%';
+        card.style.transform = 'translateX(-50%)';
 
-        const cardWidth = Math.min(440, window.innerWidth - 32);
-        const cardHeight = card.offsetHeight || 260;
-
-        let top = 0;
-        let left = 0;
-
-        if (window.innerWidth < 768) {
-          left = Math.max(16, (window.innerWidth - cardWidth) / 2);
-          top = Math.max(16, window.innerHeight - cardHeight - 80);
-        } else if (step.placement === 'left') {
-          left = rect.left - cardWidth - 24;
-          top = rect.top + (rect.height / 2) - (cardHeight / 2);
-          if (left < 20) {
-            left = Math.max(16, (window.innerWidth - cardWidth) / 2);
-            top = rect.bottom + 20;
-          }
-        } else if (step.placement === 'top') {
-          top = rect.top - cardHeight - 20;
-          left = rect.left + (rect.width / 2) - (cardWidth / 2);
-          if (top < 20) {
-            top = rect.bottom + 20;
-          }
+        // Smart dynamic dock: top if target is low, bottom if target is high
+        if (rect.bottom > window.innerHeight - 240) {
+          card.style.top = '84px';
+          card.style.bottom = 'auto';
         } else {
-          top = rect.bottom + 20;
-          left = rect.left + (rect.width / 2) - (cardWidth / 2);
-          if (top + cardHeight > window.innerHeight - 20) {
-            top = Math.max(20, rect.top - cardHeight - 20);
-          }
+          card.style.bottom = '24px';
+          card.style.top = 'auto';
         }
-
-        left = Math.max(16, Math.min(left, window.innerWidth - cardWidth - 16));
-        top = Math.max(16, Math.min(top, window.innerHeight - cardHeight - 16));
-
-        card.style.top = top + 'px';
-        card.style.left = left + 'px';
       }, 100);
     }
 
@@ -3461,9 +3485,16 @@
     function closeFeatureGuide() {
       isGuideActive = false;
       const backdrop = document.getElementById('featureGuideBackdrop');
-      if (backdrop) backdrop.classList.remove('active');
-      const frame = document.getElementById('guideSpotlightFrame');
-      if (frame) frame.style.display = 'none';
+      if (backdrop) {
+        backdrop.classList.remove('active');
+        setTimeout(() => {
+          if (!isGuideActive) backdrop.style.display = 'none';
+        }, 280);
+      }
+      const hole = document.getElementById('guideHoleCutout');
+      if (hole) { hole.setAttribute('width', '0'); hole.setAttribute('height', '0'); }
+      const border = document.getElementById('guideHoleBorder');
+      if (border) { border.setAttribute('width', '0'); border.setAttribute('height', '0'); }
       const card = document.getElementById('guidePopoverCard');
       if (card) card.style.display = 'none';
     }
