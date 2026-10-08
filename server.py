@@ -1745,6 +1745,65 @@ async def get_system_config_endpoint():
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
+@app.get("/api/system/readiness")
+async def get_system_readiness_endpoint():
+    """
+    Returns Phase 10.6 Production Readiness audit: 20 deterministic gates,
+    overall status (STAGING_READY / TECHNICALLY_READY / BLOCKED),
+    and structured evidence for each gate.
+    """
+    try:
+        from lib.system.production_readiness import ProductionReadinessAuditor
+        auditor = ProductionReadinessAuditor()
+        report = auditor.audit_all_gates()
+        return {"status": "ok", **report}
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+@app.get("/api/system/freshness-summary")
+async def get_system_freshness_summary_endpoint():
+    """
+    Returns canonical freshness summary across 6 dimensions for all known leads.
+    """
+    try:
+        from lib.system.canonical_freshness import CanonicalFreshnessEngine
+        from dataclasses import asdict
+        provider = GoogleSheetsStorageProvider()
+        leads = provider.fetch_all_leads()
+        engine = CanonicalFreshnessEngine()
+
+        summaries = []
+        counts = {"FRESH": 0, "DUE": 0, "STALE": 0, "REFRESHING": 0, "REFRESH_FAILED": 0}
+        dimension_stale_counts = {
+            "WEBSITE": 0,
+            "OPERATIONAL": 0,
+            "PHONE": 0,
+            "SOCIAL": 0,
+            "REVIEW": 0,
+            "CONTACTABILITY": 0,
+        }
+
+        for lead in leads:
+            summ = engine.evaluate_lead(lead)
+            counts[summ.freshness_status] = counts.get(summ.freshness_status, 0) + 1
+            for dim_name in summ.stale_dimensions:
+                if dim_name in dimension_stale_counts:
+                    dimension_stale_counts[dim_name] += 1
+            summaries.append(asdict(summ))
+
+        return {
+            "status": "ok",
+            "total_evaluated": len(leads),
+            "counts": counts,
+            "dimension_stale_counts": dimension_stale_counts,
+            "cadences_days": engine.cadences,
+            "leads": summaries[:100],  # Return up to 100 for inspection
+        }
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
 @app.post("/api/system/mode")
 async def update_operating_mode_endpoint(request: Request):
     """
