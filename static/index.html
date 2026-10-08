@@ -346,6 +346,224 @@
       border-color: rgba(255, 255, 255, 0.18);
     }
 
+    /* Minimal Modern Guide Button & Interactive Tour Component */
+    .nav-guide-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 229, 0, 0.08);
+      border: 1px solid rgba(255, 229, 0, 0.32);
+      color: var(--accent-yellow);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .nav-guide-btn:hover {
+      background: var(--accent-yellow);
+      color: #000000;
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 16px rgba(255, 229, 0, 0.4);
+      transform: translateY(-1px);
+    }
+    .nav-guide-btn:hover svg {
+      stroke: #000000;
+    }
+
+    .guide-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .guide-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .guide-spotlight-frame {
+      position: fixed;
+      pointer-events: none;
+      border: 2px solid var(--accent-yellow);
+      border-radius: var(--radius-md);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.78), 0 0 40px rgba(255, 229, 0, 0.5), inset 0 0 25px rgba(255, 229, 0, 0.14);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 301;
+      display: none;
+    }
+    .guide-popover-card {
+      position: fixed;
+      z-index: 302;
+      width: 440px;
+      max-width: calc(100vw - 32px);
+      background: rgba(12, 12, 12, 0.96);
+      backdrop-filter: var(--glass-blur-lg);
+      -webkit-backdrop-filter: var(--glass-blur-lg);
+      border: 1px solid rgba(255, 229, 0, 0.35);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 229, 0, 0.18);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      display: none;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+    .guide-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .guide-step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(255, 229, 0, 0.1);
+      border: 1px solid rgba(255, 229, 0, 0.28);
+      padding: 0.22rem 0.65rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.68rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--accent-yellow);
+      letter-spacing: 0.06em;
+    }
+    .guide-pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-yellow);
+      box-shadow: 0 0 8px var(--accent-yellow);
+      animation: navPulse 1.8s infinite alternate;
+    }
+    .guide-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    .guide-close-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .guide-tagline {
+      font-size: 0.68rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .guide-headline {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      line-height: 1.25;
+    }
+    .guide-description {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .guide-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 1rem;
+      gap: 1rem;
+    }
+    .guide-dots-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .guide-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transition: all var(--transition-fast);
+      cursor: pointer;
+    }
+    .guide-dot.active {
+      width: 18px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-yellow);
+      box-shadow: 0 0 8px rgba(255, 229, 0, 0.5);
+    }
+    .guide-action-btns {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .guide-btn-skip {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.4rem 0.65rem;
+      border-radius: var(--radius-sm);
+      transition: color var(--transition-fast);
+    }
+    .guide-btn-skip:hover {
+      color: var(--text-main);
+    }
+    .guide-btn-back {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.4rem 0.85rem;
+      border-radius: var(--radius-pill);
+      transition: all var(--transition-fast);
+    }
+    .guide-btn-back:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .guide-btn-back:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .guide-btn-next {
+      background: var(--accent-yellow);
+      border: 1px solid var(--accent-yellow);
+      color: #000000;
+      font-size: 0.78rem;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 0.42rem 1.05rem;
+      border-radius: var(--radius-pill);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all var(--transition-fast);
+      box-shadow: 0 0 14px rgba(255, 229, 0, 0.3);
+    }
+    .guide-btn-next:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(255, 229, 0, 0.5);
+    }
+
     /* Main Product Viewport */
     .app-viewport {
       position: relative;
@@ -1294,6 +1512,12 @@
           <span>Travel Mode: Active</span>
         </button>
 
+        <!-- Minimal Modern Guide Button -->
+        <button id="guideTriggerBtn" class="nav-guide-btn" onclick="startFeatureGuide()" title="Interactive Feature Walkthrough (Guide)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="10" r="8"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Guide</span>
+        </button>
+
         <a id="sheetLink" href="https://docs.google.com/spreadsheets/d/1BnyAM_88Pvd_d56bL8m6_a0A939G-Xq7P5G2G8gR_O4/edit" target="_blank" rel="noopener" class="btn-pill btn-pill-secondary" style="padding:0.35rem 0.8rem; font-size:0.75rem;" title="Google Sheets CRM Source of Truth">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           <span>Sheets</span>
@@ -1324,6 +1548,10 @@
     <a class="mobile-nav-link" data-dest="system" onclick="navigateTo('system')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
       <span>System</span>
+    </a>
+    <a class="mobile-nav-link" onclick="startFeatureGuide()" title="Tour Guide">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="10" r="8"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span>Guide</span>
     </a>
   </nav>
 
@@ -2224,6 +2452,44 @@
   </div>
 
   <!-- ========================================================================
+       INTERACTIVE FEATURE TOUR GUIDE COMPONENT
+       ======================================================================== -->
+  <div id="featureGuideBackdrop" class="guide-backdrop" onclick="closeFeatureGuide()">
+    <div id="guideSpotlightFrame" class="guide-spotlight-frame"></div>
+    <div id="guidePopoverCard" class="guide-popover-card" onclick="event.stopPropagation()">
+      <div class="guide-card-header">
+        <div class="guide-step-badge">
+          <span class="guide-pulse-dot"></span>
+          <span id="guideStepCounter">STEP 01 OF 06</span>
+        </div>
+        <button class="guide-close-btn" onclick="closeFeatureGuide()" title="Close tour (Esc)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="guide-card-body">
+        <div class="guide-tagline" id="guideStepTag">THE COCKPIT</div>
+        <h3 class="guide-headline" id="guideStepTitle">The engine is cookin, no cap</h3>
+        <p class="guide-description" id="guideStepDesc">
+          Welcome to the main command deck. 142 spots got scouted across Manchester, but only 7 verified venues passed our strict Rule B filter. Zero spam, pure high-ticket targets ready for operator review.
+        </p>
+      </div>
+
+      <div class="guide-card-footer">
+        <div class="guide-dots-indicator" id="guideDotsIndicator"></div>
+        <div class="guide-action-btns">
+          <button class="guide-btn-skip" onclick="skipFeatureGuide()">Skip</button>
+          <button class="guide-btn-back" id="guideBackBtn" onclick="prevGuideStep()">Back</button>
+          <button class="guide-btn-next" id="guideNextBtn" onclick="nextGuideStep()">
+            <span>Next</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        APPLICATION JAVASCRIPT CONTROLLERS
        ======================================================================== -->
   <script>
@@ -2809,8 +3075,219 @@
         .replace(/'/g, '&#039;');
     }
 
+    // ========================================================================
+    // INTERACTIVE FEATURE TOUR GUIDE CONTROLLER (CONVERSATIONAL & GEN-Z)
+    // ========================================================================
+    const featureGuideSteps = [
+      {
+        target: '.home-hero-card',
+        view: 'home',
+        tag: 'THE COCKPIT',
+        title: 'The engine is cookin, no cap',
+        desc: 'Welcome to the main command deck. 142 spots got scouted across Manchester, but only 7 verified venues passed our strict Rule B filter. Zero spam, pure high-ticket targets ready for operator review.',
+        placement: 'bottom'
+      },
+      {
+        target: '.home-radar-hud',
+        view: 'home',
+        tag: 'CYBER RADAR',
+        title: 'Real-time radar goes dummy hard',
+        desc: 'Hover the blips to target-lock venues across Northern Quarter and Ancoats. Hit the Pulse button for an electromagnetic shockwave scan, or click any venue to pop its evidence dossier directly.',
+        placement: 'left'
+      },
+      {
+        target: '.home-pipeline-strip',
+        view: 'home',
+        tag: 'THE PIPELINE',
+        title: 'How the secret sauce gets made',
+        desc: 'We do not do vibes-based outreach. Leads journey through 5 hard gates: Discovered (142) -> Researched (31) -> Rule B Qualified (12) -> Contactable (9) -> Operator Staged (7). Clean math only.',
+        placement: 'top'
+      },
+      {
+        target: '.primary-nav-items',
+        view: 'home',
+        tag: 'SPEEDRUN NAV',
+        title: 'Move at terminal velocity',
+        desc: 'Hop between Home, Leads, Pipeline, and System in milliseconds. Pro operator hack: press keys 1, 2, 3, or 4 on your keyboard to switch views without touching your trackpad. Speedrun approved.',
+        placement: 'bottom'
+      },
+      {
+        target: '#travelModeTrigger',
+        view: 'home',
+        tag: 'SHIELD ACTIVE',
+        title: 'Locked in. Zero accident zone.',
+        desc: 'Travel Mode is strictly running. Commercial sends and automated cron emails are completely frozen so you can review and prep dossiers with zero risk of misfiring. Total peace of mind.',
+        placement: 'bottom'
+      },
+      {
+        target: '#leadsSearchInput',
+        view: 'leads',
+        tag: 'DEEP DOSSIERS',
+        title: 'Deep dive like an absolute boss',
+        desc: 'Filter by qualification status, search instantly, and use keyboard J / K to cycle leads or Enter to open the 6-point narrative evidence dossier. You are now officially certified to operate the machine. Let us cook!',
+        placement: 'bottom'
+      }
+    ];
+
+    let currentGuideStepIdx = 0;
+    let isGuideActive = false;
+
+    function startFeatureGuide() {
+      currentGuideStepIdx = 0;
+      isGuideActive = true;
+      const backdrop = document.getElementById('featureGuideBackdrop');
+      if (backdrop) backdrop.classList.add('active');
+      renderGuideStep(currentGuideStepIdx);
+    }
+
+    function renderGuideStep(idx) {
+      if (idx < 0 || idx >= featureGuideSteps.length) return;
+      currentGuideStepIdx = idx;
+      const step = featureGuideSteps[idx];
+
+      const activeContainer = document.querySelector('.view-container.active');
+      const activeViewId = activeContainer ? activeContainer.id.replace('view-', '') : 'home';
+      if (activeViewId !== step.view) {
+        navigateTo(step.view);
+      }
+
+      document.getElementById('guideStepCounter').innerText = 'STEP 0' + (idx + 1) + ' OF 0' + featureGuideSteps.length;
+      document.getElementById('guideStepTag').innerText = step.tag;
+      document.getElementById('guideStepTitle').innerText = step.title;
+      document.getElementById('guideStepDesc').innerText = step.desc;
+
+      const backBtn = document.getElementById('guideBackBtn');
+      if (backBtn) backBtn.disabled = (idx === 0);
+
+      const nextBtn = document.getElementById('guideNextBtn');
+      if (nextBtn) {
+        if (idx === featureGuideSteps.length - 1) {
+          nextBtn.innerHTML = '<span>Finish</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+        } else {
+          nextBtn.innerHTML = '<span>Next</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+        }
+      }
+
+      const dotsCont = document.getElementById('guideDotsIndicator');
+      if (dotsCont) {
+        dotsCont.innerHTML = featureGuideSteps.map((_, i) =>
+          `<div class="guide-dot ${i === idx ? 'active' : ''}" onclick="renderGuideStep(${i})" title="Step ${i + 1}"></div>`
+        ).join('');
+      }
+
+      setTimeout(() => {
+        positionGuideElements(step);
+      }, 120);
+    }
+
+    function positionGuideElements(step) {
+      const el = document.querySelector(step.target);
+      const frame = document.getElementById('guideSpotlightFrame');
+      const card = document.getElementById('guidePopoverCard');
+      if (!frame || !card) return;
+
+      if (!el) {
+        frame.style.display = 'none';
+        card.style.display = 'flex';
+        card.style.top = '50%';
+        card.style.left = '50%';
+        card.style.transform = 'translate(-50%, -50%)';
+        return;
+      }
+
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      setTimeout(() => {
+        const rect = el.getBoundingClientRect();
+        const pad = 10;
+        frame.style.display = 'block';
+        frame.style.top = Math.max(8, rect.top - pad) + 'px';
+        frame.style.left = Math.max(8, rect.left - pad) + 'px';
+        frame.style.width = (rect.width + (pad * 2)) + 'px';
+        frame.style.height = (rect.height + (pad * 2)) + 'px';
+
+        card.style.display = 'flex';
+        card.style.transform = 'none';
+
+        const cardWidth = Math.min(440, window.innerWidth - 32);
+        const cardHeight = card.offsetHeight || 260;
+
+        let top = 0;
+        let left = 0;
+
+        if (window.innerWidth < 768) {
+          left = Math.max(16, (window.innerWidth - cardWidth) / 2);
+          top = Math.max(16, window.innerHeight - cardHeight - 80);
+        } else if (step.placement === 'left') {
+          left = rect.left - cardWidth - 24;
+          top = rect.top + (rect.height / 2) - (cardHeight / 2);
+          if (left < 20) {
+            left = Math.max(16, (window.innerWidth - cardWidth) / 2);
+            top = rect.bottom + 20;
+          }
+        } else if (step.placement === 'top') {
+          top = rect.top - cardHeight - 20;
+          left = rect.left + (rect.width / 2) - (cardWidth / 2);
+          if (top < 20) {
+            top = rect.bottom + 20;
+          }
+        } else {
+          top = rect.bottom + 20;
+          left = rect.left + (rect.width / 2) - (cardWidth / 2);
+          if (top + cardHeight > window.innerHeight - 20) {
+            top = Math.max(20, rect.top - cardHeight - 20);
+          }
+        }
+
+        left = Math.max(16, Math.min(left, window.innerWidth - cardWidth - 16));
+        top = Math.max(16, Math.min(top, window.innerHeight - cardHeight - 16));
+
+        card.style.top = top + 'px';
+        card.style.left = left + 'px';
+      }, 100);
+    }
+
+    function nextGuideStep() {
+      if (currentGuideStepIdx < featureGuideSteps.length - 1) {
+        renderGuideStep(currentGuideStepIdx + 1);
+      } else {
+        closeFeatureGuide();
+      }
+    }
+
+    function prevGuideStep() {
+      if (currentGuideStepIdx > 0) {
+        renderGuideStep(currentGuideStepIdx - 1);
+      }
+    }
+
+    function skipFeatureGuide() {
+      closeFeatureGuide();
+    }
+
+    function closeFeatureGuide() {
+      isGuideActive = false;
+      const backdrop = document.getElementById('featureGuideBackdrop');
+      if (backdrop) backdrop.classList.remove('active');
+      const frame = document.getElementById('guideSpotlightFrame');
+      if (frame) frame.style.display = 'none';
+      const card = document.getElementById('guidePopoverCard');
+      if (card) card.style.display = 'none';
+    }
+
+    window.addEventListener('resize', () => {
+      if (isGuideActive) {
+        positionGuideElements(featureGuideSteps[currentGuideStepIdx]);
+      }
+    });
+
     // Global Event Listeners
     document.addEventListener('keydown', (e) => {
+      if (isGuideActive) {
+        if (e.key === 'ArrowRight') { nextGuideStep(); return; }
+        if (e.key === 'ArrowLeft') { prevGuideStep(); return; }
+        if (e.key === 'Escape') { closeFeatureGuide(); return; }
+      }
       if (e.key === 'Escape') {
         closeLeadDrawer();
         closeEvidenceModal();
