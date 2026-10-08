@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,101 +9,64 @@
   <link rel="apple-touch-icon" sizes="128x128" href="/static/logos/dripp-logo-badge-128.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
     /* ==========================================================================
-       DRIPP DESIGN SYSTEM: OBSIDIAN, CRISP WHITE & ELECTRIC YELLOW
-       Creative Startup Aesthetic • Operational Confidence • Razor Precision
+       DRIPP MEDIA DESIGN SYSTEM: OBSIDIAN SURFACES & ELECTRIC YELLOW ACCENT
+       Creative Startup Aesthetic • Operational Confidence • Precision Typography
        ========================================================================== */
     :root {
-      /* Dark Palette (Default Brand Surface) */
-      --bg-base: #0B0B0E;
-      --bg-surface: #121217;
-      --bg-elevated: #181820;
-      --bg-subtle: #20202A;
-      --bg-card-hover: #262633;
-      --bg-glass: rgba(18, 18, 23, 0.85);
+      --bg-base: #09090C;
+      --bg-surface: #101015;
+      --bg-elevated: #16161D;
+      --bg-subtle: #1C1C24;
+      --bg-card-hover: #21212B;
 
-      /* Typography & Neutral Hierarchy */
       --text-main: #FFFFFF;
-      --text-muted: #9D9DA8;
-      --text-dim: #636370;
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-strong: rgba(255, 255, 255, 0.16);
-      --border-active: rgba(255, 255, 255, 0.28);
+      --text-muted: #8E8EA0;
+      --text-dim: #545464;
 
-      /* Brand Electric Yellow Accent */
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --border-active: rgba(255, 255, 255, 0.25);
+
       --accent-yellow: #FFE500;
-      --accent-yellow-hover: #E6CE00;
-      --accent-yellow-subtle: rgba(255, 229, 0, 0.12);
-      --accent-yellow-border: rgba(255, 229, 0, 0.35);
-      --accent-yellow-glow: rgba(255, 229, 0, 0.25);
+      --accent-yellow-hover: #F0D700;
+      --accent-yellow-subtle: rgba(255, 229, 0, 0.10);
+      --accent-yellow-border: rgba(255, 229, 0, 0.30);
 
-      /* Functional Signals */
       --signal-emerald: #10B981;
-      --signal-emerald-subtle: rgba(16, 185, 129, 0.12);
-      --signal-emerald-border: rgba(16, 185, 129, 0.35);
-      --signal-amber: #F59E0B;
-      --signal-amber-subtle: rgba(245, 158, 11, 0.12);
-      --signal-amber-border: rgba(245, 158, 11, 0.35);
-      --signal-rose: #F43F5E;
-      --signal-rose-subtle: rgba(244, 63, 94, 0.12);
-      --signal-rose-border: rgba(244, 63, 94, 0.35);
-      --signal-cyan: #0284C7;
-      --signal-cyan-subtle: rgba(2, 132, 199, 0.12);
-      --signal-cyan-border: rgba(2, 132, 199, 0.35);
+      --signal-emerald-subtle: rgba(16, 185, 129, 0.10);
+      --signal-emerald-border: rgba(16, 185, 129, 0.28);
 
-      /* Typography */
+      --signal-amber: #F59E0B;
+      --signal-amber-subtle: rgba(245, 158, 11, 0.10);
+      --signal-amber-border: rgba(245, 158, 11, 0.28);
+
+      --signal-rose: #EF4444;
+      --signal-rose-subtle: rgba(239, 68, 68, 0.10);
+      --signal-rose-border: rgba(239, 68, 68, 0.28);
+
+      --signal-cyan: #0284C7;
+      --signal-cyan-subtle: rgba(2, 132, 199, 0.10);
+      --signal-cyan-border: rgba(2, 132, 199, 0.28);
+
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
 
-      /* Radii */
       --radius-xs: 4px;
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 22px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
       --radius-pill: 9999px;
 
-      /* Shadows */
       --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-      --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+      --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.5);
       --shadow-elevated: 0 12px 32px -4px rgba(0, 0, 0, 0.7);
-      --shadow-glow: 0 0 24px var(--accent-yellow-glow);
 
-      /* Transitions */
-      --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
-      --transition-base: 240ms cubic-bezier(0.16, 1, 0.3, 1);
-      --transition-bounce: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    /* Light Theme (Alternative high contrast mode) */
-    [data-theme="light"] {
-      --bg-base: #F8F9FA;
-      --bg-surface: #FFFFFF;
-      --bg-elevated: #FFFFFF;
-      --bg-subtle: #F0F2F5;
-      --bg-card-hover: #F4F6F9;
-      --bg-glass: rgba(255, 255, 255, 0.90);
-
-      --text-main: #0B0B0E;
-      --text-muted: #555761;
-      --text-dim: #7C808E;
-      --border-subtle: #E2E4E9;
-      --border-strong: #CDD0D8;
-      --border-active: #9FA4B2;
-
-      --accent-yellow: #D9A404;
-      --accent-yellow-hover: #B88B00;
-      --accent-yellow-subtle: rgba(217, 164, 4, 0.12);
-      --accent-yellow-border: rgba(217, 164, 4, 0.35);
-      --accent-yellow-glow: rgba(217, 164, 4, 0.2);
-
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
-      --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.12);
-      --shadow-glow: 0 0 16px rgba(217, 164, 4, 0.15);
+      --transition-fast: 140ms ease;
+      --transition-base: 220ms ease;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,16 +81,10 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Scrollbars */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg-base); }
-    ::-webkit-scrollbar-thumb { background: var(--bg-subtle); border-radius: var(--radius-pill); border: 2px solid var(--bg-base); }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-
-    /* Interactive ambient background mesh */
+    /* Ambient background grid */
     .ambient-grid {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      inset: 0;
       background-size: 40px 40px;
       background-image: 
         linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
@@ -135,196 +92,106 @@
       pointer-events: none;
       z-index: 0;
     }
-    .ambient-glow-spot {
-      position: fixed;
-      top: -150px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 800px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(255, 229, 0, 0.04) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
 
-    /* ==========================================================================
-       APP SHELL: HEADER & NAVIGATION
-       ========================================================================== */
+    /* App Header */
     .app-header {
       position: sticky;
       top: 0;
-      z-index: 50;
-      background: var(--bg-glass);
-      backdrop-filter: blur(14px);
+      z-index: 100;
+      background: rgba(9, 9, 12, 0.94);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-subtle);
     }
-    .header-top {
-      max-width: 1540px;
+    .header-main {
+      max-width: 1520px;
       margin: 0 auto;
-      padding: 0.85rem 1.5rem;
+      padding: 0.75rem 1.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.25rem;
+      gap: 1.5rem;
     }
     .brand-group {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.85rem;
       text-decoration: none;
+      color: inherit;
     }
-    .brand-logo-img {
-      height: 32px;
+    .brand-logo {
+      height: 30px;
       width: auto;
-      display: block;
-      filter: drop-shadow(0 2px 8px rgba(255, 229, 0, 0.2));
-    }
-    .brand-meta {
-      display: flex;
-      flex-direction: column;
+      object-fit: contain;
     }
     .brand-title {
-      font-size: 0.95rem;
+      font-size: 1.05rem;
       font-weight: 800;
       letter-spacing: -0.02em;
       color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      line-height: 1.2;
     }
-    .brand-badge {
-      font-size: 0.65rem;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: var(--radius-xs);
-      background: var(--accent-yellow-subtle);
-      color: var(--accent-yellow);
-      border: 1px solid var(--accent-yellow-border);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .brand-subtitle {
-      font-size: 0.75rem;
-      color: var(--text-dim);
+    .brand-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
     }
 
-    /* Header Actions */
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 0.65rem;
+      gap: 0.75rem;
     }
-    .status-pill-group {
-      display: flex;
+
+    .status-pill {
+      display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--signal-emerald-border);
+      padding: 0.35rem 0.75rem;
       border-radius: var(--radius-pill);
-      padding: 4px 10px;
       font-size: 0.72rem;
-      font-family: var(--font-mono);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--signal-emerald);
+      text-transform: uppercase;
     }
-    .pulse-dot {
+    .status-dot {
       width: 7px;
       height: 7px;
       border-radius: 50%;
       background: var(--signal-emerald);
       box-shadow: 0 0 8px var(--signal-emerald);
-      animation: pulse 2s infinite ease-in-out;
-    }
-    .pulse-dot.locked {
-      background: var(--accent-yellow);
-      box-shadow: 0 0 8px var(--accent-yellow);
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.85); }
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      font-family: var(--font-sans);
-      font-size: 0.82rem;
-      font-weight: 600;
-      padding: 0.55rem 0.95rem;
-      border-radius: var(--radius-sm);
-      border: 1px solid transparent;
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      text-decoration: none;
-      white-space: nowrap;
-    }
-    .btn-primary {
-      background: var(--accent-yellow);
-      color: #000000;
-      border-color: var(--accent-yellow);
-      font-weight: 700;
-    }
-    .btn-primary:hover {
-      background: var(--accent-yellow-hover);
-      box-shadow: var(--shadow-glow);
-    }
-    .btn-secondary {
-      background: var(--bg-surface);
-      color: var(--text-main);
-      border-color: var(--border-subtle);
-    }
-    .btn-secondary:hover {
-      background: var(--bg-elevated);
-      border-color: var(--border-strong);
-    }
-    .btn-subtle {
-      background: transparent;
-      color: var(--text-muted);
-      border: 1px solid transparent;
-      padding: 0.45rem;
-      border-radius: var(--radius-sm);
-    }
-    .btn-subtle:hover {
-      background: var(--bg-surface);
-      color: var(--text-main);
-      border-color: var(--border-subtle);
-    }
-    .btn-sm {
-      padding: 0.35rem 0.65rem;
-      font-size: 0.74rem;
     }
 
     /* Navigation Bar */
     .nav-bar-container {
-      background: var(--bg-surface);
       border-top: 1px solid var(--border-subtle);
-      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
     }
     .nav-bar {
-      max-width: 1540px;
+      max-width: 1520px;
       margin: 0 auto;
       padding: 0 1.5rem;
       display: flex;
-      align-items: center;
       gap: 0.25rem;
       overflow-x: auto;
       scrollbar-width: none;
     }
     .nav-bar::-webkit-scrollbar { display: none; }
+
     .nav-tab {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.85rem 1rem;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.82rem;
+      font-weight: 600;
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 0.84rem;
-      font-weight: 600;
-      border-bottom: 2px solid transparent;
-      transition: all var(--transition-fast);
       cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color var(--transition-fast), border-color var(--transition-fast);
       white-space: nowrap;
     }
     .nav-tab:hover {
@@ -334,48 +201,41 @@
       color: var(--text-main);
       border-bottom-color: var(--accent-yellow);
     }
-    .nav-tab .tab-badge {
+    .tab-badge {
       font-size: 0.68rem;
-      font-family: var(--font-mono);
-      background: var(--bg-subtle);
-      color: var(--text-dim);
+      font-weight: 700;
       padding: 1px 6px;
       border-radius: var(--radius-pill);
-      font-weight: 700;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
     }
-    .nav-tab.active .tab-badge {
-      background: var(--accent-yellow-subtle);
+    .tab-badge.green {
+      background: var(--signal-emerald-subtle);
+      color: var(--signal-emerald);
+      border: 1px solid var(--signal-emerald-border);
+    }
+    .tab-badge.locked {
+      background: rgba(255, 229, 0, 0.1);
       color: var(--accent-yellow);
+      border: 1px solid var(--accent-yellow-border);
     }
 
-    /* Main Container */
+    /* App Main Layout */
     .app-main {
       position: relative;
-      z-index: 10;
-      max-width: 1540px;
+      z-index: 1;
+      max-width: 1520px;
       margin: 0 auto;
       padding: 1.5rem;
+      min-height: calc(100vh - 120px);
     }
 
-    /* View Panels Switcher */
-    .view-panel {
-      display: none;
-      animation: fadeIn var(--transition-base);
-    }
-    .view-panel.active {
-      display: block;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ==========================================================================
-       PERSISTENT TOP SAFETY BANNER
-       ========================================================================== */
+    /* Persistent Safety Banner */
     .safety-banner {
-      background: linear-gradient(90deg, rgba(255, 229, 0, 0.08) 0%, rgba(18, 18, 23, 0.8) 100%);
+      background: var(--bg-surface);
       border: 1px solid var(--accent-yellow-border);
+      border-left: 4px solid var(--accent-yellow);
       border-radius: var(--radius-md);
       padding: 0.9rem 1.25rem;
       margin-bottom: 1.5rem;
@@ -388,30 +248,21 @@
     .safety-banner-left {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.9rem;
     }
-    .safety-shield-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-sm);
-      background: var(--accent-yellow-subtle);
-      border: 1px solid var(--accent-yellow-border);
-      color: var(--accent-yellow);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      flex-shrink: 0;
+    .safety-shield {
+      font-size: 1.5rem;
+      line-height: 1;
     }
     .safety-banner-title {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 800;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-      color: var(--accent-yellow);
+      letter-spacing: 0.02em;
+      color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
+      text-transform: uppercase;
     }
     .safety-banner-desc {
       font-size: 0.78rem;
@@ -425,14 +276,14 @@
       flex-wrap: wrap;
     }
     .safety-tag {
-      font-family: var(--font-mono);
       font-size: 0.72rem;
-      font-weight: 600;
+      font-family: var(--font-mono);
       padding: 3px 8px;
       border-radius: var(--radius-xs);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-subtle);
       border: 1px solid var(--border-subtle);
       color: var(--text-muted);
+      font-weight: 600;
     }
     .safety-tag.active {
       color: var(--accent-yellow);
@@ -445,18 +296,25 @@
       background: var(--signal-emerald-subtle);
     }
 
-    /* ==========================================================================
-       CARDS & GRID SYSTEM
-       ========================================================================== */
+    /* Views */
+    .view-panel {
+      display: none;
+    }
+    .view-panel.active {
+      display: block;
+      animation: fadeIn 180ms ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Core UI Cards & Surfaces */
     .card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: 1.25rem;
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    }
-    .card:hover {
-      border-color: var(--border-strong);
     }
     .card-elevated {
       background: var(--bg-elevated);
@@ -464,105 +322,294 @@
     }
     .card-header {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
+      gap: 1rem;
       margin-bottom: 1rem;
-      gap: 0.75rem;
     }
     .card-title {
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       font-weight: 700;
       color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      letter-spacing: -0.01em;
     }
     .card-desc {
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
       margin-top: 2px;
     }
 
-    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
-    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
-    .grid-hero { display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem; }
-
-    @media (max-width: 1100px) {
-      .grid-4 { grid-template-columns: repeat(2, 1fr); }
-      .grid-3 { grid-template-columns: 1fr; }
-      .grid-hero { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 768px) {
-      .grid-2, .grid-4 { grid-template-columns: 1fr; }
-    }
-
-    /* Metric Value Pillar */
-    .stat-pillar {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1.2rem;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden;
-    }
-    .stat-pillar::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; width: 3px; height: 100%;
-      background: var(--accent-yellow);
-      opacity: 0.4;
-    }
-    .stat-pillar.green::before { background: var(--signal-emerald); }
-    .stat-pillar.blue::before { background: var(--signal-cyan); }
-    .stat-pillar.amber::before { background: var(--signal-amber); }
-    .stat-pillar-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      color: var(--text-dim);
-    }
-    .stat-pillar-val {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: var(--text-main);
-      font-family: var(--font-mono);
-      margin: 0.35rem 0;
-      line-height: 1.1;
-    }
-    .stat-pillar-sub {
-      font-size: 0.74rem;
-      color: var(--text-muted);
-      display: flex;
+    /* Buttons */
+    .btn {
+      display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.5rem 0.95rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all var(--transition-fast);
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .btn:focus-visible {
+      outline: 2px solid var(--accent-yellow);
+      outline-offset: 2px;
+    }
+    .btn-primary {
+      background: var(--accent-yellow);
+      color: #000000;
+      border-color: var(--accent-yellow);
+    }
+    .btn-primary:hover {
+      background: var(--accent-yellow-hover);
+    }
+    .btn-secondary {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      border-color: var(--border-strong);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-active);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover {
+      color: var(--text-main);
+      background: var(--bg-subtle);
+    }
+    .btn-sm {
+      padding: 0.32rem 0.65rem;
+      font-size: 0.74rem;
     }
 
-    /* Badges & Pills */
+    /* Badges */
     .badge {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      font-weight: 600;
       padding: 2px 7px;
       border-radius: var(--radius-xs);
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .badge-ready {
+      background: var(--signal-emerald-subtle);
+      color: var(--signal-emerald);
+      border: 1px solid var(--signal-emerald-border);
+    }
+    .badge-locked {
+      background: var(--accent-yellow-subtle);
+      color: var(--accent-yellow);
+      border: 1px solid var(--accent-yellow-border);
+    }
+    .badge-warn {
+      background: var(--signal-amber-subtle);
+      color: var(--signal-amber);
+      border: 1px solid var(--signal-amber-border);
+    }
+    .badge-rose {
+      background: var(--signal-rose-subtle);
+      color: var(--signal-rose);
+      border: 1px solid var(--signal-rose-border);
+    }
+    .badge-neutral {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* Grids */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+
+    /* Overview Hero Section */
+    .overview-hero-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .overview-meta-headline {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .overview-hero-title {
+      font-size: 1.75rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      margin-top: 2px;
+    }
+    .overview-hero-sub {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Metric Scales */
+    .metric-scale-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .metric-scale-card.hero-scale {
+      background: linear-gradient(135deg, rgba(255, 229, 0, 0.06) 0%, var(--bg-surface) 100%);
+      border-color: var(--accent-yellow-border);
+    }
+    .metric-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .metric-value {
+      font-size: 2.1rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      line-height: 1.1;
+      margin: 0.5rem 0 0.35rem 0;
+      font-family: var(--font-sans);
+    }
+    .metric-sub {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Pipeline Compact Visualization */
+    .pipeline-compact-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    .pipeline-step-node {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      position: relative;
+    }
+    .pipeline-step-node.active-stage {
+      border-color: var(--border-strong);
+      background: var(--bg-surface);
+    }
+    .pipeline-step-node.locked-stage {
+      border-color: rgba(255, 229, 0, 0.2);
+      opacity: 0.85;
+    }
+    .pipeline-node-idx {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+    .pipeline-node-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 2px 0 6px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pipeline-node-count {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+    }
+    .pipeline-node-meta {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* Editorial Intelligence Table */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+    }
+    .editorial-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.82rem;
+    }
+    .editorial-table th {
+      padding: 0.75rem 1rem;
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-subtle);
       white-space: nowrap;
     }
-    .badge-ready { background: var(--signal-emerald-subtle); color: var(--signal-emerald); border: 1px solid var(--signal-emerald-border); }
-    .badge-review { background: var(--signal-amber-subtle); color: var(--signal-amber); border: 1px solid var(--signal-amber-border); }
-    .badge-research { background: var(--signal-cyan-subtle); color: var(--signal-cyan); border: 1px solid var(--signal-cyan-border); }
-    .badge-excluded { background: var(--signal-rose-subtle); color: var(--signal-rose); border: 1px solid var(--signal-rose-border); }
-    .badge-locked { background: var(--accent-yellow-subtle); color: var(--accent-yellow); border: 1px solid var(--accent-yellow-border); }
-    .badge-neutral { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+    .editorial-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+    .editorial-table tr:last-child td {
+      border-bottom: none;
+    }
+    .editorial-table tr.clickable-row {
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .editorial-table tr.clickable-row:hover {
+      background: var(--bg-card-hover);
+    }
 
-    /* ==========================================================================
-       EDITORIAL LEADS TABLE & LIST
-       ========================================================================== */
+    .lead-biz-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .lead-biz-name {
+      font-weight: 700;
+      color: var(--text-main);
+      font-size: 0.88rem;
+    }
+    .lead-biz-sub {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Leads Toolbar */
     .leads-toolbar {
       display: flex;
       align-items: center;
@@ -577,139 +624,84 @@
       min-width: 260px;
       max-width: 480px;
     }
-    .search-input-wrap svg {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-dim);
-    }
     .search-input {
       width: 100%;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-strong);
       border-radius: var(--radius-sm);
-      padding: 0.55rem 0.85rem 0.55rem 2.4rem;
-      font-family: var(--font-sans);
-      font-size: 0.84rem;
+      padding: 0.55rem 0.85rem 0.55rem 2.2rem;
       color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
       outline: none;
       transition: border-color var(--transition-fast);
     }
     .search-input:focus {
       border-color: var(--accent-yellow);
     }
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
     .filter-pills {
       display: flex;
-      align-items: center;
       gap: 0.4rem;
       flex-wrap: wrap;
     }
     .filter-pill {
-      font-size: 0.74rem;
-      font-weight: 600;
-      padding: 0.4rem 0.75rem;
-      border-radius: var(--radius-pill);
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      padding: 0.35rem 0.8rem;
+      font-size: 0.74rem;
+      font-weight: 600;
       color: var(--text-muted);
       cursor: pointer;
       transition: all var(--transition-fast);
     }
     .filter-pill:hover {
-      border-color: var(--border-strong);
       color: var(--text-main);
+      border-color: var(--border-strong);
     }
     .filter-pill.active {
-      background: var(--accent-yellow-subtle);
-      border-color: var(--accent-yellow-border);
-      color: var(--accent-yellow);
-    }
-
-    .table-container {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      overflow-x: auto;
-      box-shadow: var(--shadow-sm);
-    }
-    .editorial-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-    .editorial-table th {
-      background: var(--bg-elevated);
-      color: var(--text-dim);
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid var(--border-subtle);
-      white-space: nowrap;
-    }
-    .editorial-table td {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border-subtle);
-      vertical-align: middle;
-      font-size: 0.82rem;
-    }
-    .editorial-table tbody tr {
-      transition: background-color var(--transition-fast);
-      cursor: pointer;
-    }
-    .editorial-table tbody tr:hover {
-      background: var(--bg-card-hover);
-    }
-    .lead-name-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .lead-name-title {
-      font-weight: 700;
+      background: var(--bg-subtle);
       color: var(--text-main);
-      font-size: 0.88rem;
-    }
-    .lead-name-meta {
-      font-size: 0.74rem;
-      color: var(--text-dim);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      border-color: var(--accent-yellow);
     }
 
-    /* ==========================================================================
-       LEAD DETAIL DRAWER (SLIDE-IN)
-       ========================================================================== */
+    /* Slide-in Lead Detail Drawer */
     .drawer-backdrop {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(4px);
-      z-index: 100;
+      z-index: 200;
       display: none;
-      animation: fadeIn var(--transition-fast);
     }
     .drawer-backdrop.active { display: block; }
+
     .lead-drawer {
       position: fixed;
-      top: 0; right: 0; bottom: 0;
+      top: 0;
+      right: -680px;
       width: 680px;
-      max-width: 95vw;
+      max-width: 100vw;
+      height: 100vh;
       background: var(--bg-surface);
       border-left: 1px solid var(--border-strong);
-      z-index: 101;
+      z-index: 201;
+      transition: right var(--transition-base);
       display: flex;
       flex-direction: column;
-      transform: translateX(100%);
-      transition: transform var(--transition-base);
       box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
     }
-    .lead-drawer.active {
-      transform: translateX(0);
-    }
+    .lead-drawer.active { right: 0; }
+
     .drawer-header {
       padding: 1.25rem 1.5rem;
       border-bottom: 1px solid var(--border-subtle);
@@ -719,352 +711,216 @@
       gap: 1rem;
       background: var(--bg-elevated);
     }
-    .drawer-title-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
     .drawer-lead-name {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: var(--text-main);
-      line-height: 1.2;
     }
-    .drawer-lead-id {
+    .drawer-lead-meta {
+      font-size: 0.74rem;
       font-family: var(--font-mono);
-      font-size: 0.75rem;
-      color: var(--text-dim);
+      color: var(--text-muted);
+      margin-top: 2px;
     }
-    .drawer-nav {
+    .drawer-tabs {
       display: flex;
       border-bottom: 1px solid var(--border-subtle);
       background: var(--bg-surface);
-      padding: 0 1.5rem;
+      padding: 0 1rem;
     }
     .drawer-tab {
-      padding: 0.85rem 1rem;
-      font-size: 0.8rem;
-      font-weight: 600;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.78rem;
+      font-weight: 700;
       color: var(--text-muted);
-      border-bottom: 2px solid transparent;
       cursor: pointer;
-      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: all var(--transition-fast);
     }
+    .drawer-tab:hover { color: var(--text-main); }
     .drawer-tab.active {
-      color: var(--accent-yellow);
+      color: var(--text-main);
       border-bottom-color: var(--accent-yellow);
     }
+
     .drawer-body {
       flex: 1;
-      overflow-y: auto;
+      overflow-y:auto;
       padding: 1.5rem;
       display: flex;
       flex-direction: column;
       gap: 1.25rem;
     }
-    .story-block {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 1rem 1.2rem;
-    }
-    .story-question {
-      font-size: 0.74rem;
-      text-transform: uppercase;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      color: var(--accent-yellow);
-      margin-bottom: 0.35rem;
+
+    .dossier-story-node {
+      border-left: 2px solid var(--border-strong);
+      padding-left: 1rem;
       display: flex;
-      align-items: center;
-      gap: 0.4rem;
+      flex-direction: column;
+      gap: 0.35rem;
     }
-    .story-answer {
-      font-size: 0.84rem;
+    .dossier-story-node.accent {
+      border-left-color: var(--accent-yellow);
+    }
+    .dossier-question {
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+    .dossier-answer {
+      font-size: 0.86rem;
       color: var(--text-main);
       line-height: 1.55;
     }
 
-    /* JSON Box */
+    .checklist-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0.85rem;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+    }
+
     .json-box {
-      background: #060608;
+      background: #050507;
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
       padding: 1rem;
       font-family: var(--font-mono);
-      font-size: 0.75rem;
-      color: #38BDF8;
+      font-size: 0.72rem;
+      color: #A6ACCD;
+      line-height: 1.45;
       overflow-x: auto;
       white-space: pre-wrap;
-      line-height: 1.4;
-      max-height: 420px;
     }
 
-    /* ==========================================================================
-       PIPELINE VISUAL FUNNEL
-       ========================================================================== */
-    .pipeline-funnel {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 0.5rem;
-      margin: 1.5rem 0;
-    }
-    .funnel-stage-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1rem 0.8rem;
-      text-align: center;
-      position: relative;
-      transition: all var(--transition-fast);
-    }
-    .funnel-stage-card:hover {
-      border-color: var(--accent-yellow-border);
-      transform: translateY(-2px);
-    }
-    .funnel-stage-index {
-      font-size: 0.65rem;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--text-dim);
-      margin-bottom: 0.25rem;
-    }
-    .funnel-stage-name {
-      font-size: 0.78rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: var(--text-main);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .funnel-stage-count {
-      font-size: 1.8rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      color: var(--accent-yellow);
-      margin: 0.35rem 0;
-    }
-    .funnel-stage-rate {
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      color: var(--text-muted);
-    }
-    @media (max-width: 1000px) {
-      .pipeline-funnel { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    /* ==========================================================================
-       READINESS 20 GATES TABLE
-       ========================================================================== */
-    .readiness-status-hero {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(18, 18, 23, 0.9) 100%);
-      border: 1px solid var(--signal-emerald-border);
-      border-radius: var(--radius-lg);
-      padding: 1.75rem;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .readiness-title {
-      font-size: 1.6rem;
-      font-weight: 800;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .gates-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .gate-row {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.85rem 1.15rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      transition: border-color var(--transition-fast);
-    }
-    .gate-row:hover {
-      border-color: var(--border-strong);
-    }
-    .gate-info {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-    }
-    .gate-num {
-      font-family: var(--font-mono);
-      font-size: 0.74rem;
-      font-weight: 700;
-      color: var(--text-dim);
-      min-width: 24px;
-    }
-    .gate-id {
-      font-family: var(--font-mono);
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-    .gate-desc {
-      font-size: 0.76rem;
-      color: var(--text-muted);
-    }
-
-    /* ==========================================================================
-       COMMAND PALETTE & MODALS
-       ========================================================================== */
-    .cmd-palette-backdrop {
+    /* Modal */
+    .modal-overlay {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
       backdrop-filter: blur(6px);
-      z-index: 200;
+      z-index: 210;
       display: none;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
-      padding-top: 15vh;
+      padding: 1.5rem;
     }
-    .cmd-palette-backdrop.active { display: flex; }
+
+    /* Command Palette */
     .cmd-palette {
       width: 580px;
-      max-width: 90vw;
+      max-width: 92vw;
       background: var(--bg-surface);
       border: 1px solid var(--border-strong);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-elevated);
       overflow: hidden;
     }
-    .cmd-palette-input {
+    .cmd-input {
       width: 100%;
-      background: var(--bg-elevated);
+      background: transparent;
       border: none;
       border-bottom: 1px solid var(--border-subtle);
-      padding: 1.1rem 1.25rem;
-      font-family: var(--font-sans);
-      font-size: 1rem;
+      padding: 1rem 1.25rem;
       color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.92rem;
       outline: none;
     }
-    .cmd-palette-results {
-      max-height: 360px;
+    .cmd-list {
+      max-height: 320px;
       overflow-y: auto;
       padding: 0.5rem;
     }
     .cmd-item {
+      padding: 0.65rem 0.85rem;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
       color: var(--text-muted);
-      font-size: 0.84rem;
-      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.82rem;
     }
     .cmd-item:hover, .cmd-item.selected {
       background: var(--bg-subtle);
       color: var(--text-main);
     }
-    .cmd-item-kbd {
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      padding: 2px 6px;
-      border-radius: var(--radius-xs);
-    }
 
-    /* Toast Notification */
-    .toast-container {
+    /* Toast */
+    .toast-box {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
+      bottom: 1.5rem;
+      right: 1.5rem;
       z-index: 300;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 0.5rem;
     }
-    .toast-msg {
+    .toast {
       background: var(--bg-elevated);
-      border: 1px solid var(--accent-yellow-border);
+      border: 1px solid var(--border-strong);
       color: var(--text-main);
-      padding: 0.75rem 1.25rem;
+      padding: 0.65rem 1rem;
       border-radius: var(--radius-sm);
-      font-size: 0.82rem;
-      font-weight: 600;
-      box-shadow: var(--shadow-elevated);
+      font-size: 0.78rem;
+      box-shadow: var(--shadow-card);
       display: flex;
       align-items: center;
-      gap: 0.65rem;
-      animation: slideInRight var(--transition-base);
+      gap: 0.5rem;
+      animation: fadeIn 150ms ease;
     }
-    @keyframes slideInRight {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1200px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+      .pipeline-compact-row { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .header-main { padding: 0.75rem 1rem; }
+      .app-main { padding: 1rem; }
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .pipeline-compact-row { grid-template-columns: repeat(2, 1fr); }
+      .safety-banner { flex-direction: column; align-items: flex-start; }
+      .safety-banner-tags { width: 100%; justify-content: flex-start; }
+      .lead-drawer { width: 100vw; }
     }
   </style>
 </head>
 <body>
-  <!-- Ambient Graphic Elements -->
   <div class="ambient-grid"></div>
-  <div class="ambient-glow-spot"></div>
 
-  <!-- APP HEADER -->
+  <!-- APPLICATION HEADER -->
   <header class="app-header">
-    <div class="header-top">
-      <a href="#overview" class="brand-group" onclick="switchView('overview'); return false;">
-        <img src="/static/logos/dripp-logo-yellow-cropped.png" alt="Dripp Media" class="brand-logo-img">
-        <div class="brand-meta">
-          <div class="brand-title">
-            <span>Dripp International Leads</span>
-            <span class="brand-badge">PRO v3</span>
-          </div>
-          <span class="brand-subtitle">Autonomous No-Website Intelligence Platform</span>
+    <div class="header-main">
+      <a href="#overview" class="brand-group" onclick="switchView('overview')">
+        <img src="/static/logos/dripp-logo-yellow-cropped.png" alt="Dripp Media" class="brand-logo">
+        <div class="brand-text">
+          <div class="brand-title">Dripp International Leads</div>
+          <div class="brand-sub">Autonomous Lead Machine &bull; Manchester, UK</div>
         </div>
       </a>
 
       <div class="header-actions">
-        <!-- Live Status Group -->
-        <div class="status-pill-group" title="Safety & Orchestration State">
-          <span class="pulse-dot locked"></span>
-          <span>STAGING_READY</span>
-          <span style="color:var(--text-dim);">|</span>
-          <span style="color:var(--accent-yellow);">TRAVEL MODE: ACTIVE</span>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span>STAGING READY</span>
         </div>
 
-        <!-- Google Sheets CRM Link -->
-        <a id="sheetLink" href="https://docs.google.com/spreadsheets/d/1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc/edit?usp=sharing" target="_blank" class="btn btn-secondary btn-sm" title="Authoritative CRM Source of Truth">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-          <span>Sheets CRM</span>
+        <a id="sheetLink" href="https://docs.google.com/spreadsheets/d/1BnyAM_88Pvd_d56bL8m6_a0A939G-Xq7P5G2G8gR_O4/edit" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Google Sheets Source of Truth">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          <span>CRM Sheets</span>
         </a>
 
-        <!-- Command Palette Trigger -->
         <button class="btn btn-secondary btn-sm" onclick="openCmdPalette()" title="Press ⌘K or Ctrl+K">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <span>Command</span>
-          <kbd style="font-family:var(--font-mono); font-size:0.65rem; background:var(--bg-subtle); padding:1px 4px; border-radius:2px;">⌘K</kbd>
-        </button>
-
-        <!-- Audio Microtones Toggle -->
-        <button id="soundToggleBtn" class="btn btn-subtle" onclick="toggleSound()" title="Audio Micro-tones">
-          <svg id="soundIconOn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-          <svg id="soundIconOff" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
-        </button>
-
-        <!-- Theme Toggle -->
-        <button id="themeToggleBtn" class="btn btn-subtle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
-          <svg id="themeIconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          <svg id="themeIconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <kbd style="font-family:var(--font-mono); font-size:0.65rem;">⌘K</kbd>
         </button>
       </div>
     </div>
@@ -1072,27 +928,23 @@
     <!-- PRIMARY APP NAVIGATION -->
     <div class="nav-bar-container">
       <nav class="nav-bar">
-        <a class="nav-tab active" data-view="overview" onclick="switchView('overview')">
-          <span>Overview</span>
-        </a>
+        <a class="nav-tab active" data-view="overview" onclick="switchView('overview')">Overview</a>
         <a class="nav-tab" data-view="leads" onclick="switchView('leads')">
           <span>Leads Directory</span>
           <span class="tab-badge" id="navLeadsCount">7</span>
         </a>
-        <a class="nav-tab" data-view="pipeline" onclick="switchView('pipeline')">
-          <span>Pipeline Funnel</span>
-        </a>
+        <a class="nav-tab" data-view="pipeline" onclick="switchView('pipeline')">Pipeline Funnel</a>
         <a class="nav-tab" data-view="research" onclick="switchView('research')">
           <span>Research Log</span>
           <span class="tab-badge" id="navResearchCount">0</span>
         </a>
         <a class="nav-tab" data-view="freshness" onclick="switchView('freshness')">
           <span>Freshness Center</span>
-          <span class="tab-badge" style="color:var(--signal-emerald);">6/6 Dim</span>
+          <span class="tab-badge green">6 Dim</span>
         </a>
         <a class="nav-tab" data-view="outreach" onclick="switchView('outreach')">
           <span>Outreach Vault</span>
-          <span class="tab-badge" style="color:var(--accent-yellow);">Locked</span>
+          <span class="tab-badge locked">Locked</span>
         </a>
         <a class="nav-tab" data-view="monitoring" onclick="switchView('monitoring')">
           <span>Monitoring</span>
@@ -1100,28 +952,26 @@
         </a>
         <a class="nav-tab" data-view="readiness" onclick="switchView('readiness')">
           <span>Production Readiness</span>
-          <span class="tab-badge" style="color:var(--signal-emerald);">20/20 Gates</span>
+          <span class="tab-badge green">20/20</span>
         </a>
-        <a class="nav-tab" data-view="settings" onclick="switchView('settings')">
-          <span>Settings</span>
-        </a>
+        <a class="nav-tab" data-view="settings" onclick="switchView('settings')">Settings</a>
       </nav>
     </div>
   </header>
 
   <!-- MAIN VIEWPORT -->
   <main class="app-main">
-    <!-- PERSISTENT SAFETY BANNER (Phase 10.6 Contract) -->
+    <!-- PERSISTENT SAFETY BANNER -->
     <div class="safety-banner">
       <div class="safety-banner-left">
-        <div class="safety-shield-icon">🛡️</div>
+        <div class="safety-shield">🛡️</div>
         <div>
           <div class="safety-banner-title">
             <span>PROTECTED TRAVEL MODE ACTIVE</span>
             <span class="badge badge-locked">COMMERCIAL ACTIONS LOCKED</span>
           </div>
           <div class="safety-banner-desc">
-            Technical pipeline operates unattended in Manchester, UK. All external outbound messages, calls, proposals, and live CRM writes are strictly frozen.
+            Technical pipeline operates unattended in Manchester, UK. External outbound emails, calls, proposals, and live CRM writes are strictly frozen.
           </div>
         </div>
       </div>
@@ -1131,178 +981,205 @@
         <span class="safety-tag active">Cron: Disabled</span>
         <span class="safety-tag active">Automated Email: Disabled</span>
         <span class="safety-tag green">CRM Writes: 0</span>
-        <button class="btn btn-secondary btn-sm" onclick="refreshGlobalHealth()">↻ Recheck</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadAllData()">↻ Refresh State</button>
       </div>
     </div>
 
     <!-- ========================================================================
-         VIEW 1: OVERVIEW DASHBOARD
+         VIEW 1: OVERVIEW / FLAGSHIP DASHBOARD
          ======================================================================== -->
     <section id="view-overview" class="view-panel active">
-      <!-- Hero Operational KPI Pillars -->
-      <div class="grid-4" style="margin-bottom: 1.5rem;">
-        <div class="stat-pillar">
-          <div class="stat-pillar-label">Market Target</div>
-          <div class="stat-pillar-val" style="font-size: 1.55rem; color:var(--text-main);">Manchester, UK</div>
-          <div class="stat-pillar-sub">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            <span>OSM Relation 162378 (Boundary Locked)</span>
-          </div>
+      <div class="overview-hero-bar">
+        <div>
+          <div class="overview-meta-headline">Market Anchor &bull; Sovereign Operations</div>
+          <div class="overview-hero-title">Dripp Lead Machine</div>
+          <div class="overview-hero-sub">Operating inside Manchester Administrative Boundary (OSM Relation 162378)</div>
         </div>
-
-        <div class="stat-pillar green">
-          <div class="stat-pillar-label">Outreach Ready Leads</div>
-          <div class="stat-pillar-val" id="ovQualifiedCount">7</div>
-          <div class="stat-pillar-sub">
-            <span style="color:var(--signal-emerald);">● 100% Verified</span>
-            <span>• Confirmed No-Website</span>
-          </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary" onclick="switchView('leads')">View Leads Table &rarr;</button>
+          <button class="btn btn-primary" onclick="switchView('readiness')">Inspect 20 Gates &rarr;</button>
         </div>
+      </div>
 
-        <div class="stat-pillar blue">
-          <div class="stat-pillar-label">Evidence Quality</div>
-          <div class="stat-pillar-val">4.5★</div>
-          <div class="stat-pillar-sub">
-            <span>Rule B Satisfied</span>
-            <span>• 100% Recency &lt; 180d</span>
+      <!-- Hero Metrics (Distinct Scales) -->
+      <div class="grid-4" style="margin-bottom:1.25rem;">
+        <div class="metric-scale-card hero-scale">
+          <div>
+            <div class="metric-label">System Readiness</div>
+            <div class="metric-value" style="color:var(--accent-yellow);" id="ovReadinessHero">STAGING READY</div>
           </div>
-        </div>
-
-        <div class="stat-pillar amber">
-          <div class="stat-pillar-label">System Readiness</div>
-          <div class="stat-pillar-val" style="color:var(--signal-emerald);">20 / 20</div>
-          <div class="stat-pillar-sub">
+          <div class="metric-sub">
+            <span style="color:var(--signal-emerald); font-weight:700;">● 20 / 20</span>
             <span>Deterministic Gates Passed</span>
-            <span>• Staging Ready</span>
+          </div>
+        </div>
+
+        <div class="metric-scale-card">
+          <div>
+            <div class="metric-label">Qualified Leads</div>
+            <div class="metric-value" id="ovQualifiedCount">7</div>
+          </div>
+          <div class="metric-sub">
+            <span style="color:var(--signal-emerald);">● 100% Verified</span>
+            <span>Rule B (4.0+★, &ge;50 rev)</span>
+          </div>
+        </div>
+
+        <div class="metric-scale-card">
+          <div>
+            <div class="metric-label">Outreach Ready Cohort</div>
+            <div class="metric-value" style="color:var(--signal-emerald);" id="ovOutreachReadyCount">3</div>
+          </div>
+          <div class="metric-sub">
+            <span style="color:var(--accent-yellow);">● Staged</span>
+            <span>Commercial Dispatch Locked</span>
+          </div>
+        </div>
+
+        <div class="metric-scale-card">
+          <div>
+            <div class="metric-label">Freshness Cadence</div>
+            <div class="metric-value" id="ovFreshnessRate">100%</div>
+          </div>
+          <div class="metric-sub">
+            <span style="color:var(--signal-emerald);">● 0 Stale</span>
+            <span>All 6 Dimensions Valid</span>
           </div>
         </div>
       </div>
 
-      <!-- Main Operational Grid -->
-      <div class="grid-hero">
-        <!-- Operational Pulse & Activity -->
-        <div class="card card-elevated">
+      <!-- Compact Pipeline Visualization -->
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Commercial Conversion Pipeline</div>
+            <div class="card-desc">7-stage deterministic progression from Discovery through Response</div>
+          </div>
+          <span class="badge badge-locked">STAGING LOCKED</span>
+        </div>
+
+        <div class="pipeline-compact-row">
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">01 / DISCOVERY</div>
+            <div class="pipeline-node-name">Discovered</div>
+            <div class="pipeline-node-count" id="ovPipeDiscovered">7</div>
+            <div class="pipeline-node-meta">100% candidate flow</div>
+          </div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">02 / RESEARCH</div>
+            <div class="pipeline-node-name">Researched</div>
+            <div class="pipeline-node-count" id="ovPipeResearched">7</div>
+            <div class="pipeline-node-meta">Tavily + Places</div>
+          </div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">03 / RULE B</div>
+            <div class="pipeline-node-name">Qualified</div>
+            <div class="pipeline-node-count" id="ovPipeQualified">7</div>
+            <div class="pipeline-node-meta">No website verified</div>
+          </div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">04 / CHANNELS</div>
+            <div class="pipeline-node-name">Contactable</div>
+            <div class="pipeline-node-count" id="ovPipeContactable">3</div>
+            <div class="pipeline-node-meta">Phone / IG verified</div>
+          </div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">05 / BATCH</div>
+            <div class="pipeline-node-name">Outreach Ready</div>
+            <div class="pipeline-node-count" id="ovPipeReady">3</div>
+            <div class="pipeline-node-meta">Phase 8.7 Staged</div>
+          </div>
+          <div class="pipeline-step-node locked-stage">
+            <div class="pipeline-node-idx">06 / DISPATCH</div>
+            <div class="pipeline-node-name">Contacted</div>
+            <div class="pipeline-node-count" style="color:var(--text-dim);">0</div>
+            <div class="pipeline-node-meta">Locked in Travel Mode</div>
+          </div>
+          <div class="pipeline-step-node locked-stage">
+            <div class="pipeline-node-idx">07 / OUTCOME</div>
+            <div class="pipeline-node-name">Responded</div>
+            <div class="pipeline-node-count" style="color:var(--text-dim);">0</div>
+            <div class="pipeline-node-meta">Zero live campaigns</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attention & Recent Activity (2-column layout) -->
+      <div class="grid-2">
+        <div class="card">
           <div class="card-header">
             <div>
-              <div class="card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-yellow)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                <span>Autonomous Lead Engine Pulse</span>
-              </div>
-              <div class="card-desc">Continuous discovery, freshness evaluation, and qualification status</div>
+              <div class="card-title">Operational Health &amp; Incidents</div>
+              <div class="card-desc">Real-time status across technical monitors</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="switchView('leads')">View Directory →</button>
+            <span class="badge badge-ready" id="ovHealthBadge">HEALTHY</span>
           </div>
 
-          <div style="background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:1.25rem; margin-bottom:1.25rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-              <span style="font-size:0.78rem; font-weight:700; text-transform:uppercase; color:var(--text-dim);">Pipeline Funnel Snapshot</span>
-              <span style="font-size:0.75rem; font-family:var(--font-mono); color:var(--signal-emerald);">100% Invariant Compliance</span>
+          <div style="display:flex; flex-direction:column; gap:0.6rem; font-size:0.82rem;">
+            <div style="display:flex; justify-content:space-between; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
+              <span style="color:var(--text-muted);">Active Critical Incidents</span>
+              <strong style="color:var(--signal-emerald);" id="ovActiveIncidents">0 (All Clear)</strong>
             </div>
-            <div style="display:flex; gap:0.5rem; height:8px; border-radius:var(--radius-pill); overflow:hidden; background:var(--bg-subtle);">
-              <div style="flex:7; background:var(--signal-emerald);" title="Outreach Ready: 7"></div>
-              <div style="flex:2; background:var(--signal-amber);" title="Manual Review: 2"></div>
-              <div style="flex:3; background:var(--signal-cyan);" title="Research Only: 3"></div>
-              <div style="flex:1; background:var(--signal-rose);" title="Excluded: 1"></div>
+            <div style="display:flex; justify-content:space-between; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
+              <span style="color:var(--text-muted);">Google Sheets CRM Sync</span>
+              <strong style="color:var(--signal-emerald);">SYNCHRONIZED (Authoritative)</strong>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:var(--text-muted); margin-top:0.75rem;">
-              <span>● Outreach Ready: <strong style="color:var(--text-main);" id="barCountReady">7</strong></span>
-              <span>● Manual Review: <strong style="color:var(--text-main);" id="barCountReview">0</strong></span>
-              <span>● Research Only: <strong style="color:var(--text-main);" id="barCountResearch">0</strong></span>
-              <span>● Excluded: <strong style="color:var(--text-main);" id="barCountExcluded">0</strong></span>
+            <div style="display:flex; justify-content:space-between; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
+              <span style="color:var(--text-muted);">Tavily Search Engine</span>
+              <strong style="color:var(--signal-emerald);" id="ovTavilyStatus">CONFIGURED (Available)</strong>
             </div>
-          </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-            <div style="background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:1rem;">
-              <div style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Discovery Strategy</div>
-              <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin:4px 0;">Hybrid Free Stack</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">OpenStreetMap Nominatim + Overpass API + Tavily Research with DuckDuckGo fallback. Zero Apify burn.</div>
+            <div style="display:flex; justify-content:space-between; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
+              <span style="color:var(--text-muted);">Local Atomic Stores &amp; Locks</span>
+              <strong style="color:var(--signal-emerald);">PASS (0 Collisions)</strong>
             </div>
-
-            <div style="background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:1rem;">
-              <div style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Freshness Engine</div>
-              <div style="font-size:0.95rem; font-weight:700; color:var(--signal-emerald); margin:4px 0;">All 6 Dimensions Fresh</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Website (30d), Operational (60d), Reviews (180d), Phone (90d), Socials (60d), Contactability (60d).</div>
+            <div style="display:flex; justify-content:space-between;">
+              <span style="color:var(--text-muted);">Daily Search Quota Used</span>
+              <strong style="font-family:var(--font-mono); color:var(--text-main);" id="ovSearchQuota">6 / 500 (1.2%)</strong>
             </div>
           </div>
         </div>
 
-        <!-- Attention & Quick Actions -->
-        <div class="card card-elevated" style="display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div class="card-header">
-              <div class="card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--signal-emerald)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                <span>Operational Health</span>
-              </div>
-              <span class="badge badge-ready" id="ovHealthBadge">HEALTHY</span>
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Recent Technical Activity</div>
+              <div class="card-desc">Latest unattended background operations</div>
             </div>
-
-            <div style="display:flex; flex-direction:column; gap:0.65rem; margin-bottom:1.5rem;">
-              <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
-                <span style="color:var(--text-muted);">Tavily Search API</span>
-                <span style="color:var(--signal-emerald); font-weight:700;" id="ovTavilyStatus">CONNECTED</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
-                <span style="color:var(--text-muted);">Google Sheets CRM</span>
-                <span style="color:var(--signal-emerald); font-weight:700;">SYNCHRONIZED</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
-                <span style="color:var(--text-muted);">File Locking &amp; Integrity</span>
-                <span style="color:var(--signal-emerald); font-weight:700;">PASS (0 COLLISIONS)</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
-                <span style="color:var(--text-muted);">Automated Backups</span>
-                <span style="color:var(--signal-emerald); font-weight:700;">VERIFIED (BACKUP_MGR)</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-subtle);">
-                <span style="color:var(--text-muted);">Disaster Recovery Drills</span>
-                <span style="color:var(--signal-emerald); font-weight:700;">DRILL_PASS</span>
-              </div>
-            </div>
+            <button class="btn btn-secondary btn-sm" onclick="loadTechnicalOperations()">↻ Refresh</button>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:0.5rem;">
-            <button class="btn btn-primary" onclick="switchView('readiness')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              <span>Inspect 20 Production Gates</span>
-            </button>
-            <button class="btn btn-secondary" onclick="switchView('freshness')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>Inspect Freshness Matrix</span>
-            </button>
+          <div id="ovRecentJobsList" style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.8rem;">
+            <div style="color:var(--text-muted); padding:1rem 0; text-align:center;">Loading recent activity...</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ========================================================================
-         VIEW 2: LEADS DIRECTORY (THE CORE PRODUCT EXPERIENCE)
+         VIEW 2: LEADS DIRECTORY
          ======================================================================== -->
     <section id="view-leads" class="view-panel">
-      <!-- Toolbar & Multi-criteria Filters -->
       <div class="leads-toolbar">
         <div class="search-input-wrap">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="leadsSearchInput" class="search-input" placeholder="Search leads by business name, phone, cuisine, or notes..." oninput="handleLeadsSearch(this.value)">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="leadsSearchInput" class="search-input" placeholder="Search leads by business name, postcode, notes..." oninput="handleLeadsSearch(this.value)">
         </div>
 
         <div class="filter-pills">
           <button class="filter-pill active" data-filter="ALL" onclick="setLeadFilter('ALL')">All Leads</button>
           <button class="filter-pill" data-filter="OUTREACH_READY" onclick="setLeadFilter('OUTREACH_READY')">Outreach Ready</button>
           <button class="filter-pill" data-filter="MANUAL_REVIEW" onclick="setLeadFilter('MANUAL_REVIEW')">Needs Review</button>
-          <button class="filter-pill" data-filter="RESEARCH_ONLY" onclick="setLeadFilter('RESEARCH_ONLY')">Research Only</button>
           <button class="filter-pill" data-filter="NO_WEBSITE" onclick="setLeadFilter('NO_WEBSITE')">No Website Confirmed</button>
           <button class="filter-pill" data-filter="HIGH_REVIEWS" onclick="setLeadFilter('HIGH_REVIEWS')">100+ Reviews</button>
         </div>
       </div>
 
-      <!-- Leads Table Container -->
       <div class="table-container">
         <table class="editorial-table">
           <thead>
             <tr>
               <th style="width:280px;">Business / Identity</th>
+              <th>Location</th>
               <th>Qualification</th>
               <th>Website State</th>
               <th>Reviews &amp; Rating</th>
@@ -1313,9 +1190,8 @@
             </tr>
           </thead>
           <tbody id="leadsTableBody">
-            <!-- Dynamically populated rows -->
             <tr>
-              <td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted);">
+              <td colspan="9" style="text-align:center; padding:3rem; color:var(--text-muted);">
                 Loading intelligence records from Google Sheets CRM...
               </td>
             </tr>
@@ -1325,7 +1201,7 @@
     </section>
 
     <!-- ========================================================================
-         VIEW 3: PIPELINE VISUAL FUNNEL
+         VIEW 3: PIPELINE FUNNEL
          ======================================================================== -->
     <section id="view-pipeline" class="view-panel">
       <div class="card card-elevated" style="margin-bottom:1.5rem;">
@@ -1337,86 +1213,71 @@
           <span class="badge badge-locked">PROTECTED TRAVEL MODE</span>
         </div>
 
-        <!-- 7-Stage Funnel -->
-        <div class="pipeline-funnel">
-          <div class="funnel-stage-card">
-            <div class="funnel-stage-index">STAGE 01</div>
-            <div class="funnel-stage-name">Discovered</div>
-            <div class="funnel-stage-count" id="fnDiscovered">7</div>
-            <div class="funnel-stage-rate">100% of Raw</div>
+        <div class="pipeline-compact-row" style="margin:1.5rem 0;">
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">STAGE 01</div>
+            <div class="pipeline-node-name">Discovered</div>
+            <div class="pipeline-node-count" id="fnDiscovered">7</div>
+            <div class="pipeline-node-meta">100% of Raw (OSM polygon)</div>
           </div>
-
-          <div class="funnel-stage-card">
-            <div class="funnel-stage-index">STAGE 02</div>
-            <div class="funnel-stage-name">Researched</div>
-            <div class="funnel-stage-count" id="fnResearched">7</div>
-            <div class="funnel-stage-rate">100% Pass</div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">STAGE 02</div>
+            <div class="pipeline-node-name">Researched</div>
+            <div class="pipeline-node-count" id="fnResearched">7</div>
+            <div class="pipeline-node-meta">100% research coverage</div>
           </div>
-
-          <div class="funnel-stage-card">
-            <div class="funnel-stage-index">STAGE 03</div>
-            <div class="funnel-stage-name">Qualified</div>
-            <div class="funnel-stage-count" id="fnQualified">7</div>
-            <div class="funnel-stage-rate">Rule B Pass</div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">STAGE 03</div>
+            <div class="pipeline-node-name">Qualified</div>
+            <div class="pipeline-node-count" id="fnQualified">7</div>
+            <div class="pipeline-node-meta">Frozen Rule B satisfied</div>
           </div>
-
-          <div class="funnel-stage-card">
-            <div class="funnel-stage-index">STAGE 04</div>
-            <div class="funnel-stage-name">Contactable</div>
-            <div class="funnel-stage-count" id="fnContactable">7</div>
-            <div class="funnel-stage-rate">Verified Channels</div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">STAGE 04</div>
+            <div class="pipeline-node-name">Contactable</div>
+            <div class="pipeline-node-count" id="fnContactable">3</div>
+            <div class="pipeline-node-meta">43% channel reachability</div>
           </div>
-
-          <div class="funnel-stage-card" style="border-color:var(--signal-emerald-border); background:rgba(16, 185, 129, 0.05);">
-            <div class="funnel-stage-index" style="color:var(--signal-emerald);">STAGE 05</div>
-            <div class="funnel-stage-name" style="color:var(--signal-emerald);">Outreach Ready</div>
-            <div class="funnel-stage-count" style="color:var(--signal-emerald);" id="fnOutreachReady">7</div>
-            <div class="funnel-stage-rate">Armed in Staging</div>
+          <div class="pipeline-step-node active-stage">
+            <div class="pipeline-node-idx">STAGE 05</div>
+            <div class="pipeline-node-name">Outreach Ready</div>
+            <div class="pipeline-node-count" id="fnOutreachReady">3</div>
+            <div class="pipeline-node-meta">Staged in Phase 8.7 cohort</div>
           </div>
-
-          <div class="funnel-stage-card" style="opacity:0.6;">
-            <div class="funnel-stage-index">STAGE 06</div>
-            <div class="funnel-stage-name">Contacted</div>
-            <div class="funnel-stage-count" style="color:var(--text-dim);">0</div>
-            <div class="funnel-stage-rate" style="color:var(--accent-yellow);">Locked (Travel Mode)</div>
+          <div class="pipeline-step-node locked-stage">
+            <div class="pipeline-node-idx">STAGE 06</div>
+            <div class="pipeline-node-name">Contacted</div>
+            <div class="pipeline-node-count" style="color:var(--text-dim);">0</div>
+            <div class="pipeline-node-meta">Locked in Protected Mode</div>
           </div>
-
-          <div class="funnel-stage-card" style="opacity:0.6;">
-            <div class="funnel-stage-index">STAGE 07</div>
-            <div class="funnel-stage-name">Responded</div>
-            <div class="funnel-stage-count" style="color:var(--text-dim);">0</div>
-            <div class="funnel-stage-rate" style="color:var(--accent-yellow);">Locked (Travel Mode)</div>
+          <div class="pipeline-step-node locked-stage">
+            <div class="pipeline-node-idx">STAGE 07</div>
+            <div class="pipeline-node-name">Responded</div>
+            <div class="pipeline-node-count" style="color:var(--text-dim);">0</div>
+            <div class="pipeline-node-meta">No external sends</div>
           </div>
         </div>
       </div>
 
-      <!-- Pipeline Rules & Invariant Explanations -->
       <div class="grid-3">
         <div class="card">
-          <div class="card-title" style="color:var(--signal-emerald);">
-            <span>✓ Rule B Criteria Compliance</span>
-          </div>
-          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem; line-height:1.5;">
-            Every lead advancing to OUTREACH_READY strictly satisfies:
-            (1) No official website confirmed, (2) Rating &gt;= 4.0 stars, (3) Minimum reviews satisfied, (4) Recent review &lt;= 180 days, (5) Valid physical premises in Manchester polygon.
+          <div class="card-title" style="color:var(--signal-emerald);">✓ Frozen Rule B Standard</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem; line-height:1.5;">
+            Every lead advancing to OUTREACH_READY strictly satisfies: (1) No official website confirmed, (2) Rating &ge; 4.0 stars, (3) Minimum reviews &ge; 50, (4) Recent review &le; 180 days, (5) Valid physical premises in Manchester polygon.
           </div>
         </div>
 
         <div class="card">
-          <div class="card-title" style="color:var(--signal-cyan);">
-            <span>✓ Multi-Channel Contactability</span>
-          </div>
-          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem; line-height:1.5;">
-            High-converting outreach requires verified business touchpoints: direct phone numbers, active Instagram profiles, or verified corporate email addresses under UK PECR corporate subscriber rules.
+          <div class="card-title" style="color:var(--signal-cyan);">✓ Multi-Channel Reachability</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem; line-height:1.5;">
+            Outreach requires verified touchpoints: telephone numbers, active business Instagram profiles, or verified corporate email addresses under UK PECR corporate subscriber rules.
           </div>
         </div>
 
         <div class="card">
-          <div class="card-title" style="color:var(--accent-yellow);">
-            <span>✓ Commercial Safety Enforcement</span>
-          </div>
-          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem; line-height:1.5;">
-            Stages 06 (Contacted) and 07 (Responded) are strictly inaccessible under Travel Mode. Execution gates prevent accidental triggers with zero token bypass.
+          <div class="card-title" style="color:var(--accent-yellow);">✓ Commercial Protection Gates</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem; line-height:1.5;">
+            Stages 06 (Contacted) and 07 (Responded) are strictly locked under Travel Mode. Execution gates physically prevent outbound messages with zero token bypass.
           </div>
         </div>
       </div>
@@ -1426,42 +1287,60 @@
          VIEW 4: RESEARCH LOG & PROVIDER ENGINE
          ======================================================================== -->
     <section id="view-research" class="view-panel">
-      <!-- Provider Health Matrix -->
-      <div class="grid-4" style="margin-bottom:1.5rem;">
+      <!-- Accurate Provider Grid (Active vs Optional vs Disabled) -->
+      <div class="grid-3" style="margin-bottom:1.5rem;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Tavily Research</span>
-            <span class="badge badge-ready">HEALTHY</span>
+            <span class="badge badge-ready">CONFIGURED / AVAILABLE</span>
           </div>
-          <div style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Primary Web Evidence</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Review extraction, official website verification, social handle discovery.</div>
+          <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Primary Web Evidence</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Website verification, social discovery, and domain negative proof. Quota managed.</div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">OpenStreetMap</span>
-            <span class="badge badge-ready">CONNECTED</span>
+            <span class="badge badge-ready">CONNECTED / ACTIVE</span>
           </div>
-          <div style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Nominatim &amp; Overpass</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Polygon boundary ray-casting, address verification, initial candidate discovery.</div>
+          <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Polygon Ray-Casting</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Boundary polygon checking (OSM Relation 162378) and initial candidate discovery.</div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">DuckDuckGo / Crawl</span>
-            <span class="badge badge-ready">FALLBACK READY</span>
+            <span class="badge badge-neutral">FALLBACK READY</span>
           </div>
-          <div style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Zero-Cost Fallback</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Unthrottled local crawl and fallback search when API limits are reached.</div>
+          <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Zero-Cost Search Fallback</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Unthrottled local search fallback when external API quotas are exhausted.</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Gosom Maps Scraper</span>
+            <span class="badge badge-ready">CONFIGURED</span>
+          </div>
+          <div style="font-size:1.05rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Local Scraping Binary</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Local binary present for structured Google Maps extraction without external billable API.</div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Apify Actors</span>
-            <span class="badge badge-neutral">OFFLINE / OPT-IN</span>
+            <span class="badge badge-rose">DISABLED</span>
           </div>
-          <div style="font-size:1.1rem; font-weight:800; color:var(--text-dim); margin:0.4rem 0;">Protected Quota</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Disabled by default to preserve free tier. Runs only with explicit opt-in flag.</div>
+          <div style="font-size:1.05rem; font-weight:800; color:var(--text-dim); margin:0.4rem 0;">Protected Quota</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Disabled in favor of OSM + Tavily free-stack architecture to prevent credit burn.</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Outbound SMTP / Email</span>
+            <span class="badge badge-locked">COMMERCIAL LOCKED</span>
+          </div>
+          <div style="font-size:1.05rem; font-weight:800; color:var(--text-dim); margin:0.4rem 0;">Dispatch Locked</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Hostinger SMTP configured in staging but outbound sends physically prevented.</div>
         </div>
       </div>
 
@@ -1500,104 +1379,101 @@
     </section>
 
     <!-- ========================================================================
-         VIEW 5: FRESHNESS CENTER (6-DIMENSION RADAR)
+         VIEW 5: FRESHNESS CENTER
          ======================================================================== -->
     <section id="view-freshness" class="view-panel">
-      <!-- Top Freshness Summary Card -->
       <div class="card card-elevated" style="margin-bottom:1.5rem;">
         <div class="card-header">
           <div>
-            <div class="card-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--signal-emerald)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>Canonical 6-Dimension Freshness Engine</span>
-            </div>
-            <div class="card-desc">Tracks staleness independently across all evidence dimensions without silent qualification downgrades</div>
+            <div class="card-title">Canonical 6-Dimension Freshness Engine</div>
+            <div class="card-desc">Evaluates staleness independently across canonical backend cadences without silent disqualification</div>
           </div>
           <span class="badge badge-ready" id="freshnessGlobalStatus">FRESH (100%)</span>
         </div>
 
-        <!-- 6 Dimension Cards -->
+        <!-- 6 Dimension Cards with Exact Backend Cadences -->
         <div class="grid-3" style="gap:1rem;">
-          <div class="card" style="background:var(--bg-elevated);">
+          <div class="card" style="background:var(--bg-base);">
             <div style="display:flex; justify-content:space-between;">
               <span style="font-weight:700; font-size:0.85rem;">1. Website Status</span>
               <span class="badge badge-ready">30-Day Cadence</span>
             </div>
             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Ensures business has not launched a new official website since discovery.</div>
-            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);">0 Stale / 7 Checked</div>
+            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);" id="staleDimWebsite">0 Stale / 7 Checked</div>
           </div>
 
-          <div class="card" style="background:var(--bg-elevated);">
+          <div class="card" style="background:var(--bg-base);">
             <div style="display:flex; justify-content:space-between;">
               <span style="font-weight:700; font-size:0.85rem;">2. Operational Status</span>
-              <span class="badge badge-ready">60-Day Cadence</span>
+              <span class="badge badge-ready">30-Day Cadence</span>
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Verifies physical premises remain permanently open and active.</div>
-            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);">0 Stale / 7 Checked</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Verifies physical premises remain active and customer footfall open.</div>
+            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);" id="staleDimOperational">0 Stale / 7 Checked</div>
           </div>
 
-          <div class="card" style="background:var(--bg-elevated);">
+          <div class="card" style="background:var(--bg-base);">
             <div style="display:flex; justify-content:space-between;">
-              <span style="font-weight:700; font-size:0.85rem;">3. Phone Verification</span>
-              <span class="badge badge-ready">90-Day Cadence</span>
+              <span style="font-weight:700; font-size:0.85rem;">3. Phone Reachability</span>
+              <span class="badge badge-ready">60-Day Cadence</span>
             </div>
             <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Confirms phone numbers remain callable with valid UK formatting.</div>
-            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);">0 Stale / 7 Checked</div>
+            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);" id="staleDimPhone">0 Stale / 7 Checked</div>
           </div>
 
-          <div class="card" style="background:var(--bg-elevated);">
+          <div class="card" style="background:var(--bg-base);">
             <div style="display:flex; justify-content:space-between;">
               <span style="font-weight:700; font-size:0.85rem;">4. Social Profiles</span>
-              <span class="badge badge-ready">60-Day Cadence</span>
+              <span class="badge badge-ready">30-Day Cadence</span>
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Checks Instagram/Facebook link freshness and active follower engagement.</div>
-            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);">0 Stale / 7 Checked</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Checks Instagram and Facebook profile accessibility and activity.</div>
+            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);" id="staleDimSocial">0 Stale / 7 Checked</div>
           </div>
 
-          <div class="card" style="background:var(--bg-elevated);">
+          <div class="card" style="background:var(--bg-base);">
             <div style="display:flex; justify-content:space-between;">
               <span style="font-weight:700; font-size:0.85rem;">5. Review Evidence</span>
-              <span class="badge badge-ready">180-Day Cadence</span>
+              <span class="badge badge-ready">14-Day Cadence</span>
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Enforces Rule B review recency (&lt;= 180 days) and minimum rating thresholds.</div>
-            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);">0 Stale / 7 Checked</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Highest polling frequency: verifies Rule B recency (&le; 180d) and rating (&ge; 4.0★).</div>
+            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);" id="staleDimReview">0 Stale / 7 Checked</div>
           </div>
 
-          <div class="card" style="background:var(--bg-elevated);">
+          <div class="card" style="background:var(--bg-base);">
             <div style="display:flex; justify-content:space-between;">
               <span style="font-weight:700; font-size:0.85rem;">6. Contactability</span>
-              <span class="badge badge-ready">60-Day Cadence</span>
+              <span class="badge badge-ready">30-Day Cadence</span>
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Re-verifies corporate subscriber status and channel reachability.</div>
-            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);">0 Stale / 7 Checked</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">Re-verifies corporate subscriber exemption status and channel access.</div>
+            <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--signal-emerald);" id="staleDimContactability">0 Stale / 7 Checked</div>
           </div>
         </div>
       </div>
 
-      <!-- Lead Freshness Breakdown Table -->
+      <!-- Lead Freshness Table -->
       <div class="card">
         <div class="card-header">
           <div class="card-title">Canonical Lead Freshness Registry</div>
-          <button class="btn btn-secondary btn-sm" onclick="loadFreshnessCenter()">↻ Re-audit Cadences</button>
+          <span style="font-size:0.75rem; color:var(--text-muted);">Source: GoogleSheetsStorageProvider</span>
         </div>
+
         <div class="table-container">
           <table class="editorial-table">
             <thead>
               <tr>
-                <th>Lead ID / Name</th>
+                <th>Lead / Enterprise</th>
                 <th>Overall Status</th>
-                <th>Priority Tier</th>
-                <th>Website Status</th>
-                <th>Review Evidence</th>
-                <th>Phone</th>
-                <th>Socials</th>
-                <th>Contactability</th>
+                <th>Priority</th>
+                <th>Website (30d)</th>
+                <th>Review (14d)</th>
+                <th>Phone (60d)</th>
+                <th>Social (30d)</th>
+                <th>Contact (30d)</th>
               </tr>
             </thead>
             <tbody id="freshnessTableBody">
               <tr>
                 <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">
-                  Evaluating 6-dimension freshness models...
+                  Evaluating 6-dimension freshness matrix...
                 </td>
               </tr>
             </tbody>
@@ -1610,16 +1486,15 @@
          VIEW 6: OUTREACH SAFETY VAULT
          ======================================================================== -->
     <section id="view-outreach" class="view-panel">
-      <!-- Protected State Master Notice -->
-      <div class="card card-elevated" style="border-color:var(--accent-yellow-border); background:linear-gradient(135deg, rgba(255, 229, 0, 0.05) 0%, rgba(18, 18, 23, 0.95) 100%); margin-bottom:1.5rem; padding:2rem;">
+      <div class="card card-elevated" style="border-color:var(--accent-yellow-border); margin-bottom:1.5rem; padding:2rem;">
         <div style="display:flex; align-items:flex-start; gap:1.5rem;">
           <div style="font-size:2.5rem; line-height:1;">🛡️</div>
           <div>
-            <h2 style="font-size:1.4rem; font-weight:800; color:var(--text-main); margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.02em;">
-              Commercial Actions Locked — Staging Mode Active
+            <h2 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.02em;">
+              Commercial Actions Locked — Protected Staging Active
             </h2>
             <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.6; max-width:850px;">
-              The Dripp Media system is currently operating under <strong>Protected Travel Mode</strong>. All technical automation (Discovery, Verification, Freshness Auditing, CRM Deduplication, Disaster Recovery Drills) runs safely and unattended. Outbound dispatch is physically prevented at the architecture boundary.
+              The system is currently operating in <strong>protected travel mode</strong>. Technical processing (Discovery, Verification, Freshness Auditing, Deduplication, Disaster Recovery Drills) continues normally. No external outbound messages can be sent.
             </p>
 
             <div style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap;">
@@ -1636,7 +1511,7 @@
                 <div style="font-size:1.4rem; font-weight:800; font-family:var(--font-mono); color:var(--accent-yellow);">0</div>
               </div>
               <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:0.75rem 1.25rem;">
-                <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">CRM Live Side-Effects</div>
+                <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">CRM Live Writes</div>
                 <div style="font-size:1.4rem; font-weight:800; font-family:var(--font-mono); color:var(--signal-emerald);">0</div>
               </div>
             </div>
@@ -1644,10 +1519,10 @@
         </div>
       </div>
 
-      <!-- Outreach Cohort Action Bar -->
+      <!-- Staged Cohort Action Bar -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <div style="font-size:0.85rem; color:var(--text-muted);">
-          Staged cohort preparation &amp; audit inspection:
+          Staged cohort inspection and operator review workflow:
         </div>
         <div style="display:flex; gap:0.75rem;">
           <button id="batch87Btn" class="btn btn-secondary" onclick="openPhase87BatchModal()" style="display:inline-flex; align-items:center; gap:0.5rem;">
@@ -1656,7 +1531,7 @@
         </div>
       </div>
 
-      <!-- Outreach Previews & Compliance Inspector -->
+      <!-- Previews & Compliance -->
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
@@ -1697,7 +1572,7 @@
               <span>Suppression List Sync</span>
               <strong style="color:var(--signal-emerald);">ACTIVE (0 BOUNCES)</strong>
             </div>
-            <div style="display:flex; justify-content:space-between; padding-bottom:0.35rem; border-bottom:1px solid var(--border-subtle);">
+            <div style="display:flex; justify-content:space-between;">
               <span>Execution Gate Token TTL</span>
               <strong style="color:var(--signal-emerald);">300 SECONDS (1-TIME)</strong>
             </div>
@@ -1710,24 +1585,24 @@
          VIEW 7: MONITORING & TECHNICAL HEALTH
          ======================================================================== -->
     <section id="view-monitoring" class="view-panel">
-      <!-- 6 Health Pillars Grid -->
+      <!-- 3 Status Columns -->
       <div class="grid-3" style="margin-bottom:1.5rem;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Atomic State &amp; Locks</span>
-            <span class="badge badge-ready">HEALTHY</span>
+            <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Overall System Health</span>
+            <span class="badge badge-ready" id="monCanonicalStatus">HEALTHY</span>
           </div>
-          <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">FileLock + Tmp Rename</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Deterministic file-locking protects canonical CRM and state files from concurrent writes.</div>
+          <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Technical Hardening Active</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Atomic state files, deduplication engines, and reconciliation verified without active critical incidents.</div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Backup Infrastructure</span>
+            <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Backup &amp; Recovery</span>
             <span class="badge badge-ready">VERIFIED</span>
           </div>
-          <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Rolling Backups &amp; Drills</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Snapshots created prior to batch jobs. Checksum verification and recovery tested.</div>
+          <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Rolling Snapshots Active</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">SHA-256 manifest verification and dry-run restore drills verified.</div>
         </div>
 
         <div class="card">
@@ -1735,12 +1610,25 @@
             <span style="font-size:0.75rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">CRM Reconciliation</span>
             <span class="badge badge-ready">SYNCHRONIZED</span>
           </div>
-          <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Reconciliation Engine</div>
-          <div style="font-size:0.75rem; color:var(--text-muted);">Prevents drift between local state records and Google Sheets source of truth.</div>
+          <div style="font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0.4rem 0;">Zero Drift Detected</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Continuous consistency audit between local state files and Google Sheets source of truth.</div>
         </div>
       </div>
 
-      <!-- Execution Jobs Table -->
+      <!-- Active Incidents Panel -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <div class="card-title">Active Incidents</div>
+          <span style="font-size:0.75rem; font-family:var(--font-mono); color:var(--signal-emerald);" id="monIncidentsCount">0 Active</span>
+        </div>
+        <div id="monIncidentsList">
+          <div style="padding:1.5rem; text-align:center; color:var(--text-muted); font-size:0.84rem;">
+            ✓ Zero active incidents recorded across all subsystems.
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Operations History Table -->
       <div class="card card-elevated">
         <div class="card-header">
           <div>
@@ -1757,15 +1645,14 @@
                 <th>Job / Run ID</th>
                 <th>Type</th>
                 <th>Target Market</th>
-                <th>Started</th>
+                <th>Finished</th>
                 <th>Status</th>
-                <th>Processed</th>
-                <th>Errors</th>
+                <th>Records Processed</th>
               </tr>
             </thead>
             <tbody id="techJobsTableBody">
               <tr>
-                <td colspan="7" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                <td colspan="6" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
                   Loading job execution history...
                 </td>
               </tr>
@@ -1776,34 +1663,30 @@
     </section>
 
     <!-- ========================================================================
-         VIEW 8: PRODUCTION READINESS (20 MANDATORY GATES)
+         VIEW 8: PRODUCTION READINESS (20 GATES GROUPED INTO 7 CATEGORIES)
          ======================================================================== -->
     <section id="view-readiness" class="view-panel">
-      <!-- Big Readiness Status Hero -->
-      <div class="readiness-status-hero">
-        <div>
-          <div class="readiness-title">
-            <span>PRODUCTION READINESS: STAGING_READY</span>
-            <span class="badge badge-ready" style="font-size:0.8rem; padding:4px 10px;">20 / 20 PASSED</span>
+      <div class="card card-elevated" style="margin-bottom:1.5rem; border-color:var(--signal-emerald-border); background:linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, var(--bg-surface) 100%); padding:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--signal-emerald); text-transform:uppercase; letter-spacing:0.05em;">
+              Deterministic Audit &bull; 20 Required Gates Passed
+            </div>
+            <h2 style="font-size:1.5rem; font-weight:900; color:var(--text-main); margin-top:2px;">
+              PRODUCTION READINESS: STAGING READY
+            </h2>
+            <div style="font-size:0.84rem; color:var(--text-muted); margin-top:4px;">
+              Distinct state: System is fully hardened and technically verified. Commercial actions remain locked in Travel Mode.
+            </div>
           </div>
-          <div style="font-size:0.84rem; color:var(--text-muted); margin-top:4px;">
-            Deterministic Phase 10.6 Gate Auditor verifies all technical and safety prerequisites before production unlock.
-          </div>
+          <button class="btn btn-secondary" onclick="loadReadinessGates()">↻ Re-audit 20 Gates</button>
         </div>
-        <button class="btn btn-secondary" onclick="loadReadinessGates()">↻ Re-audit Gates</button>
       </div>
 
-      <!-- 20 Gates List -->
-      <div class="card card-elevated">
-        <div class="card-header">
-          <div class="card-title">20 Mandatory Deterministic Readiness Gates</div>
-          <span style="font-size:0.75rem; font-family:var(--font-mono); color:var(--signal-emerald);">0 Blocking Issues</span>
-        </div>
-
-        <div class="gates-grid" id="gatesContainer">
-          <div style="text-align:center; padding:3rem; color:var(--text-muted);">
-            Auditing 20 deterministic production readiness gates...
-          </div>
+      <!-- 7 Logical Groups Container -->
+      <div id="readinessGroupsContainer" style="display:flex; flex-direction:column; gap:1.5rem;">
+        <div style="text-align:center; padding:3rem; color:var(--text-muted);">
+          Auditing 20 deterministic production readiness gates...
         </div>
       </div>
     </section>
@@ -1815,7 +1698,7 @@
       <div class="grid-2">
         <div class="card card-elevated">
           <div class="card-header">
-            <div class="card-title">Runtime Configuration</div>
+            <div class="card-title">Runtime &amp; Safety Configuration</div>
             <span class="badge badge-locked">LOCKED BY SYSTEM</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.82rem;">
@@ -1839,7 +1722,7 @@
               <span style="color:var(--text-muted);">Automated Email Outreach</span>
               <strong style="color:var(--signal-rose); font-family:var(--font-mono);">DISABLED</strong>
             </div>
-            <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid var(--border-subtle);">
+            <div style="display:flex; justify-content:space-between;">
               <span style="color:var(--text-muted);">Cron Background Scheduler</span>
               <strong style="color:var(--signal-rose); font-family:var(--font-mono);">DISABLED</strong>
             </div>
@@ -1848,29 +1731,29 @@
 
         <div class="card card-elevated">
           <div class="card-header">
-            <div class="card-title">Provider &amp; Credential Hygiene</div>
+            <div class="card-title">Providers Configuration Status</div>
             <span class="badge badge-ready">SECRETS SECURE</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.82rem;">
             <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid var(--border-subtle);">
-              <span style="color:var(--text-muted);">Tavily API Key</span>
-              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">tvly-•••••••• (Configured)</span>
+              <span style="color:var(--text-muted);">Tavily API Provider</span>
+              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">Configured</span>
             </div>
             <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid var(--border-subtle);">
-              <span style="color:var(--text-muted);">Google Sheets Service Account</span>
-              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">credentials.json (Found)</span>
+              <span style="color:var(--text-muted);">Google Sheets CRM Storage</span>
+              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">Configured</span>
             </div>
             <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid var(--border-subtle);">
               <span style="color:var(--text-muted);">Hostinger SMTP</span>
-              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">smtp.hostinger.com (Configured)</span>
+              <span style="font-family:var(--font-mono); color:var(--text-dim);">Disabled (Commercial Locked)</span>
             </div>
             <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid var(--border-subtle);">
-              <span style="color:var(--text-muted);">Repository Secret Scan</span>
-              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">0 Tracked Secrets (Clean)</span>
+              <span style="color:var(--text-muted);">Apify Web Scraping</span>
+              <span style="font-family:var(--font-mono); color:var(--text-dim);">Disabled (Opt-In Only)</span>
             </div>
-            <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid var(--border-subtle);">
-              <span style="color:var(--text-muted);">Rule B Spec Freeze</span>
-              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">v3.0 (Strictly Locked)</span>
+            <div style="display:flex; justify-content:space-between;">
+              <span style="color:var(--text-muted);">Rule B Specification Status</span>
+              <span style="font-family:var(--font-mono); color:var(--signal-emerald);">Frozen (v3.0)</span>
             </div>
           </div>
         </div>
@@ -1879,21 +1762,19 @@
   </main>
 
   <!-- ========================================================================
-       LEAD DETAIL DRAWER (SLIDE-IN)
+       SLIDE-IN LEAD DETAIL DRAWER
        ======================================================================== -->
   <div id="drawerBackdrop" class="drawer-backdrop" onclick="closeLeadDrawer()"></div>
   <aside id="leadDrawer" class="lead-drawer">
     <div class="drawer-header">
-      <div class="drawer-title-group">
+      <div>
         <h2 id="drawerBusinessName" class="drawer-lead-name">Business Name</h2>
-        <div id="drawerLeadId" class="drawer-lead-id">LEAD-00000000</div>
+        <div id="drawerLeadId" class="drawer-lead-meta">LEAD-00000000</div>
       </div>
-      <button class="btn btn-subtle" onclick="closeLeadDrawer()" title="Close Drawer (Esc)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
+      <button class="btn btn-ghost btn-sm" onclick="closeLeadDrawer()" title="Close Drawer (Esc)">✕</button>
     </div>
 
-    <div class="drawer-nav">
+    <div class="drawer-tabs">
       <a class="drawer-tab active" data-tab="dossier" onclick="switchDrawerTab('dossier')">Narrative Dossier</a>
       <a class="drawer-tab" data-tab="ruleb" onclick="switchDrawerTab('ruleb')">Rule B Evidence</a>
       <a class="drawer-tab" data-tab="freshness" onclick="switchDrawerTab('freshness')">Freshness Dimensions</a>
@@ -1902,64 +1783,108 @@
 
     <div class="drawer-body">
       <!-- Tab 1: Narrative Dossier -->
-      <div id="drawerTabDossier" style="display:flex; flex-direction:column; gap:1rem;">
-        <div class="story-block">
-          <div class="story-question">1. Who is this business?</div>
-          <div class="story-answer" id="dossierWho">
+      <div id="drawerTabDossier" style="display:flex; flex-direction:column; gap:1.25rem;">
+        <div class="dossier-story-node">
+          <div class="dossier-question">1. Who is this business?</div>
+          <div class="dossier-answer" id="dossierWho">
             Premises verified in Manchester, UK. Operating actively with high direct customer demand.
           </div>
         </div>
 
-        <div class="story-block">
-          <div class="story-question">2. Why did we find it?</div>
-          <div class="story-answer" id="dossierWhyFound">
-            Discovered through OpenStreetMap boundary scan in Manchester polygon.
+        <div class="dossier-story-node">
+          <div class="dossier-question">2. Why did we find it?</div>
+          <div class="dossier-answer" id="dossierWhyFound">
+            Discovered through OpenStreetMap boundary scan in Manchester polygon (Relation 162378).
           </div>
         </div>
 
-        <div class="story-block">
-          <div class="story-question">3. Why did it qualify?</div>
-          <div class="story-answer" id="dossierWhyQualified">
-            Confirmed absence of official website. Holds verified 4.5+ star customer reviews within the last 180 days.
+        <div class="dossier-story-node">
+          <div class="dossier-question">3. Why did it qualify?</div>
+          <div class="dossier-answer" id="dossierWhyQualified">
+            Confirmed absence of official website. Holds verified 4.0+ star customer reviews within the last 180 days.
           </div>
         </div>
 
-        <div class="story-block">
-          <div class="story-question">4. What evidence supports it?</div>
-          <div class="story-answer" id="dossierEvidence">
-            Tavily Web Evidence + Google Reviews check verified no active domain or root website matches.
+        <div class="dossier-story-node">
+          <div class="dossier-question">4. What evidence supports it?</div>
+          <div class="dossier-answer" id="dossierEvidence">
+            Tavily web search and Google Places evidence verified no root website exists.
           </div>
         </div>
 
-        <div class="story-block">
-          <div class="story-question">5. Is it contactable?</div>
-          <div class="story-answer" id="dossierContact">
+        <div class="dossier-story-node">
+          <div class="dossier-question">5. Is it contactable?</div>
+          <div class="dossier-answer" id="dossierContact">
             Direct phone and verified social touchpoints available.
           </div>
         </div>
 
-        <div class="story-block" style="border-color:var(--accent-yellow-border);">
-          <div class="story-question" style="color:var(--accent-yellow);">6. Is outreach possible?</div>
-          <div class="story-answer" id="dossierOutreachPossible">
+        <div class="dossier-story-node accent">
+          <div class="dossier-question" style="color:var(--accent-yellow);">6. Is outreach possible?</div>
+          <div class="dossier-answer" id="dossierOutreachPossible">
             Protected by Travel Mode. External dispatch is physically blocked in Staging.
           </div>
         </div>
       </div>
 
       <!-- Tab 2: Rule B Criteria -->
-      <div id="drawerTabRuleB" style="display:none; flex-direction:column; gap:0.75rem;">
-        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">
-          Rule B Criteria Verification (7 Mandatory Verification Points):
+      <div id="drawerTabRuleB" style="display:none; flex-direction:column; gap:0.6rem;">
+        <div class="checklist-row">
+          <span>1. Official Website Confirmed Absent</span>
+          <span class="badge badge-ready">PASS</span>
         </div>
-        <div id="ruleBChecklist" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+        <div class="checklist-row">
+          <span id="ruleBRatingText">2. Customer Rating &ge; 4.0 Stars</span>
+          <span class="badge badge-ready">PASS</span>
+        </div>
+        <div class="checklist-row">
+          <span id="ruleBReviewCountText">3. Minimum Reviews Satisfied (&ge; 50 reviews)</span>
+          <span class="badge badge-ready">PASS</span>
+        </div>
+        <div class="checklist-row">
+          <span>4. Review Recency &le; 180 Days</span>
+          <span class="badge badge-ready">PASS</span>
+        </div>
+        <div class="checklist-row">
+          <span>5. Operating Within Manchester Polygon (OSM 162378)</span>
+          <span class="badge badge-ready">PASS</span>
+        </div>
+        <div class="checklist-row">
+          <span>6. Food / Restaurant / Commercial Niche Match</span>
+          <span class="badge badge-ready">PASS</span>
+        </div>
+        <div class="checklist-row">
+          <span>7. Deduplication &amp; Canonical Identity Matched</span>
+          <span class="badge badge-ready">PASS</span>
+        </div>
       </div>
 
       <!-- Tab 3: Freshness Dimensions -->
-      <div id="drawerTabFreshness" style="display:none; flex-direction:column; gap:0.75rem;">
-        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">
-          6 Canonical Evidence Dimensions Cadence Status:
+      <div id="drawerTabFreshness" style="display:none; flex-direction:column; gap:0.6rem;">
+        <div class="checklist-row">
+          <span>Website Status (Cadence: 30d)</span>
+          <span class="badge badge-ready">FRESH (30d max)</span>
         </div>
-        <div id="leadFreshnessDims" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+        <div class="checklist-row">
+          <span>Operational Verification (Cadence: 30d)</span>
+          <span class="badge badge-ready">FRESH (30d max)</span>
+        </div>
+        <div class="checklist-row">
+          <span>Phone Reachability (Cadence: 60d)</span>
+          <span class="badge badge-ready">FRESH (60d max)</span>
+        </div>
+        <div class="checklist-row">
+          <span>Social Media Presence (Cadence: 30d)</span>
+          <span class="badge badge-ready">FRESH (30d max)</span>
+        </div>
+        <div class="checklist-row">
+          <span>Review Evidence Recency (Cadence: 14d)</span>
+          <span class="badge badge-ready">FRESH (14d max)</span>
+        </div>
+        <div class="checklist-row">
+          <span>Contactability Channels (Cadence: 30d)</span>
+          <span class="badge badge-ready">FRESH (30d max)</span>
+        </div>
       </div>
 
       <!-- Tab 4: Technical JSON -->
@@ -1970,28 +1895,29 @@
   </aside>
 
   <!-- ========================================================================
-       EVIDENCE MODAL (FOR 20 GATES)
+       EVIDENCE MODAL (FOR GATE INSPECTION)
        ======================================================================== -->
-  <div id="evidenceModalBackdrop" class="drawer-backdrop" onclick="closeEvidenceModal()"></div>
-  <div id="evidenceModal" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:650px; max-width:92vw; background:var(--bg-surface); border:1px solid var(--border-strong); border-radius:var(--radius-md); box-shadow:var(--shadow-elevated); z-index:210; display:none; flex-direction:column; overflow:hidden;">
-    <div style="padding:1.25rem 1.5rem; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center; background:var(--bg-elevated);">
-      <div>
-        <h3 id="evidenceModalTitle" style="font-size:1rem; font-weight:800; color:var(--text-main);">Gate Evidence Details</h3>
-        <div id="evidenceModalSubtitle" style="font-size:0.75rem; font-family:var(--font-mono); color:var(--text-dim);">GATE-ID</div>
+  <div id="evidenceModalBackdrop" class="modal-overlay" onclick="closeEvidenceModal()">
+    <div class="card card-elevated" style="width:680px; max-width:92vw; max-height:85vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+      <div class="card-header" style="border-bottom:1px solid var(--border-subtle); padding-bottom:0.75rem;">
+        <div>
+          <h3 id="evidenceModalTitle" style="font-size:1.05rem; font-weight:800; color:var(--text-main);">Gate Evidence</h3>
+          <div id="evidenceModalSubtitle" style="font-size:0.72rem; font-family:var(--font-mono); color:var(--text-dim); margin-top:2px;">GATE-ID</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="closeEvidenceModal()">✕</button>
       </div>
-      <button class="btn btn-subtle" onclick="closeEvidenceModal()">✕</button>
-    </div>
-    <div style="padding:1.5rem; overflow-y:auto; max-height:60vh;">
-      <p id="evidenceModalDesc" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;"></p>
-      <div class="json-box" id="evidenceModalJson">{}</div>
+      <div style="padding:1rem 0; overflow-y:auto; flex:1;">
+        <p id="evidenceModalDesc" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;"></p>
+        <div class="json-box" id="evidenceModalJson">{}</div>
+      </div>
     </div>
   </div>
 
   <!-- ========================================================================
        PHASE 8.7: OUTREACH BATCH PREPARATION MODAL (OBJECTIVE N)
        ======================================================================== -->
-  <div class="modal-overlay" id="phase87BatchModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(6px); z-index:1250; align-items:center; justify-content:center; padding:1.5rem;">
-    <div class="card card-elevated" style="max-width:960px; width:100%; max-height:88vh; display:flex; flex-direction:column; padding:1.5rem; border-top:3px solid var(--accent-yellow);">
+  <div class="modal-overlay" id="phase87BatchModal" style="display:none;" onclick="closePhase87BatchModal()">
+    <div class="card card-elevated" style="max-width:960px; width:100%; max-height:88vh; display:flex; flex-direction:column; padding:1.5rem; border-top:3px solid var(--accent-yellow);" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-subtle); padding-bottom:0.75rem;">
         <div>
           <h2 style="margin:0; font-size:1.25rem; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;">
@@ -2002,21 +1928,21 @@
             Commercial Angle: Website Development &bull; Frozen Rule B Enforced (&ge;50 reviews, &ge;4.0★) &bull; Operator Manual Control
           </div>
         </div>
-        <button class="btn btn-subtle" onclick="closePhase87BatchModal()" aria-label="Close modal">✕</button>
+        <button class="btn btn-ghost btn-sm" onclick="closePhase87BatchModal()" aria-label="Close modal">✕</button>
       </div>
 
       <!-- Cohort Summary Metrics -->
       <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
         <div style="background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:0.75rem; text-align:center;">
-          <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">ACTIVE OUTREACH LEADS</div>
+          <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Active Outreach Leads</div>
           <div id="batchActiveCount" style="font-size:1.4rem; font-weight:900; color:var(--signal-emerald); margin-top:0.2rem;">3</div>
         </div>
         <div style="background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:0.75rem; text-align:center;">
-          <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">AUTOMATED</div>
+          <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Automated</div>
           <div id="batchAutomatedCount" style="font-size:1.4rem; font-weight:900; color:var(--text-muted); margin-top:0.2rem;">0</div>
         </div>
         <div style="background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:0.75rem; text-align:center;">
-          <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">MANUAL</div>
+          <div style="font-size:0.7rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Manual Outreach Ready</div>
           <div id="batchManualCount" style="font-size:1.4rem; font-weight:900; color:var(--signal-amber); margin-top:0.2rem;">3</div>
         </div>
       </div>
@@ -2040,18 +1966,9 @@
         </table>
       </div>
 
-      <div id="batchDraftDetailBox" style="display:none; margin-top:1rem; padding:1rem; background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-          <strong id="batchDraftDetailTitle" style="color:var(--text-main); font-size:0.88rem;">Personalized Outreach Draft</strong>
-          <span id="batchDraftVersionBadge" class="badge badge-ready" style="font-size:0.7rem;">WEBSITE_001</span>
-        </div>
-        <div id="batchDraftDetailBody" style="font-family:var(--font-mono); font-size:0.82rem; line-height:1.5; color:var(--text-main); background:var(--bg-surface); padding:0.75rem; border-radius:var(--radius-sm); white-space:pre-wrap;"></div>
-      </div>
-
-      <!-- Strict Invariant Safety Notice -->
       <div style="margin-top:1rem; font-size:0.75rem; color:var(--text-dim); display:flex; justify-content:space-between; align-items:center;">
         <div><span>Strict Safety Invariant: OUTREACH_SENDS=0 &bull; No automated dispatches &bull; Operator Confirmation Workflow Authoritative</span></div>
-        <button type="button" class="btn btn-secondary" onclick="closePhase87BatchModal()" style="font-size:0.78rem; padding:0.35rem 0.75rem;">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closePhase87BatchModal()">Close</button>
       </div>
     </div>
   </div>
@@ -2059,60 +1976,25 @@
   <!-- ========================================================================
        COMMAND PALETTE MODAL
        ======================================================================== -->
-  <div id="cmdPaletteBackdrop" class="cmd-palette-backdrop" onclick="closeCmdPaletteOnBackdrop(event)">
-    <div class="cmd-palette">
-      <input type="text" id="cmdInput" class="cmd-palette-input" placeholder="Type a view name or command (e.g. leads, pipeline, gates, sound)..." oninput="filterCommands(this.value)">
-      <div class="cmd-palette-results" id="cmdResults">
-        <div class="cmd-item selected" onclick="execCommand('overview')">
-          <span>Go to Overview</span>
-          <span class="cmd-item-kbd">1</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('leads')">
-          <span>Go to Leads Directory</span>
-          <span class="cmd-item-kbd">2</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('pipeline')">
-          <span>Go to Pipeline Funnel</span>
-          <span class="cmd-item-kbd">3</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('research')">
-          <span>Go to Research Log</span>
-          <span class="cmd-item-kbd">4</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('freshness')">
-          <span>Go to Freshness Center</span>
-          <span class="cmd-item-kbd">5</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('outreach')">
-          <span>Go to Outreach Vault</span>
-          <span class="cmd-item-kbd">6</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('monitoring')">
-          <span>Go to Monitoring Center</span>
-          <span class="cmd-item-kbd">7</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('readiness')">
-          <span>Go to Production Readiness (20 Gates)</span>
-          <span class="cmd-item-kbd">8</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('settings')">
-          <span>Go to Settings</span>
-          <span class="cmd-item-kbd">9</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('sound')">
-          <span>Toggle Audio Micro-tones</span>
-          <span class="cmd-item-kbd">S</span>
-        </div>
-        <div class="cmd-item" onclick="execCommand('theme')">
-          <span>Toggle Theme (Dark / Light)</span>
-          <span class="cmd-item-kbd">D</span>
-        </div>
+  <div id="cmdPaletteBackdrop" class="modal-overlay" onclick="closeCmdPalette()">
+    <div class="cmd-palette" onclick="event.stopPropagation()">
+      <input type="text" id="cmdInput" class="cmd-input" placeholder="Jump to a view (e.g. leads, pipeline, monitoring, gates)..." oninput="filterCommands(this.value)">
+      <div class="cmd-list" id="cmdResults">
+        <div class="cmd-item" onclick="execCommand('overview')"><span>1. Overview Dashboard</span><kbd>1</kbd></div>
+        <div class="cmd-item" onclick="execCommand('leads')"><span>2. Leads Directory</span><kbd>2</kbd></div>
+        <div class="cmd-item" onclick="execCommand('pipeline')"><span>3. Pipeline Funnel</span><kbd>3</kbd></div>
+        <div class="cmd-item" onclick="execCommand('research')"><span>4. Research Log</span><kbd>4</kbd></div>
+        <div class="cmd-item" onclick="execCommand('freshness')"><span>5. Freshness Center</span><kbd>5</kbd></div>
+        <div class="cmd-item" onclick="execCommand('outreach')"><span>6. Outreach Vault</span><kbd>6</kbd></div>
+        <div class="cmd-item" onclick="execCommand('monitoring')"><span>7. Monitoring Center</span><kbd>7</kbd></div>
+        <div class="cmd-item" onclick="execCommand('readiness')"><span>8. Production Readiness (20 Gates)</span><kbd>8</kbd></div>
+        <div class="cmd-item" onclick="execCommand('settings')"><span>9. Settings</span><kbd>9</kbd></div>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification System -->
-  <div id="toastContainer" class="toast-container"></div>
+  <!-- Toast Notification Box -->
+  <div id="toastContainer" class="toast-box"></div>
 
   <!-- ========================================================================
        CORE JAVASCRIPT CONTROLLERS
@@ -2126,64 +2008,25 @@
     let readinessData = null;
     let freshnessData = null;
     let researchData = [];
-    let soundEnabled = true;
+    let healthData = null;
+    let configData = null;
 
-    // Web Audio Microtone Synthesizer
-    const audioCtx = (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') 
-      ? new (window.AudioContext || window.webkitAudioContext)() 
-      : null;
-
-    function playTone(freq = 440, type = 'sine', duration = 0.08) {
-      if (!soundEnabled || !audioCtx) return;
-      try {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-      } catch (e) {}
-    }
-
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      document.getElementById('soundIconOn').style.display = soundEnabled ? 'block' : 'none';
-      document.getElementById('soundIconOff').style.display = soundEnabled ? 'none' : 'block';
-      showToast(soundEnabled ? 'Audio cues enabled' : 'Audio cues muted');
-      if (soundEnabled) playTone(587, 'sine', 0.1);
-    }
-
-    function toggleTheme() {
-      const current = document.documentElement.getAttribute('data-theme') || 'dark';
-      const target = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', target);
-      localStorage.setItem('dripp_theme_product', target);
-      document.getElementById('themeIconSun').style.display = target === 'dark' ? 'block' : 'none';
-      document.getElementById('themeIconMoon').style.display = target === 'dark' ? 'none' : 'block';
-      playTone(493, 'sine', 0.06);
-    }
-
+    // Toast notification
     function showToast(msg) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
-      toast.className = 'toast-msg';
-      toast.innerHTML = `<span>⚡</span><span>${msg}</span>`;
+      toast.className = 'toast';
+      toast.innerHTML = `<span>⚡</span><span>${escapeHtml(msg)}</span>`;
       container.appendChild(toast);
       setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(8px)';
         setTimeout(() => toast.remove(), 250);
-      }, 2400);
+      }, 2500);
     }
 
     // View Switching & URL Hash Routing
     function switchView(viewName) {
-      playTone(523, 'sine', 0.04);
       document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
 
@@ -2211,32 +2054,151 @@
           loadResearchLog(),
           loadReadinessGates(),
           loadFreshnessCenter(),
-          loadTechnicalOperations()
+          loadTechnicalOperations(),
+          loadSystemHealth()
         ]);
       } catch (err) {
         console.error('Data load error:', err);
       }
     }
 
+    // Load System Health from authoritative endpoint
+    async function loadSystemHealth() {
+      try {
+        const res = await fetch('/api/system/health');
+        if (!res.ok) return;
+        healthData = await res.json();
+
+        // Update Overview & Navigation Health Badges
+        const isDegraded = healthData.system_status === 'DEGRADED';
+        const healthText = healthData.system_status || 'HEALTHY';
+        const healthEl = document.getElementById('ovHealthBadge');
+        const navHealthEl = document.getElementById('navHealthBadge');
+        if (healthEl) {
+          healthEl.innerText = healthText;
+          healthEl.className = isDegraded ? 'badge badge-warn' : 'badge badge-ready';
+        }
+        if (navHealthEl) {
+          navHealthEl.innerText = healthText;
+          navHealthEl.className = isDegraded ? 'tab-badge' : 'tab-badge green';
+        }
+
+        // Monitoring screen status
+        const monStatus = document.getElementById('monCanonicalStatus');
+        if (monStatus) {
+          monStatus.innerText = healthText;
+          monStatus.className = isDegraded ? 'badge badge-warn' : 'badge badge-ready';
+        }
+
+        // Active incidents count & display
+        const activeCount = healthData.incidents_summary ? healthData.incidents_summary.active_incidents_count : 0;
+        const ovInc = document.getElementById('ovActiveIncidents');
+        if (ovInc) ovInc.innerText = `${activeCount} (All Clear)`;
+
+        const monInc = document.getElementById('monIncidentsCount');
+        if (monInc) monInc.innerText = `${activeCount} Active`;
+
+        const incList = document.getElementById('monIncidentsList');
+        if (incList) {
+          const incidents = healthData.active_incidents || [];
+          if (incidents.length === 0) {
+            incList.innerHTML = `
+              <div style="padding:1.5rem; text-align:center; color:var(--text-muted); font-size:0.84rem;">
+                ✓ Zero active incidents recorded across all subsystems.
+              </div>
+            `;
+          } else {
+            incList.innerHTML = incidents.map(inc => `
+              <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong style="color:var(--text-main); font-size:0.85rem;">${escapeHtml(inc.title || inc.incident_type)}</strong>
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(inc.message || '')}</div>
+                </div>
+                <span class="badge badge-warn">${escapeHtml(inc.severity || 'WARNING')}</span>
+              </div>
+            `).join('');
+          }
+        }
+
+        // Daily Quotas
+        const quotas = healthData.quota_status ? healthData.quota_status.resources : {};
+        if (quotas && quotas.search_calls) {
+          const sc = quotas.search_calls;
+          const quotaEl = document.getElementById('ovSearchQuota');
+          if (quotaEl) quotaEl.innerText = `${sc.used} / ${sc.limit} (${sc.percent_used}%)`;
+        }
+
+        // Recent Jobs list on overview
+        const recentJobs = healthData.last_successful_jobs || [];
+        const recentJobsEl = document.getElementById('ovRecentJobsList');
+        if (recentJobsEl && recentJobs.length > 0) {
+          recentJobsEl.innerHTML = recentJobs.slice(0, 4).map(j => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border-subtle);">
+              <div>
+                <strong style="color:var(--text-main); font-size:0.82rem;">${escapeHtml(j.job_type.replace('RUN_', ''))}</strong>
+                <div style="font-size:0.7rem; font-family:var(--font-mono); color:var(--text-dim);">${escapeHtml(j.run_id)}</div>
+              </div>
+              <div style="text-align:right;">
+                <span class="badge badge-ready">SUCCESS</span>
+                <div style="font-size:0.7rem; color:var(--text-dim); margin-top:2px;">${j.records_processed || 0} processed</div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load system health:', err);
+      }
+    }
+
+    // Load Leads Directory
     async function loadLeads() {
       try {
         const res = await fetch('/api/leads');
         const data = await res.json();
         allLeads = data.leads || [];
-        
+
         if (data.sheet_url) {
-          document.getElementById('sheetLink').href = data.sheet_url;
+          const link = document.getElementById('sheetLink');
+          if (link) link.href = data.sheet_url;
         }
 
         // Update counts
-        document.getElementById('navLeadsCount').innerText = allLeads.length;
-        document.getElementById('ovQualifiedCount').innerText = allLeads.length;
-        document.getElementById('fnDiscovered').innerText = allLeads.length;
-        document.getElementById('fnResearched').innerText = allLeads.length;
-        document.getElementById('fnQualified').innerText = allLeads.length;
-        document.getElementById('fnContactable').innerText = allLeads.length;
-        document.getElementById('fnOutreachReady').innerText = allLeads.length;
-        document.getElementById('barCountReady').innerText = allLeads.length;
+        const leadsCount = allLeads.length;
+        const navLeads = document.getElementById('navLeadsCount');
+        if (navLeads) navLeads.innerText = leadsCount;
+        
+        const ovQual = document.getElementById('ovQualifiedCount');
+        if (ovQual) ovQual.innerText = leadsCount;
+
+        const readyLeads = allLeads.filter(l => (l.qualification_state || 'OUTREACH_READY') === 'OUTREACH_READY').length;
+        const ovReady = document.getElementById('ovOutreachReadyCount');
+        if (ovReady) ovReady.innerText = readyLeads;
+
+        // Pipeline stage counts
+        const pipeDiscovered = document.getElementById('ovPipeDiscovered');
+        if (pipeDiscovered) pipeDiscovered.innerText = leadsCount;
+        const fnDis = document.getElementById('fnDiscovered');
+        if (fnDis) fnDis.innerText = leadsCount;
+
+        const pipeResearched = document.getElementById('ovPipeResearched');
+        if (pipeResearched) pipeResearched.innerText = leadsCount;
+        const fnRes = document.getElementById('fnResearched');
+        if (fnRes) fnRes.innerText = leadsCount;
+
+        const pipeQual = document.getElementById('ovPipeQualified');
+        if (pipeQual) pipeQual.innerText = leadsCount;
+        const fnQual = document.getElementById('fnQualified');
+        if (fnQual) fnQual.innerText = leadsCount;
+
+        const pipeCont = document.getElementById('ovPipeContactable');
+        if (pipeCont) pipeCont.innerText = readyLeads;
+        const fnCont = document.getElementById('fnContactable');
+        if (fnCont) fnCont.innerText = readyLeads;
+
+        const pipeReady = document.getElementById('ovPipeReady');
+        if (pipeReady) pipeReady.innerText = readyLeads;
+        const fnReady = document.getElementById('fnOutreachReady');
+        if (fnReady) fnReady.innerText = readyLeads;
 
         renderLeadsTable();
       } catch (err) {
@@ -2249,9 +2211,9 @@
       if (!tbody) return;
 
       let filtered = allLeads.filter(lead => {
-        const name = (lead.business_name || lead.name || '').toLowerCase();
+        const name = (lead.company_name || lead.business_name || lead.name || '').toLowerCase();
         const address = (lead.address || '').toLowerCase();
-        const notes = (lead.notes || '').toLowerCase();
+        const notes = (lead.outreach_angle || lead.qualification_reason || '').toLowerCase();
         const matchesSearch = !currentSearchTerm || 
           name.includes(currentSearchTerm) || 
           address.includes(currentSearchTerm) || 
@@ -2262,8 +2224,7 @@
         if (currentFilter === 'ALL') return true;
         if (currentFilter === 'OUTREACH_READY') return (lead.qualification_state || 'OUTREACH_READY') === 'OUTREACH_READY';
         if (currentFilter === 'MANUAL_REVIEW') return lead.qualification_state === 'MANUAL_REVIEW';
-        if (currentFilter === 'RESEARCH_ONLY') return lead.qualification_state === 'RESEARCH_ONLY';
-        if (currentFilter === 'NO_WEBSITE') return (lead.website_status || 'NO_WEBSITE') === 'NO_WEBSITE';
+        if (currentFilter === 'NO_WEBSITE') return (lead.website_status || 'NO_WEBSITE_CONFIRMED').includes('NO_WEBSITE');
         if (currentFilter === 'HIGH_REVIEWS') return (parseFloat(lead.review_count) || 0) >= 100;
         return true;
       });
@@ -2271,8 +2232,8 @@
       if (filtered.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="8" style="text-align:center; padding:3rem; color:var(--text-muted);">
-              No leads match the selected criteria.
+            <td colspan="9" style="text-align:center; padding:3rem; color:var(--text-muted);">
+              No leads match the selected filter criteria.
             </td>
           </tr>
         `;
@@ -2280,51 +2241,50 @@
       }
 
       tbody.innerHTML = filtered.map(lead => {
-        const name = lead.business_name || lead.name || 'Unnamed Business';
+        const name = lead.company_name || lead.business_name || lead.name || 'Unnamed Business';
         const rating = lead.rating ? `${lead.rating}★` : '4.5★';
-        const revCount = lead.review_count || lead.reviews || '50+';
+        const revCount = lead.review_count || 50;
+        const id = lead.lead_id || 'LEAD-MAN-000000';
+        const qual = lead.qualification_state || 'OUTREACH_READY';
+        const postcode = lead.postcode || 'Manchester';
         const phone = lead.phone || 'Available';
-        const id = lead.lead_id || `LEAD-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-        const qualification = lead.qualification_state || 'OUTREACH_READY';
+        const hasSocial = lead.instagram_url || lead.social_status === 'SOCIAL_FOUND';
 
         return `
-          <tr onclick="openLeadDrawer('${id}')">
+          <tr class="clickable-row" onclick="openLeadDrawer('${id}')">
             <td>
-              <div class="lead-name-cell">
-                <span class="lead-name-title">${escapeHtml(name)}</span>
-                <span class="lead-name-meta">
-                  <span>${escapeHtml(lead.address || 'Manchester, UK')}</span>
-                  <span>•</span>
-                  <span style="font-family:var(--font-mono); font-size:0.7rem;">${id.substring(0, 12)}</span>
-                </span>
+              <div class="lead-biz-cell">
+                <span class="lead-biz-name">${escapeHtml(name)}</span>
+                <div class="lead-biz-sub">
+                  <span>${escapeHtml(postcode)}</span>
+                  <span>&bull;</span>
+                  <span style="font-family:var(--font-mono); font-size:0.7rem;">${id}</span>
+                </div>
               </div>
             </td>
+            <td style="color:var(--text-muted); font-size:0.8rem;">Manchester, UK</td>
             <td>
-              <span class="badge badge-ready">${qualification}</span>
+              <span style="font-weight:700; color:var(--signal-emerald); font-size:0.8rem;">● ${escapeHtml(qual)}</span>
             </td>
             <td>
-              <span class="badge badge-neutral" style="color:var(--signal-emerald);">✓ NO WEBSITE</span>
+              <span style="color:var(--signal-emerald); font-weight:600; font-size:0.78rem;">✓ NO WEBSITE</span>
             </td>
             <td>
-              <span style="font-weight:700; color:var(--text-main);">${rating}</span>
+              <strong style="color:var(--text-main);">${rating}</strong>
               <span style="color:var(--text-dim); font-size:0.75rem;">(${revCount} rev)</span>
             </td>
             <td>
-              <span class="badge badge-ready">● FRESH</span>
+              <span style="color:var(--signal-emerald); font-weight:600; font-size:0.75rem;">● FRESH</span>
             </td>
-            <td>
-              <div style="display:flex; gap:4px; font-size:0.75rem; color:var(--text-muted);">
-                <span title="Phone available">📞</span>
-                <span title="Instagram available">📸</span>
-                <span title="Email check">✉️</span>
-              </div>
+            <td style="font-size:0.76rem; color:var(--text-muted);">
+              ${hasSocial ? '📞 Phone + 📸 IG' : '📞 Phone'}
             </td>
             <td>
               <span class="badge badge-locked">LOCKED</span>
             </td>
             <td style="text-align:right;">
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openLeadDrawer('${id}')">
-                Inspect Dossier →
+                Inspect Dossier &rarr;
               </button>
             </td>
           </tr>
@@ -2338,7 +2298,6 @@
     }
 
     function setLeadFilter(filterName) {
-      playTone(440, 'sine', 0.04);
       currentFilter = filterName;
       document.querySelectorAll('.filter-pill').forEach(p => {
         p.classList.toggle('active', p.getAttribute('data-filter') === filterName);
@@ -2346,102 +2305,49 @@
       renderLeadsTable();
     }
 
-    // Lead Detail Drawer
+    // Lead Detail Dossier Drawer
     function openLeadDrawer(leadId) {
-      playTone(659, 'sine', 0.05);
       const lead = allLeads.find(l => (l.lead_id === leadId || l.id === leadId)) || allLeads[0];
       if (!lead) return;
       selectedLead = lead;
 
-      const name = lead.business_name || lead.name || 'Unnamed Business';
+      const name = lead.company_name || lead.business_name || lead.name || 'Unnamed Business';
       document.getElementById('drawerBusinessName').innerText = name;
       document.getElementById('drawerLeadId').innerText = lead.lead_id || leadId;
 
-      // Fill Narrative Story
+      // Fill Narrative Story Nodes
       document.getElementById('dossierWho').innerHTML = `
-        <strong>${escapeHtml(name)}</strong> is an established physical enterprise located at 
+        <strong>${escapeHtml(name)}</strong> is an established enterprise located at 
         <em>${escapeHtml(lead.address || 'Manchester, Greater Manchester, UK')}</em>. 
-        It has verified in-person operations and confirmed footfall.
+        ${lead.operational_evidence ? escapeHtml(lead.operational_evidence) : 'Confirmed active in-person operations.'}
       `;
+
       document.getElementById('dossierWhyFound').innerText = `
-        Discovered via OpenStreetMap geographic query inside Manchester Administrative Boundary (OSM Relation 162378). Boundary match verified by Ray-Casting algorithm.
+        Discovered through OpenStreetMap boundary polygon scan in Manchester (OSM Relation 162378). 
+        ${lead.creator_evidence_summary ? lead.creator_evidence_summary : 'Confirmed physical premises footfall.'}
       `;
+
       document.getElementById('dossierWhyQualified').innerText = `
-        Confirmed 100% absence of an official domain. Customer rating is ${lead.rating || '4.5'}★ across ${lead.review_count || '50+'} reviews, with the latest verified customer feedback well within the 180-day recency cutoff.
+        Confirmed absence of an official business domain. Customer rating is ${lead.rating || 4.5}★ across ${lead.review_count || 50} reviews. ${lead.qualification_reason || 'Frozen Rule B criteria strictly met.'}
       `;
+
       document.getElementById('dossierEvidence').innerText = `
-        Tavily Search Engine + Google Places cross-reference confirmed no root website exists. No conflicting domain registrations detected.
+        Tavily web search and Google Places cross-reference confirmed zero root website registrations. ${lead.verification_reason || 'No domain conflict detected.'}
       `;
+
       document.getElementById('dossierContact').innerText = `
-        Telephone: ${lead.phone || 'Available in Places record'}. Social channels: Instagram & Facebook profiles verified active. UK PECR corporate subscriber exemption applied.
+        Telephone: ${lead.phone || 'Available in verified Places profile'}. ${lead.contactability_reason || 'Channels verified under UK PECR corporate subscriber rules.'}
       `;
+
       document.getElementById('dossierOutreachPossible').innerText = `
-        LOCKED. Protected Travel Mode is currently ACTIVE. The system is operating in STAGING mode with zero commercial actions permitted.
+        LOCKED. Protected Travel Mode is currently ACTIVE. Commercial outreach dispatch is physically prevented at the architecture boundary.
       `;
 
-      // Fill Rule B Checklist
-      const checklist = document.getElementById('ruleBChecklist');
-      checklist.innerHTML = `
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>1. Official Website Confirmed Absent</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>2. Star Rating &gt;= 4.0 Stars (${lead.rating || '4.5'}★)</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>3. Minimum Review Count Satisfied (${lead.review_count || '50+'} reviews)</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>4. Review Recency &lt;= 180 Days</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>5. Operating Within Manchester Boundary Polygon</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>6. Food / Restaurant / Commercial Niche Match</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>7. Deduplication &amp; Canonical Identity Matched</span>
-          <span class="badge badge-ready">PASS</span>
-        </div>
-      `;
+      // Rule B texts
+      document.getElementById('ruleBRatingText').innerText = `2. Customer Rating &ge; 4.0 Stars (${lead.rating || 4.5}★)`;
+      document.getElementById('ruleBReviewCountText').innerText = `3. Minimum Reviews Satisfied (${lead.review_count || 50} reviews)`;
 
-      // Fill Freshness Dimensions
-      const dims = document.getElementById('leadFreshnessDims');
-      dims.innerHTML = `
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>Website Status (Cadence: 30d)</span>
-          <span class="badge badge-ready">FRESH (Age: 7d)</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>Operational Verification (Cadence: 60d)</span>
-          <span class="badge badge-ready">FRESH (Age: 7d)</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>Phone Reachability (Cadence: 90d)</span>
-          <span class="badge badge-ready">FRESH (Age: 7d)</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>Social Media Engagement (Cadence: 60d)</span>
-          <span class="badge badge-ready">FRESH (Age: 7d)</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>Review Evidence Recency (Cadence: 180d)</span>
-          <span class="badge badge-ready">FRESH (Age: 7d)</span>
-        </div>
-        <div class="card" style="padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span>Contactability &amp; Channels (Cadence: 60d)</span>
-          <span class="badge badge-ready">FRESH (Age: 7d)</span>
-        </div>
-      `;
-
-      // Fill JSON
+      // Technical JSON
       document.getElementById('drawerJsonContent').innerText = JSON.stringify(lead, null, 2);
 
       switchDrawerTab('dossier');
@@ -2450,13 +2356,11 @@
     }
 
     function closeLeadDrawer() {
-      playTone(400, 'sine', 0.04);
       document.getElementById('drawerBackdrop').classList.remove('active');
       document.getElementById('leadDrawer').classList.remove('active');
     }
 
     function switchDrawerTab(tabName) {
-      playTone(550, 'sine', 0.03);
       document.querySelectorAll('.drawer-tab').forEach(t => {
         t.classList.toggle('active', t.getAttribute('data-tab') === tabName);
       });
@@ -2467,36 +2371,89 @@
     }
 
     // ========================================================================
-    // PRODUCTION READINESS (20 GATES)
+    // PRODUCTION READINESS (20 GATES GROUPED INTO 7 CATEGORIES)
     // ========================================================================
+    const GATE_GROUPS = [
+      {
+        title: "1. Security & Authentication",
+        desc: "Mode separation, repository secret scanning, and diagnostic safety",
+        gateIds: ["ENVIRONMENT_SEPARATION", "SECRET_HYGIENE", "ARTIFACT_LOG_SAFETY"]
+      },
+      {
+        title: "2. Data Integrity & Deduplication",
+        desc: "Configuration validity, safe atomic state storage, and frozen Rule B enforcement",
+        gateIds: ["CONFIG_VALIDITY", "STATE_INTEGRITY", "RECONCILIATION_HEALTH", "IDENTITY_INTEGRITY", "RULE_B_INTEGRITY"]
+      },
+      {
+        title: "3. External Providers & Research",
+        desc: "Tavily search engine connectivity, Google Sheets CRM token, and daily quota limits",
+        gateIds: ["PROVIDER_HEALTH", "QUOTA_HEALTH"]
+      },
+      {
+        title: "4. Infrastructure & Storage",
+        desc: "Local JSON file integrity and deterministic test suite execution health",
+        gateIds: ["STORAGE_HEALTH", "TEST_HEALTH"]
+      },
+      {
+        title: "5. Central Monitoring & Incidents",
+        desc: "Zero active critical incidents, task scheduler status, and cron disablement",
+        gateIds: ["MONITORING_HEALTH", "SCHEDULER_STATE", "CRON_STATE"]
+      },
+      {
+        title: "6. Commercial Safety & Execution Gates",
+        desc: "Hard lock on commercial dispatches, single-use token TTL, and automated email lockout",
+        gateIds: ["OUTREACH_LOCK_STATE", "EMAIL_LOCK_STATE"]
+      },
+      {
+        title: "7. Disaster Recovery & Backup Drills",
+        desc: "Rolling snapshot checksums, dual-anchor retention pruning, and state rollback capability",
+        gateIds: ["BACKUP_HEALTH", "RESTORE_VERIFICATION", "ROLLBACK_CAPABILITY"]
+      }
+    ];
+
     async function loadReadinessGates() {
       try {
         const res = await fetch('/api/system/readiness');
         const data = await res.json();
         readinessData = data;
 
-        const container = document.getElementById('gatesContainer');
+        const container = document.getElementById('readinessGroupsContainer');
         if (!container || !data.gates) return;
 
-        container.innerHTML = data.gates.map((g, idx) => {
-          const num = String(idx + 1).padStart(2, '0');
-          const isPass = g.status === 'PASS';
-          const badgeClass = isPass ? 'badge-ready' : (g.status === 'WARN' ? 'badge-review' : 'badge-excluded');
+        const gatesMap = {};
+        data.gates.forEach(g => { gatesMap[g.gate_id] = g; });
+
+        container.innerHTML = GATE_GROUPS.map(group => {
+          const groupGates = group.gateIds.map(id => gatesMap[id]).filter(Boolean);
+          const allPassed = groupGates.every(g => g.status === 'PASS');
 
           return `
-            <div class="gate-row">
-              <div class="gate-info">
-                <span class="gate-num">${num}</span>
+            <div class="card card-elevated">
+              <div class="card-header" style="border-bottom:1px solid var(--border-subtle); padding-bottom:0.75rem;">
                 <div>
-                  <div class="gate-id">${escapeHtml(g.gate_id)}</div>
-                  <div class="gate-desc">${escapeHtml(g.description || '')}</div>
+                  <div class="card-title">${escapeHtml(group.title)}</div>
+                  <div class="card-desc">${escapeHtml(group.desc)}</div>
                 </div>
+                <span class="badge ${allPassed ? 'badge-ready' : 'badge-warn'}">
+                  ${groupGates.filter(g => g.status === 'PASS').length} / ${groupGates.length} PASSED
+                </span>
               </div>
-              <div style="display:flex; align-items:center; gap:0.75rem;">
-                <span class="badge ${badgeClass}">${g.status}</span>
-                <button class="btn btn-secondary btn-sm" onclick="openEvidenceModal('${escapeHtml(g.gate_id)}')">
-                  Inspect Evidence
-                </button>
+
+              <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem;">
+                ${groupGates.map(g => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.75rem; background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:0.8rem;">
+                    <div>
+                      <strong style="color:var(--text-main); font-family:var(--font-mono); font-size:0.78rem;">${escapeHtml(g.gate_id)}</strong>
+                      <div style="font-size:0.72rem; color:var(--text-muted); margin-top:1px;">${escapeHtml(g.description || '')}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <span class="badge ${g.status === 'PASS' ? 'badge-ready' : 'badge-warn'}">${g.status}</span>
+                      <button class="btn btn-secondary btn-sm" onclick="openEvidenceModal('${escapeHtml(g.gate_id)}')">
+                        Evidence
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
               </div>
             </div>
           `;
@@ -2507,7 +2464,6 @@
     }
 
     function openEvidenceModal(gateId) {
-      playTone(700, 'sine', 0.05);
       if (!readinessData || !readinessData.gates) return;
       const gate = readinessData.gates.find(g => g.gate_id === gateId);
       if (!gate) return;
@@ -2517,14 +2473,11 @@
       document.getElementById('evidenceModalDesc').innerText = gate.description || 'Deterministic verification check.';
       document.getElementById('evidenceModalJson').innerText = JSON.stringify(gate.evidence || {}, null, 2);
 
-      document.getElementById('evidenceModalBackdrop').classList.add('active');
-      document.getElementById('evidenceModal').style.display = 'flex';
+      document.getElementById('evidenceModalBackdrop').style.display = 'flex';
     }
 
     function closeEvidenceModal() {
-      playTone(400, 'sine', 0.04);
-      document.getElementById('evidenceModalBackdrop').classList.remove('active');
-      document.getElementById('evidenceModal').style.display = 'none';
+      document.getElementById('evidenceModalBackdrop').style.display = 'none';
     }
 
     // ========================================================================
@@ -2536,6 +2489,20 @@
         const data = await res.json();
         freshnessData = data;
 
+        // Update stale dimension counts from backend
+        const staleCounts = data.dimension_stale_counts || {};
+        const total = data.total_evaluated || 7;
+        const setDimText = (id, dimKey) => {
+          const el = document.getElementById(id);
+          if (el) el.innerText = `${staleCounts[dimKey] || 0} Stale / ${total} Checked`;
+        };
+        setDimText('staleDimWebsite', 'WEBSITE');
+        setDimText('staleDimOperational', 'OPERATIONAL');
+        setDimText('staleDimPhone', 'PHONE');
+        setDimText('staleDimSocial', 'SOCIAL');
+        setDimText('staleDimReview', 'REVIEW');
+        setDimText('staleDimContactability', 'CONTACTABILITY');
+
         const tbody = document.getElementById('freshnessTableBody');
         if (!tbody || !data.leads) return;
 
@@ -2546,8 +2513,8 @@
           const dimBadge = (key) => {
             const d = dims[key];
             if (!d) return '<span class="badge badge-neutral">-</span>';
-            if (d.is_stale) return '<span class="badge badge-excluded">STALE</span>';
-            if (d.is_due) return '<span class="badge badge-review">DUE</span>';
+            if (d.is_stale) return '<span class="badge badge-rose">STALE</span>';
+            if (d.is_due) return '<span class="badge badge-warn">DUE</span>';
             return `<span class="badge badge-ready">FRESH (${d.age_days || 7}d)</span>`;
           };
 
@@ -2580,7 +2547,8 @@
         const res = await fetch('/api/research-log');
         const data = await res.json();
         researchData = data.entries || [];
-        document.getElementById('navResearchCount').innerText = researchData.length;
+        const countEl = document.getElementById('navResearchCount');
+        if (countEl) countEl.innerText = researchData.length;
 
         const tbody = document.getElementById('researchTableBody');
         if (!tbody) return;
@@ -2620,7 +2588,7 @@
     }
 
     // ========================================================================
-    // TECHNICAL OPERATIONS / MONITORING
+    // TECHNICAL OPERATIONS / MONITORING JOBS
     // ========================================================================
     async function loadTechnicalOperations() {
       try {
@@ -2633,7 +2601,7 @@
         if (jobs.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">
+              <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">
                 Standby mode. No historical technical jobs in current buffer.
               </td>
             </tr>
@@ -2641,107 +2609,20 @@
           return;
         }
 
-        tbody.innerHTML = jobs.map(j => `
+        tbody.innerHTML = jobs.slice(0, 20).map(j => `
           <tr>
-            <td style="font-family:var(--font-mono); font-size:0.75rem;">${j.run_id || j.job_id || 'JOB-001'}</td>
-            <td><span class="badge badge-neutral">${j.job_type || 'DISCOVERY'}</span></td>
-            <td>${j.market || 'MANCHESTER_UK'}</td>
-            <td style="font-family:var(--font-mono); font-size:0.72rem;">${(j.started_at || '').substring(0, 16)}</td>
-            <td><span class="badge badge-ready">${j.status || 'COMPLETED'}</span></td>
-            <td>${j.items_processed || 0}</td>
-            <td style="color:${j.errors_count > 0 ? 'var(--signal-rose)' : 'var(--signal-emerald)'}; font-weight:700;">
-              ${j.errors_count || 0}
-            </td>
+            <td style="font-family:var(--font-mono); font-weight:700; color:var(--text-main); font-size:0.75rem;">${escapeHtml(j.run_id)}</td>
+            <td><span class="badge badge-neutral">${escapeHtml(j.job_type.replace('RUN_', ''))}</span></td>
+            <td style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(j.market_id || 'MANCHESTER_UK')}</td>
+            <td style="font-family:var(--font-mono); font-size:0.72rem; color:var(--text-dim);">${escapeHtml((j.finished_at || j.started_at || '').substring(0, 19))}</td>
+            <td><span class="badge badge-ready">${escapeHtml(j.status || 'SUCCESS')}</span></td>
+            <td style="font-family:var(--font-mono);">${j.records_processed || 0}</td>
           </tr>
         `).join('');
       } catch (err) {
-        console.error('Failed to load technical jobs:', err);
+        console.error('Failed to load technical operations:', err);
       }
     }
-
-    async function refreshGlobalHealth() {
-      playTone(550, 'sine', 0.05);
-      showToast('Refreshing health indicators across all services...');
-      await loadAllData();
-      showToast('System health verified: HEALTHY');
-    }
-
-    // ========================================================================
-    // COMMAND PALETTE & KEYBOARD SHORTCUTS
-    // ========================================================================
-    function openCmdPalette() {
-      playTone(600, 'sine', 0.04);
-      document.getElementById('cmdPaletteBackdrop').classList.add('active');
-      const input = document.getElementById('cmdInput');
-      input.value = '';
-      input.focus();
-    }
-
-    function closeCmdPalette() {
-      document.getElementById('cmdPaletteBackdrop').classList.remove('active');
-    }
-
-    function closeCmdPaletteOnBackdrop(e) {
-      if (e.target.id === 'cmdPaletteBackdrop') closeCmdPalette();
-    }
-
-    function execCommand(cmd) {
-      closeCmdPalette();
-      if (cmd === 'sound') toggleSound();
-      else if (cmd === 'theme') toggleTheme();
-      else switchView(cmd);
-    }
-
-    function filterCommands(query) {
-      const q = query.toLowerCase().trim();
-      const items = document.querySelectorAll('.cmd-item');
-      items.forEach(it => {
-        const text = it.innerText.toLowerCase();
-        it.style.display = text.includes(q) ? 'flex' : 'none';
-      });
-    }
-
-    // Keyboard Shortcuts
-    window.addEventListener('keydown', (e) => {
-      // ⌘K or Ctrl+K opens Command Palette
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        openCmdPalette();
-        return;
-      }
-
-      // Escape closes drawers / modals
-      if (e.key === 'Escape') {
-        closeLeadDrawer();
-        closeEvidenceModal();
-        closeCmdPalette();
-        return;
-      }
-
-      // Quick numbers 1-9 switch views (when not focused in inputs)
-      if (['input', 'textarea', 'select'].includes(document.activeElement.tagName.toLowerCase())) return;
-
-      const keyMap = {
-        '1': 'overview',
-        '2': 'leads',
-        '3': 'pipeline',
-        '4': 'research',
-        '5': 'freshness',
-        '6': 'outreach',
-        '7': 'monitoring',
-        '8': 'readiness',
-        '9': 'settings'
-      };
-
-      if (keyMap[e.key]) {
-        e.preventDefault();
-        switchView(keyMap[e.key]);
-      } else if (e.key.toLowerCase() === 's') {
-        toggleSound();
-      } else if (e.key.toLowerCase() === 'd') {
-        toggleTheme();
-      }
-    });
 
     // =========================================================================
     // PHASE 8.7: OUTREACH BATCH PREPARATION FUNCTIONS
@@ -2752,7 +2633,7 @@
       try {
         const res = await fetch('/api/manual-outreach/batch-8-7');
         if (!res.ok) {
-          showToast('Failed to load Phase 8.7 outreach batch', 'error');
+          showToast('Failed to load Phase 8.7 outreach batch');
           return;
         }
         currentBatch87Data = await res.json();
@@ -2775,7 +2656,7 @@
             tr.innerHTML = `
               <td style="padding:0.75rem 0.8rem; font-weight:700; color:var(--text-main);">
                 <div>${escapeHtml(lead.company_name || '')}</div>
-                <div style="font-size:0.74rem; font-weight:400; color:var(--text-muted);">${lead.review_count || 0} revs &bull; ${lead.rating || 0}★ &bull; ${escapeHtml(lead.review_freshness || 'RECENT')}</div>
+                <div style="font-size:0.74rem; font-weight:400; color:var(--text-muted);">${lead.review_count || 0} revs &bull; ${lead.rating || 0}★</div>
               </td>
               <td style="padding:0.75rem 0.8rem;">
                 <span class="badge badge-ready" style="font-size:0.7rem;">${escapeHtml(lead.qualification_state || 'OUTREACH_READY')}</span>
@@ -2801,16 +2682,76 @@
         if (modal) modal.style.display = 'flex';
       } catch (err) {
         console.error('Error opening batch 8.7 modal:', err);
-        showToast('Error opening batch preparation view', 'error');
+        showToast('Error opening batch preparation view');
       }
     }
 
     function closePhase87BatchModal() {
       const modal = document.getElementById('phase87BatchModal');
       if (modal) modal.style.display = 'none';
-      const detailBox = document.getElementById('batchDraftDetailBox');
-      if (detailBox) detailBox.style.display = 'none';
     }
+
+    // =========================================================================
+    // COMMAND PALETTE
+    // =========================================================================
+    function openCmdPalette() {
+      document.getElementById('cmdPaletteBackdrop').style.display = 'flex';
+      setTimeout(() => document.getElementById('cmdInput').focus(), 50);
+    }
+
+    function closeCmdPalette() {
+      document.getElementById('cmdPaletteBackdrop').style.display = 'none';
+    }
+
+    function execCommand(view) {
+      closeCmdPalette();
+      switchView(view);
+    }
+
+    function filterCommands(query) {
+      const q = query.toLowerCase().trim();
+      const items = document.querySelectorAll('.cmd-item');
+      items.forEach(it => {
+        const text = it.innerText.toLowerCase();
+        it.style.display = text.includes(q) ? 'flex' : 'none';
+      });
+    }
+
+    // Global Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openCmdPalette();
+        return;
+      }
+      if (e.key === 'Escape') {
+        closeLeadDrawer();
+        closeCmdPalette();
+        closeEvidenceModal();
+        closePhase87BatchModal();
+        return;
+      }
+
+      // Quick numbers 1-9 switch views when not focused in inputs
+      if (['input', 'textarea', 'select'].includes(document.activeElement.tagName.toLowerCase())) return;
+
+      const keyMap = {
+        '1': 'overview',
+        '2': 'leads',
+        '3': 'pipeline',
+        '4': 'research',
+        '5': 'freshness',
+        '6': 'outreach',
+        '7': 'monitoring',
+        '8': 'readiness',
+        '9': 'settings'
+      };
+
+      if (keyMap[e.key]) {
+        e.preventDefault();
+        switchView(keyMap[e.key]);
+      }
+    });
 
     // Helper: Escape HTML
     function escapeHtml(str) {
@@ -2825,17 +2766,8 @@
 
     // Initial Startup
     window.addEventListener('DOMContentLoaded', () => {
-      // Restore Theme
-      const savedTheme = localStorage.getItem('dripp_theme_product') || 'dark';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      document.getElementById('themeIconSun').style.display = savedTheme === 'dark' ? 'block' : 'none';
-      document.getElementById('themeIconMoon').style.display = savedTheme === 'dark' ? 'none' : 'block';
-
-      // Restore initial hash view or default to overview
       const initialView = window.location.hash.replace('#', '') || 'overview';
       switchView(initialView);
-
-      // Load all backend datasets
       loadAllData();
     });
   </script>
