@@ -423,23 +423,37 @@ class TestProductionPreflight(unittest.TestCase):
             contact_source_date="2026-10-02"
         )
 
+        from lib.outreach.companies_house import CompaniesHouseRecord, EntityMatchStatus, EntityMatchConfidence
+        ch_rec = CompaniesHouseRecord(
+            companies_house_number="12345678",
+            legal_entity_name="FRESH EATS LTD",
+            registered_name="FRESH EATS LTD",
+            company_type="ltd",
+            company_status="ACTIVE",
+            entity_match_status=EntityMatchStatus.MATCHED_ACTIVE.value,
+            entity_match_confidence=EntityMatchConfidence.HIGH.value,
+            entity_match_reason="Exact name match",
+            is_corporate_subscriber=True,
+        )
+
         with patch("lib.outreach.compliance.UKComplianceEvaluator.evaluate", return_value=comp_rec):
-            with patch("lib.outreach.preflight.GoogleSheetsStorageProvider") as MockStorage:
-                storage_inst = MagicMock()
-                MockStorage.return_value = storage_inst
-                storage_inst.fetch_all_leads.return_value = [dict(fresh_lead)]
+            with patch("lib.outreach.companies_house.CompaniesHouseVerifier.verify_entity", return_value=ch_rec):
+                with patch("lib.outreach.preflight.GoogleSheetsStorageProvider") as MockStorage:
+                    storage_inst = MagicMock()
+                    MockStorage.return_value = storage_inst
+                    storage_inst.fetch_all_leads.return_value = [dict(fresh_lead)]
 
-                res = execute_controlled_live_send(
-                    campaign_id=test_camp_id,
-                    live_send=True,
-                    confirm_token="SEND_ONE_CONFIRM",
-                    leads=[fresh_lead]
-                )
+                    res = execute_controlled_live_send(
+                        campaign_id=test_camp_id,
+                        live_send=True,
+                        confirm_token="SEND_ONE_CONFIRM",
+                        leads=[fresh_lead]
+                    )
 
-                self.assertTrue(res["executed"])
-                self.assertEqual(res["messages_sent"], 1)
-                mock_dispatch.assert_called_once()
-                self.assertEqual(res["send_result"]["message_id"], "<test-msg-12345@dripp.media>")
+                    self.assertTrue(res.get("executed", False), f"Execution failed: {res}")
+                    self.assertEqual(res["messages_sent"], 1)
+                    mock_dispatch.assert_called_once()
+                    self.assertEqual(res["send_result"]["message_id"], "<test-msg-12345@dripp.media>")
 
 
 if __name__ == "__main__":
