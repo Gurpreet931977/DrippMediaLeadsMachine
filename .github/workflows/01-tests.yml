@@ -82,6 +82,9 @@ jobs:
             test_production_preflight.py \
             test_phase_10_1_production_hardening.py \
             test_phase_10_2_automated_email.py \
+            test_phase_10_3_production_monitoring.py \
+            test_phase_11_1_research_recovery.py \
+            test_phase_11_2_tavily_provider.py \
             test_score_decoupling.py \
             test_search_hardening.py \
             test_uk_entity_contactability.py
@@ -94,4 +97,5 @@ jobs:
           path: |
             data/latest_health_report.json
             data/latest_health_summary.md
+            data/monitoring_report.json
           retention-days: 7
