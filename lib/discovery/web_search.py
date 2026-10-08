@@ -620,6 +620,7 @@ class WebSearchProvider(DiscoveryProvider):
                         "search_provider": "TAVILY",
                         "query": query,
                         "result_url": r.get("url", ""),
+                        "url": r.get("url", ""),
                         "title": r.get("title", ""),
                         "snippet": r.get("content", ""),
                         "score": r.get("score", 0.0),
