@@ -202,3 +202,63 @@ class TestFrontendProductization:
         assert 'name="send_outreach"' not in html
         assert 'action="/api/outreach/send"' not in html
         assert "LOCKED" in html
+
+    def test_four_primary_destinations(self, client):
+        """13. Navigation is radically simplified into 4 primary spaces: Home, Leads, Pipeline, System."""
+        res = client.get("/")
+        html = res.text
+        assert 'id="view-home"' in html
+        assert 'id="view-leads"' in html
+        assert 'id="view-pipeline"' in html
+        assert 'id="view-system"' in html
+        assert 'id="nav-home"' in html
+        assert 'id="nav-leads"' in html
+        assert 'id="nav-pipeline"' in html
+        assert 'id="nav-system"' in html
+
+    def test_zero_emojis_in_ui(self):
+        """14. ABSOLUTELY NO EMOJIS: Verifies 0 emojis in static/index.html."""
+        with open("static/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+
+        # Match emoji ranges in unicode
+        emoji_pattern = re.compile(
+            "[\U00010000-\U0010ffff"
+            "\U0001F600-\U0001F64F"
+            "\U0001F300-\U0001F5FF"
+            "\U0001F680-\U0001F6FF"
+            "\U0001F1E0-\U0001F1FF"
+            "\U00002702-\U000027B0"
+            "\U000024C2-\U0001F251"
+            "]+",
+            flags=re.UNICODE,
+        )
+        matches = emoji_pattern.findall(html)
+        assert len(matches) == 0, f"Found {len(matches)} emojis in static/index.html: {matches[:10]}"
+
+    def test_brand_yellow_white_black_palette_only(self):
+        """15. Palette is strictly brand yellow (#FFE500), white, and true neutral black/grey (no bluish greys)."""
+        with open("static/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+
+        # Check brand accents
+        assert "--accent-yellow: #FFE500;" in html
+        # Check pure neutral dark backgrounds (no bluish greys like #181822 or #060608)
+        assert "--bg-base: #050505;" in html
+        assert "--bg-surface: #0C0C0C;" in html
+        assert "#181822" not in html
+        assert "#060608" not in html
+        assert "#9E9EB2" not in html
+        assert "#5E5E72" not in html
+
+    def test_editorial_home_hero_and_liquid_glass(self, client):
+        """16. Editorial home hero statement and Liquid Glass material system are present."""
+        res = client.get("/")
+        html = res.text
+        assert "YOUR LEAD MACHINE" in html
+        assert "IS RUNNING QUIETLY." in html
+        assert "Manchester, UK" in html
+        assert "--glass-primary" in html
+        assert "--glass-secondary" in html
+        assert "--glass-floating" in html
+        assert "backdrop-filter" in html
