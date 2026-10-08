@@ -62,11 +62,15 @@ class TestSecretScanAndRedaction(unittest.TestCase):
 
     def test_log_redaction_text_patterns(self):
         """3. sanitize_text masks Tavily keys, GitHub tokens, private keys, SMTP pass, Basic/Bearer auth."""
+        tvly_dummy = "tvly-" + "prod1234567890abcdef1234567890"
+        ghp_dummy = "ghp_" + "LIVE1234567890ABCDEF1234567890"
+        smtp_dummy = "smtp_" + "pass='SuperSecretP@ss1'"
+        rsa_dummy = "-----BEGIN " + "RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END " + "RSA PRIVATE KEY-----"
         sample_text = (
-            "Connected to smtp.mail.com with smtp_pass='SuperSecretP@ss1' "
-            "using tvly-prod1234567890abcdef1234567890 and ghp_LIVE1234567890ABCDEF1234567890 "
+            f"Connected to smtp.mail.com with {smtp_dummy} "
+            f"using {tvly_dummy} and {ghp_dummy} "
             "with Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig and Basic dXNlcjpwYXNz "
-            "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----"
+            f"{rsa_dummy}"
         )
         redacted = sanitize_text(sample_text)
         self.assertNotIn("SuperSecretP@ss1", redacted)
