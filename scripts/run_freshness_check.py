@@ -76,29 +76,20 @@ def run_freshness(
     logger.info(f"Travel Mode    : ACTIVE (Commercial Actions Locked)")
     logger.info("=" * 72)
 
-    orchestrator = TechnicalOrchestrator(data_dir=data_dir)
-    executed_jobs = []
-
-    job_types_to_run = []
-    if refresh_type in ("REVIEWS", "ALL"):
-        job_types_to_run.append(JobType.RUN_REVIEW_REFRESH)
-    if refresh_type in ("CONTACTABILITY", "ALL"):
-        job_types_to_run.append(JobType.RUN_CONTACTABILITY_REFRESH)
+    from lib.system.canonical_refresh_engine import CanonicalRefreshEngine
+    refresh_engine = CanonicalRefreshEngine(data_dir=data_dir)
 
     with orchestrator_lock(timeout=15.0):
-        for jtype in job_types_to_run:
-            logger.info(f"Triggering {jtype.value}...")
-            res = orchestrator.trigger_job(
-                job_type=jtype,
-                market_id=market_id,
-                dry_run=dry_run,
-                candidate_limit=candidate_limit,
-            )
-            executed_jobs.append(res)
+        batch_result = refresh_engine.execute_batch_refresh(
+            market_id=market_id,
+            candidate_limit=candidate_limit,
+            refresh_type=refresh_type,
+            dry_run=dry_run,
+        )
 
     elapsed = round(time.time() - start_time, 2)
-    all_success = all(j.get("status") in ("COMPLETED", "PAUSED") for j in executed_jobs)
-    status = "COMPLETED" if all_success else "FAILED"
+    status = batch_result.get("status", "COMPLETED")
+    metrics = batch_result.get("metrics", {})
 
     report = {
         "timestamp_utc": run_timestamp,
@@ -109,7 +100,8 @@ def run_freshness(
         "status": status,
         "travel_mode": SystemConfig.TRAVEL_MODE,
         "commercial_actions_enabled": SystemConfig.COMMERCIAL_ACTIONS_ENABLED,
-        "jobs": executed_jobs,
+        "metrics": metrics,
+        "recent_changes": batch_result.get("recent_changes", []),
     }
 
     out_dir = os.path.join(data_dir, "market_runs")
@@ -136,13 +128,23 @@ def run_freshness(
 - **COMMERCIAL_ACTIONS_ENABLED:** `FALSE`
 - **OUTREACH DISPATCHES:** `0`
 
-## Executed Jobs
-| Job Type | Status | Processed | Changed |
-| :--- | :--- | :--- | :--- |
+## Freshness Metrics (Phase 10.4)
+| Metric | Count |
+| :--- | :--- |
+| Leads Due | `{metrics.get('leads_due', 0)}` |
+| Leads Attempted | `{metrics.get('leads_attempted', 0)}` |
+| Leads Refreshed | `{metrics.get('leads_refreshed', 0)}` |
+| Leads Unchanged | `{metrics.get('leads_unchanged', 0)}` |
+| Refresh Failed | `{metrics.get('refresh_failed', 0)}` |
+| Quota Blocked | `{metrics.get('quota_blocked', 0)}` |
+| Review Changed | `{metrics.get('review_changed', 0)}` |
+| Website Changed | `{metrics.get('website_changed', 0)}` |
+| Phone Changed | `{metrics.get('phone_changed', 0)}` |
+| Social Changed | `{metrics.get('social_changed', 0)}` |
+| Operational Changed | `{metrics.get('operational_status_changed', 0)}` |
+| Requalified to Ready | `{metrics.get('requalified', 0)}` |
+| Dequalified | `{metrics.get('dequalified', 0)}` |
 """
-    for j in executed_jobs:
-        md_summary += f"| {j.get('job_type')} | {j.get('status')} | {j.get('records_processed', 0)} | {j.get('records_changed', 0)} |\n"
-
     latest_md = os.path.join(data_dir, "latest_freshness_summary.md")
     with open(latest_md, "w", encoding="utf-8") as f:
         f.write(md_summary)

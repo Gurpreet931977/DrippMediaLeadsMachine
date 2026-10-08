@@ -58,7 +58,10 @@ def parse_iso_or_date(val: Optional[str]) -> Optional[datetime]:
     val_str = str(val).strip()
     try:
         # Try full ISO
-        return datetime.fromisoformat(val_str.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(val_str.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except Exception:
         pass
     try:
@@ -109,6 +112,7 @@ class FreshnessEngine:
         # 2. Review Evidence Freshness
         rev_ts = parse_iso_or_date(
             lead.get("review_evidence_updated_at")
+            or lead.get("reviews_refreshed_at")
             or lead.get("latest_review_date")
             or lead.get("date_added")
         )
@@ -124,7 +128,11 @@ class FreshnessEngine:
             queued_refreshes.append("RUN_REVIEW_REFRESH")
 
         # 3. Operational Evidence Freshness
-        op_ts = parse_iso_or_date(lead.get("operational_verified_at") or lead.get("date_added"))
+        op_ts = parse_iso_or_date(
+            lead.get("operational_verified_at")
+            or lead.get("operational_checked_at")
+            or lead.get("date_added")
+        )
         if op_ts:
             age = (ref - op_ts).days
             ages_days["operational_evidence"] = max(0, age)
@@ -210,3 +218,29 @@ class FreshnessEngine:
             f"[Requalification] {lead.get('lead_id')}: {previous_state} -> {new_state} (Changed={state_changed})"
         )
         return updated_lead, state_changed, new_reason
+
+    def evaluate_dimensions_freshness(
+        self,
+        lead: Dict[str, Any],
+        reference_time: Optional[datetime] = None,
+    ):
+        """Phase 10.4 Canonical 6-Dimension Freshness Evaluation."""
+        from lib.system.canonical_freshness import CanonicalFreshnessEngine
+        c_engine = CanonicalFreshnessEngine()
+        return c_engine.evaluate_lead(lead, reference_time=reference_time)
+
+
+# Convenience exports for Phase 10.4
+from lib.system.freshness_models import (
+    FreshnessDimension,
+    FreshnessStatus,
+    RefreshPriorityTier,
+    RefreshFailureReason,
+    DEFAULT_REFRESH_CADENCE_DAYS,
+    PROTECTED_HISTORICAL_STATES,
+    DimensionFreshness,
+    ChangeHistoryEntry,
+    LeadFreshnessSummary,
+)
+from lib.system.canonical_freshness import CanonicalFreshnessEngine
+

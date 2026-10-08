@@ -739,3 +739,111 @@ class BackupReconciliationMonitor:
             metric_value=issues_count,
             metadata={"critical_issues": [sanitize_text(c) for c in critical_issues[:5]]},
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. FRESHNESS & CANONICAL REFRESH MONITOR (Phase 10.4)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class FreshnessMonitor:
+    """
+    Monitors automated lead freshness rechecks and canonical refresh jobs.
+    Emits technical incidents only for true anomalies (Section 24).
+    """
+
+    def __init__(self, incident_mgr: Optional[IncidentManager] = None):
+        self.incident_mgr = incident_mgr or get_incident_manager()
+
+    def record_job_failure(self, error: Exception, context: str = "freshness_job") -> None:
+        clean_err = sanitize_text(str(error))
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.REFRESH_JOB_FAILED.value,
+            severity=IncidentSeverity.ERROR.value,
+            component="Freshness Engine",
+            source="FreshnessMonitor",
+            summary=f"Technical freshness execution failed during {context}: {clean_err[:120]}",
+            impact="Lead records and evidence recency were not refreshed.",
+            recommended_action="Inspect job execution logs and candidate dataset for unhandled exceptions.",
+            component_key="freshness_engine",
+            metadata={"error": clean_err},
+        )
+
+    def record_provider_failure(self, provider_name: str, error_msg: str) -> None:
+        clean_msg = sanitize_text(error_msg)
+        clean_prov = sanitize_text(provider_name).lower()
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.REFRESH_PROVIDER_FAILURE.value,
+            severity=IncidentSeverity.ERROR.value,
+            component="Freshness Engine",
+            source="FreshnessMonitor",
+            summary=f"Freshness evidence provider '{provider_name}' failed: {clean_msg[:120]}",
+            impact="Evidence refresh could not query provider; prior evidence preserved.",
+            recommended_action=f"Check API availability and network connectivity for {provider_name}.",
+            component_key=clean_prov,
+            metadata={"provider": provider_name, "error": clean_msg},
+        )
+
+    def record_quota_exhausted(self, resource_name: str) -> None:
+        clean_res = sanitize_text(resource_name).lower()
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.REFRESH_QUOTA_EXCEEDED.value,
+            severity=IncidentSeverity.WARNING.value,
+            component="Freshness Engine",
+            source="FreshnessMonitor",
+            summary=f"Daily refresh quota exhausted for resource '{resource_name}'. Job safely paused.",
+            impact="Remaining due leads queued for next scheduled technical cycle.",
+            recommended_action=f"Wait for quota reset or adjust daily {resource_name} limit.",
+            component_key=clean_res,
+            metadata={"resource": resource_name},
+        )
+
+    def evaluate_failure_rate(self, leads_attempted: int, leads_failed: int, market_id: str = "MANCHESTER_UK") -> None:
+        clean_market = sanitize_text(market_id).upper()
+        fp = compute_deterministic_fingerprint(IncidentType.REFRESH_FAILURE_RATE_HIGH.value, "freshness_engine", clean_market)
+        if leads_attempted < 5:
+            return
+
+        fail_rate = leads_failed / leads_attempted
+        if fail_rate > 0.50:
+            self.incident_mgr.report_incident(
+                incident_type=IncidentType.REFRESH_FAILURE_RATE_HIGH.value,
+                severity=IncidentSeverity.ERROR.value,
+                component="Freshness Engine",
+                source="FreshnessMonitor",
+                summary=f"High freshness failure rate ({round(fail_rate * 100, 1)}%) in market '{clean_market}' ({leads_failed}/{leads_attempted} failed).",
+                impact="Majority of candidate refreshes are failing; check upstream providers or network.",
+                recommended_action="Inspect provider credentials, network status, or target market configuration.",
+                component_key="freshness_engine",
+                target_identifier=clean_market,
+                metric_name="fail_rate",
+                metric_value=fail_rate,
+                threshold_value=0.50,
+            )
+        else:
+            self.incident_mgr.resolve_incident(
+                fingerprint=fp,
+                resolution_note=f"Freshness failure rate returned to acceptable level ({round(fail_rate * 100, 1)}%)."
+            )
+
+    def evaluate_zero_result_anomaly(self, leads_due: int, leads_refreshed: int, market_id: str = "MANCHESTER_UK") -> None:
+        clean_market = sanitize_text(market_id).upper()
+        fp = compute_deterministic_fingerprint(IncidentType.REFRESH_ZERO_RESULT_ANOMALY.value, "freshness_engine", clean_market)
+        if leads_due >= 5 and leads_refreshed == 0:
+            self.incident_mgr.report_incident(
+                incident_type=IncidentType.REFRESH_ZERO_RESULT_ANOMALY.value,
+                severity=IncidentSeverity.WARNING.value,
+                component="Freshness Engine",
+                source="FreshnessMonitor",
+                summary=f"Anomalous zero refreshed leads despite {leads_due} due leads in market '{clean_market}'.",
+                impact="No candidate leads were updated in this technical refresh run.",
+                recommended_action="Check quota availability, queue filtering, or candidate eligibility criteria.",
+                component_key="freshness_engine",
+                target_identifier=clean_market,
+                metric_name="leads_refreshed",
+                metric_value=0,
+            )
+        elif leads_refreshed > 0:
+            self.incident_mgr.resolve_incident(
+                fingerprint=fp,
+                resolution_note=f"Leads successfully refreshed in market '{clean_market}' ({leads_refreshed} updated)."
+            )

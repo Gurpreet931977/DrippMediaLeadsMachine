@@ -628,3 +628,38 @@ class LeadScoringProvider:
             audit["is_outreach_ready"],
             audit["breakdown_text"]
         )
+
+
+class LeadScorer:
+    """
+    Convenience adapter for evaluating lead dictionaries under Rule B qualification.
+    """
+    def __init__(self, min_reviews_outreach: int = 50, min_rating_outreach: float = 4.0):
+        self.provider = LeadScoringProvider(
+            min_reviews_outreach=min_reviews_outreach,
+            min_rating_outreach=min_rating_outreach,
+        )
+
+    def evaluate_lead(self, lead: Dict[str, Any]) -> Tuple[int, List[str], str, str, str]:
+        biz = DiscoveredBusiness(
+            company_name=lead.get("company_name", ""),
+            category=lead.get("industry") or lead.get("category", "Hospitality"),
+            city=lead.get("city", "Manchester"),
+            target_country=lead.get("target_country", "United Kingdom"),
+            detected_country=lead.get("country", "United Kingdom"),
+            review_count=lead.get("review_count"),
+            rating=lead.get("rating"),
+            operational_status=lead.get("operational_status", "ACTIVE_CONFIRMED"),
+            operational_evidence=lead.get("operational_evidence", ""),
+            instagram_url=lead.get("instagram_url", ""),
+            facebook_url=lead.get("facebook_url", ""),
+            tiktok_url=lead.get("tiktok_url", ""),
+            postcode=lead.get("postcode", ""),
+            phone=lead.get("phone", ""),
+            latest_review_date=lead.get("latest_review_date", ""),
+        )
+        v_status = lead.get("verification_status") or lead.get("website_status") or "NO_WEBSITE_CONFIRMED"
+        audit = self.provider.evaluate_lead(biz, verification_status=v_status)
+        signals = list(audit.get("signals", {}).keys())
+        return audit["score"], signals, audit["priority"], audit["qualification_state"], audit["qualification_reason"]
+
