@@ -84,6 +84,7 @@ jobs:
             test_phase_10_1_production_hardening.py \
             test_phase_10_2_automated_email.py \
             test_phase_10_3_production_monitoring.py \
+            test_phase_10_4_lead_freshness.py \
             test_phase_11_1_research_recovery.py \
             test_phase_11_2_tavily_provider.py \
             test_score_decoupling.py \
