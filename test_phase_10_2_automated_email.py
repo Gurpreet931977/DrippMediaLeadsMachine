@@ -956,6 +956,8 @@ class TestAutomatedEmailExecutorAndBatch(unittest.TestCase):
         )
 
         # Create 10 mock leads: 6 corporate OUTREACH_READY, 2 SOLE_TRADER, 2 RESEARCH_ONLY
+        self._orig_sandbox = os.environ.get("EMAIL_SANDBOX_MODE")
+        os.environ["EMAIL_SANDBOX_MODE"] = "true"
         self.mock_leads = []
         for i in range(1, 7):
             self.mock_leads.append({
@@ -990,6 +992,10 @@ class TestAutomatedEmailExecutorAndBatch(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+        if self._orig_sandbox is not None:
+            os.environ["EMAIL_SANDBOX_MODE"] = self._orig_sandbox
+        else:
+            os.environ.pop("EMAIL_SANDBOX_MODE", None)
         SystemConfig.set_automated_email(False)
         SystemConfig.set_email_kill_switch(False)
 

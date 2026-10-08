@@ -74,6 +74,14 @@ class TestPhase11ResearchRecovery(unittest.TestCase):
         SystemConfig.COMMERCIAL_ACTIONS_ENABLED = False
         SystemConfig.AUTOMATED_EMAIL_ENABLED = False
         SystemConfig.TECHNICAL_AUTOMATION_ENABLED = True
+        self._social_patcher = patch(
+            "lib.validation.social_validator.SocialIdentityValidator.check_profile_accessibility",
+            return_value=(True, "Profile accessible (Mock)", "ACCESSIBLE")
+        )
+        self._social_patcher.start()
+
+    def tearDown(self):
+        self._social_patcher.stop()
 
     # -------------------------------------------------------------------------
     # 1. RESEARCH PROVIDER AVAILABILITY & SUCCESS

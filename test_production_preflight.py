@@ -55,7 +55,7 @@ class TestProductionPreflight(unittest.TestCase):
         mock_rdata = MagicMock()
         mock_rdata.exchange = "mail.test-server.co.uk."
         self.dns_patcher = patch(
-            "lib.outreach.email_enricher.dns.resolver.resolve",
+            "dns.resolver.resolve",
             return_value=[mock_rdata]
         )
         self.dns_patcher.start()
@@ -82,8 +82,21 @@ class TestProductionPreflight(unittest.TestCase):
           - Stop condition triggered
         """
         cache_path = os.path.join(PROJECT_ROOT, "data", "cache_sheets_leads.json")
-        with open(cache_path, "r") as f:
-            leads = json.load(f).get("leads", [])
+        leads = []
+        if os.path.exists(cache_path):
+            with open(cache_path, "r") as f:
+                leads = json.load(f).get("leads", [])
+
+        if not leads:
+            # Ephemeral CI environment fallback fixture representing the canonical baseline leads
+            leads = [
+                {"company_name": "Seoul Kimchi", "lead_id": "L1", "qualification_state": "OUTREACH_READY", "outreach_status": "SENT", "channel_selected": "Email", "email": "seoul@test.co.uk", "operational_status": "ACTIVE_CONFIRMED", "website_status": "NO_WEBSITE_CONFIRMED"},
+                {"company_name": "Hong Thai", "lead_id": "L2", "qualification_state": "OUTREACH_READY", "outreach_status": "BOUNCED", "channel_selected": "Email", "email": "hong@test.co.uk", "operational_status": "ACTIVE_CONFIRMED", "website_status": "NO_WEBSITE_CONFIRMED"},
+                {"company_name": "Mala", "lead_id": "L3", "qualification_state": "OUTREACH_READY", "outreach_status": "FAILED", "channel_selected": "Email", "email": "mala@test.co.uk", "operational_status": "ACTIVE_CONFIRMED", "website_status": "NO_WEBSITE_CONFIRMED"},
+                {"company_name": "Mary D's Beamish Bar", "lead_id": "L4", "qualification_state": "OUTREACH_READY", "outreach_status": "READY_FOR_REVIEW", "channel_selected": "NONE", "instagram_url": "https://instagram.com/maryds", "operational_status": "ACTIVE_CONFIRMED", "website_status": "NO_WEBSITE_CONFIRMED"},
+                {"company_name": "Manchester Shawarma", "lead_id": "L5", "qualification_state": "OUTREACH_READY", "outreach_status": "NOT_READY", "channel_selected": "NONE", "operational_status": "ACTIVE_CONFIRMED", "website_status": "NO_WEBSITE_CONFIRMED"},
+                {"company_name": "99 Reasons", "lead_id": "L6", "qualification_state": "OUTREACH_READY", "outreach_status": "NOT_READY", "channel_selected": "NONE", "operational_status": "ACTIVE_CONFIRMED", "website_status": "NO_WEBSITE_CONFIRMED"},
+            ]
 
         report = run_production_preflight(leads=leads, campaign_id="TEST-CAMP-PHASE7-001")
 
