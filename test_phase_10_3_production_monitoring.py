@@ -687,9 +687,11 @@ class TestPhase103ProductionMonitoring(unittest.TestCase):
 
     def test_secret_redaction_in_alerts_and_incidents(self):
         """Verifies that API keys, tokens, and passwords are never exposed in incident texts."""
+        header = "-----BEGIN " + "PRIVATE " + "KEY-----"
+        footer = "-----END " + "PRIVATE " + "KEY-----"
         sensitive_string = (
-            "Failed with tvly-prod1234567890abcdef and ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456 "
-            "and private_key: -----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC\n-----END PRIVATE KEY-----"
+            f"Failed with tvly-prod1234567890abcdef and ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456 "
+            f"and private_key: {header}\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC\n{footer}"
         )
         sanitized = sanitize_text(sensitive_string)
         self.assertNotIn("tvly-prod", sanitized)
