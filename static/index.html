@@ -1383,15 +1383,32 @@
         </div>
       </div>
 
-      <!-- System Pane 5: Safety & Outreach -->
+      <!-- System Pane 5: Safety & Outreach (Dedicated Section) -->
       <div id="sysPane-safety" class="system-section-pane">
         <div class="glass-card" style="border-color:var(--glass-border-yellow); margin-bottom:1.5rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-            <div>
-              <div style="font-size:0.74rem; font-weight:700; color:var(--accent-yellow); text-transform:uppercase; letter-spacing:0.06em;">PROTECTED TRAVEL MODE ACTIVE</div>
-              <h3 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin-top:2px;">COMMERCIAL ACTIONS LOCKED</h3>
-              <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
-                External outreach cannot be dispatched. Automated email is disabled. Cron is disabled. CRM writes are zero.
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1.25rem;">
+            <div style="display:flex; gap:1rem; align-items:flex-start;">
+              <div style="width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,229,0,0.35); display:flex; align-items:center; justify-content:center; background:rgba(255,229,0,0.06); color:var(--accent-yellow); flex-shrink:0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div style="font-size:0.78rem; font-weight:800; color:var(--text-main); text-transform:uppercase; letter-spacing:0.04em;">
+                  PROTECTED TRAVEL MODE ACTIVE &bull; COMMERCIAL ACTIONS LOCKED
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">
+                  Technical processing operates normally. Outbound dispatches are safely frozen.
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.85rem;">
+                  <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Travel Mode: Active</span>
+                  <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Commercial: Locked</span>
+                  <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Cron: Disabled</span>
+                  <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Automated Email: Disabled</span>
+                  <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">CRM Writes: 0</span>
+                  <button class="btn-pill btn-pill-secondary" onclick="loadAllData()" style="padding:0.25rem 0.65rem; font-size:0.72rem; border-color:var(--glass-border);">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                    <span>Sync</span>
+                  </button>
+                </div>
               </div>
             </div>
             <button id="openPhase87BatchModal" class="btn-pill btn-pill-secondary" onclick="openBatch87Modal()">
