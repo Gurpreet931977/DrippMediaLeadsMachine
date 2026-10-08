@@ -158,25 +158,11 @@
     /* Top Floating Liquid Glass Navigation Bar */
     .nav-header {
       position: sticky;
-      top: 14px;
+      top: 16px;
       z-index: 100;
       max-width: 1260px;
-      margin: 0 auto;
-      padding: 0 1.25rem;
-    }
-    .nav-floating-pill {
-      background: var(--glass-floating);
-      backdrop-filter: var(--glass-blur-lg);
-      -webkit-backdrop-filter: var(--glass-blur-lg);
-      border: var(--glass-border);
-      box-shadow: var(--glass-shadow-floating);
-      border-radius: var(--radius-pill);
-      padding: 0.45rem 0.8rem 0.45rem 1.15rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.25rem;
-      transition: border-color var(--transition-fast);
+      margin: 0 auto 1.5rem auto;
+      padding: 0 1.5rem;
     }
     .nav-floating-pill {
       background: var(--glass-floating);
@@ -185,11 +171,11 @@
       border: var(--glass-border);
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 24px rgba(255, 229, 0, 0.04);
       border-radius: var(--radius-pill);
-      padding: 0.45rem 0.85rem 0.45rem 1.15rem;
+      padding: 0.45rem 1rem 0.45rem 1.25rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.25rem;
+      gap: 1.5rem;
       transition: all var(--transition-fast);
     }
     .nav-floating-pill:hover {
@@ -198,30 +184,24 @@
     }
 
     .brand-link {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 0.65rem;
       text-decoration: none;
-      color: var(--text-main);
+      padding-right: 1.25rem;
+      margin-right: 0.25rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
       transition: all var(--transition-fast);
     }
     .brand-logo-img {
-      height: 22px;
+      height: 24px;
       width: auto;
+      display: block;
       object-fit: contain;
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
     }
     .brand-link:hover .brand-logo-img {
-      transform: scale(1.1) rotate(-3deg);
-    }
-    .brand-name {
-      font-size: 0.95rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      transition: text-shadow 0.25s ease;
-    }
-    .brand-link:hover .brand-name {
-      text-shadow: 0 0 12px rgba(255, 229, 0, 0.6);
+      transform: scale(1.08) rotate(-2deg);
+      filter: drop-shadow(0 0 10px rgba(255, 229, 0, 0.65));
     }
 
     /* 4 Primary Navigation Spaces */
@@ -372,7 +352,7 @@
       z-index: 1;
       max-width: 1260px;
       margin: 0 auto;
-      padding: 1.75rem 1.25rem 5rem 1.25rem;
+      padding: 1rem 1.5rem 6rem 1.5rem;
     }
 
     /* Views */
@@ -451,9 +431,9 @@
     .home-command-grid {
       display: grid;
       grid-template-columns: 1.15fr 0.85fr;
-      gap: 1.5rem;
+      gap: 1.75rem;
       align-items: stretch;
-      margin-bottom: 2rem;
+      margin-bottom: 2.5rem;
     }
     @media (max-width: 960px) {
       .home-command-grid { grid-template-columns: 1fr; }
@@ -464,7 +444,7 @@
       -webkit-backdrop-filter: var(--glass-blur-md);
       border: var(--glass-border);
       border-radius: var(--radius-md);
-      padding: 1.85rem;
+      padding: 2.25rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -486,44 +466,50 @@
     .home-header-banner {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-      gap: 1.5rem;
+      align-items: flex-start;
+      gap: 2rem;
       flex-wrap: wrap;
     }
     .home-market-badge {
       font-size: 0.72rem;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
       color: var(--accent-yellow);
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      background: rgba(255, 229, 0, 0.08);
+      border: 1px solid rgba(255, 229, 0, 0.22);
+      border-radius: var(--radius-pill);
+      margin-bottom: 1.25rem;
     }
     .home-hero-huge-num {
-      font-size: 4rem;
+      font-size: 4.6rem;
       font-weight: 800;
       letter-spacing: -0.04em;
       color: var(--text-main);
-      line-height: 1;
-      margin-bottom: 0.25rem;
-      text-shadow: 0 0 30px rgba(255, 229, 0, 0.15);
+      line-height: 0.95;
+      margin-bottom: 0.65rem;
+      text-shadow: 0 0 32px rgba(255, 229, 0, 0.18);
     }
     .home-hero-huge-label {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 800;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.06em;
       color: var(--accent-yellow);
       text-transform: uppercase;
+      margin-bottom: 1.35rem;
     }
     .home-hero-sub-breakdown {
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       color: var(--text-muted);
-      margin-top: 0.4rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.85rem;
       flex-wrap: wrap;
     }
 
@@ -534,7 +520,7 @@
       -webkit-backdrop-filter: var(--glass-blur-md);
       border: var(--glass-border);
       border-radius: var(--radius-md);
-      padding: 1.5rem;
+      padding: 2rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -547,8 +533,8 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: var(--glass-border);
-      padding-bottom: 0.75rem;
-      margin-bottom: 0.75rem;
+      padding-bottom: 0.85rem;
+      margin-bottom: 1rem;
     }
     .radar-live-blip {
       width: 7px;
@@ -742,8 +728,8 @@
     .home-guide-strip {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 2rem;
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
     }
     @media (max-width: 800px) {
       .home-guide-strip { grid-template-columns: 1fr; }
@@ -754,10 +740,10 @@
       -webkit-backdrop-filter: var(--glass-blur-sm);
       border: var(--glass-border);
       border-radius: var(--radius-sm);
-      padding: 1rem 1.25rem;
+      padding: 1.25rem 1.4rem;
       display: flex;
       align-items: flex-start;
-      gap: 1rem;
+      gap: 1.15rem;
       transition: all var(--transition-fast);
     }
     .home-guide-step:hover {
@@ -777,15 +763,15 @@
       flex-shrink: 0;
     }
     .guide-step-title {
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-weight: 700;
       color: var(--text-main);
-      margin-bottom: 0.2rem;
+      margin-bottom: 0.25rem;
     }
     .guide-step-desc {
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      line-height: 1.45;
+      line-height: 1.5;
     }
 
     /* Interactive Pipeline Bar on Home */
@@ -795,16 +781,16 @@
       -webkit-backdrop-filter: var(--glass-blur-md);
       border: var(--glass-border);
       border-radius: var(--radius-md);
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 2.5rem;
       position: relative;
     }
     .pipeline-stage-nodes-row {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 1rem;
+      gap: 1.15rem;
       position: relative;
-      margin-top: 0.75rem;
+      margin-top: 1.15rem;
     }
     .pipeline-stage-nodes-row::before {
       content: '';
@@ -821,7 +807,7 @@
       background: rgba(255, 255, 255, 0.02);
       border: var(--glass-border);
       border-radius: var(--radius-sm);
-      padding: 0.85rem 1rem;
+      padding: 1rem 1.15rem;
       cursor: pointer;
       transition: all var(--transition-fast);
       text-align: left;
@@ -881,25 +867,25 @@
     .lead-workspace-split {
       display: grid;
       grid-template-columns: 460px 1fr;
-      gap: 1.5rem;
+      gap: 1.75rem;
       align-items: start;
     }
     .lead-stream-pane {
       display: flex;
       flex-direction: column;
-      gap: 0.8rem;
+      gap: 0.95rem;
     }
     .lead-stream-item {
       background: var(--glass-primary);
       backdrop-filter: var(--glass-blur-sm);
       border: var(--glass-border);
       border-radius: var(--radius-sm);
-      padding: 1.1rem 1.25rem;
+      padding: 1.25rem 1.4rem;
       cursor: pointer;
       transition: all var(--transition-fast);
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.65rem;
     }
     .lead-stream-item:hover {
       background: rgba(255, 255, 255, 0.05);
@@ -1274,9 +1260,8 @@
   <!-- Top Inset Liquid Glass Navigation -->
   <header class="nav-header">
     <div class="nav-floating-pill">
-      <a href="#home" class="brand-link" onclick="navigateTo('home')">
+      <a href="#home" class="brand-link" onclick="navigateTo('home')" title="Dripp Media Leads Machine">
         <img src="/static/logos/dripp-logo-yellow-cropped.png" alt="Dripp Media" class="brand-logo-img">
-        <span class="brand-name">Dripp</span>
       </a>
 
       <!-- 4 Primary Navigation Spaces -->
