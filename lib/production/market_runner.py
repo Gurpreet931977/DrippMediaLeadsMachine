@@ -104,11 +104,13 @@ class QuotaBudget:
     Enforces hard ceilings before any external operation executes.
     """
     search_limit: int = 500
+    tavily_limit: int = 1000
     gosom_limit: int = 10
     crm_write_limit: int = 100
     outreach_dispatch_limit: int = 0  # Absolute zero during acquisition
 
     search_used: int = 0
+    tavily_used: int = 0
     gosom_used: int = 0
     crm_writes_used: int = 0
     outreach_dispatches_used: int = 0
@@ -118,6 +120,8 @@ class QuotaBudget:
         """Checks if budget is available before executing an external action."""
         if resource == "search":
             return (self.search_used + count) <= self.search_limit
+        elif resource == "tavily":
+            return (self.tavily_used + count) <= self.tavily_limit and (self.search_used + count) <= self.search_limit
         elif resource == "gosom":
             return (self.gosom_used + count) <= self.gosom_limit
         elif resource == "crm_write":
@@ -130,6 +134,9 @@ class QuotaBudget:
     def consume(self, resource: str, count: int = 1) -> None:
         """Consumes a budget unit."""
         if resource == "search":
+            self.search_used += count
+        elif resource == "tavily":
+            self.tavily_used += count
             self.search_used += count
         elif resource == "gosom":
             self.gosom_used += count
@@ -144,18 +151,29 @@ class QuotaBudget:
     def get_remaining(self) -> Dict[str, int]:
         return {
             "search_remaining": max(0, self.search_limit - self.search_used),
+            "tavily_remaining": max(0, self.tavily_limit - self.tavily_used),
             "gosom_remaining": max(0, self.gosom_limit - self.gosom_used),
             "crm_writes_remaining": max(0, self.crm_write_limit - self.crm_writes_used),
             "outreach_dispatches_remaining": 0,
         }
 
+    @property
+    def search_remaining(self) -> int:
+        return max(0, self.search_limit - self.search_used)
+
+    @property
+    def tavily_remaining(self) -> int:
+        return max(0, self.tavily_limit - self.tavily_used)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "search_limit": self.search_limit,
+            "tavily_limit": self.tavily_limit,
             "gosom_limit": self.gosom_limit,
             "crm_write_limit": self.crm_write_limit,
             "outreach_dispatch_limit": self.outreach_dispatch_limit,
             "search_used": self.search_used,
+            "tavily_used": self.tavily_used,
             "gosom_used": self.gosom_used,
             "crm_writes_used": self.crm_writes_used,
             "outreach_dispatches_used": self.outreach_dispatches_used,
@@ -426,8 +444,13 @@ class MarketRunner:
             max_runtime_seconds=1800.0,
             max_new_crm_records=100,
         )
+        tavily_q = self.market_config.daily_quota.get(
+            "tavily_requests",
+            int(os.getenv("TAVILY_QUOTA_LIMIT", os.getenv("TAVILY_DAILY_LIMIT", "1000")))
+        )
         self.quota = quota_budget or QuotaBudget(
             search_limit=self.market_config.daily_quota.get("search_requests", 500),
+            tavily_limit=tavily_q,
             gosom_limit=self.market_config.daily_quota.get("gosom_calls", 10),
             crm_write_limit=self.market_config.daily_quota.get("crm_writes", 100),
             outreach_dispatch_limit=0,
@@ -445,6 +468,9 @@ class MarketRunner:
             web_search_provider=getattr(self.review_enricher, "web", None),
             matcher=self.identity_matcher
         )
+        web = getattr(self.review_enricher, "web", None)
+        if web and hasattr(web, "set_quota_budget"):
+            web.set_quota_budget(self.quota)
         self.enable_research = enable_research
         self.research_telemetry_records: List[Dict[str, Any]] = []
         self.operational_validator = operational_validator or OperationalValidator()
@@ -824,7 +850,10 @@ class MarketRunner:
                 operational_signal_found=op_signal_found,
                 fallback_attempted="GOSOM: NOT_ATTEMPTED",
                 fallback_result="NOT_ATTEMPTED",
-                failure_reason=ResearchFailureState.PROVIDER_FAILED.value,
+                failure_reason=ResearchFailureState.QUOTA_EXCEEDED.value,
+                query_count=0,
+                usable_results_count=0,
+                latency=0.0,
                 details={"quota_remaining": self.quota.search_remaining},
             )
             biz.raw_data = getattr(biz, "raw_data", {}) or {}
@@ -835,6 +864,7 @@ class MarketRunner:
         already_has_reviews = (biz.review_count is not None and (biz.review_count or 0) > 0 and biz.rating is not None)
         enrich_res = None
         rec_res = None
+        start_research_time = time.time()
 
         if not already_has_reviews:
             # Consume Quota & Execute Research
@@ -893,15 +923,28 @@ class MarketRunner:
 
             # Check provider infrastructure states
             elif web_provider:
-                # Did search queries timeout?
-                has_timeout = False
-                if rec_res and rec_res.telemetry:
-                    has_timeout = any(
-                        t.get("search_outcome") == "SEARCH_TIMEOUT" or "TIMEOUT" in str(t.get("failure_reason", "")).upper()
-                        for t in rec_res.telemetry
-                    )
+                enrich_ev_str = str(enrich_res.get("review_evidence", "")) if enrich_res else ""
 
-                if has_timeout or (enrich_res and "TIMEOUT" in str(enrich_res.get("review_evidence", "")).upper()):
+                # Did search hit quota limit?
+                has_quota = (
+                    "QUOTA_EXCEEDED" in enrich_ev_str
+                    or (rec_res and rec_res.telemetry and any(
+                        t.get("search_outcome") == "QUOTA_EXCEEDED" or "QUOTA" in str(t.get("failure_reason", "")).upper()
+                        for t in rec_res.telemetry
+                    ))
+                )
+                if has_quota:
+                    provider_result = "QUOTA_EXCEEDED"
+                    failure_reason = ResearchFailureState.QUOTA_EXCEEDED.value
+
+                # Did search queries timeout?
+                elif (
+                    "TIMEOUT" in enrich_ev_str.upper()
+                    or (rec_res and rec_res.telemetry and any(
+                        t.get("search_outcome") in ("SEARCH_TIMEOUT", "PROVIDER_TIMEOUT") or "TIMEOUT" in str(t.get("failure_reason", "")).upper()
+                        for t in rec_res.telemetry
+                    ))
+                ):
                     provider_result = "SEARCH_TIMEOUT"
                     failure_reason = ResearchFailureState.PROVIDER_TIMEOUT.value
 
@@ -916,11 +959,29 @@ class MarketRunner:
                     failure_reason = ResearchFailureState.PROVIDER_NOT_CONFIGURED.value
 
                 # Did circuit open or provider fail?
-                elif ddg_state == "OPEN" or (
-                    rec_res and any(t.get("search_outcome") in ("SEARCH_CIRCUIT_OPEN", "SEARCH_FAILED", "SEARCH_BLOCKED") for t in (rec_res.telemetry or []))
+                elif (
+                    ddg_state == "OPEN"
+                    or (rec_res and any(t.get("search_outcome") in ("SEARCH_CIRCUIT_OPEN", "SEARCH_FAILED", "SEARCH_BLOCKED", "PROVIDER_FAILED") for t in (rec_res.telemetry or [])))
+                    or "PROVIDER_FAILED" in enrich_ev_str
                 ):
                     provider_result = "PROVIDER_FAILED"
                     failure_reason = ResearchFailureState.PROVIDER_FAILED.value
+
+        usable_results = 0
+        if biz.review_count is not None and (biz.review_count or 0) > 0:
+            usable_results = 1
+        elif enrich_res and enrich_res.get("all_evidence"):
+            usable_results = len([e for e in enrich_res.get("all_evidence", []) if not e.get("reject_reason")])
+
+        q_count = 0
+        if enrich_res and enrich_res.get("all_evidence"):
+            q_count += len(enrich_res.get("all_evidence"))
+        if rec_res and getattr(rec_res, "telemetry", None):
+            q_count += len(rec_res.telemetry)
+        if q_count == 0 and not already_has_reviews:
+            q_count = 1
+
+        research_duration = time.time() - start_research_time if not already_has_reviews else 0.0
 
         telem = ResearchTelemetry(
             candidate=cname,
@@ -931,11 +992,17 @@ class MarketRunner:
             fallback_attempted="GOSOM: NOT_ATTEMPTED",
             fallback_result="NOT_ATTEMPTED",
             failure_reason=failure_reason,
+            query_count=q_count,
+            usable_results_count=usable_results,
+            latency=research_duration,
             details={
                 "city": city,
                 "review_count": biz.review_count,
                 "rating": biz.rating,
                 "latest_review_date": getattr(biz, "latest_review_date", None),
+                "query_count": q_count,
+                "usable_results": usable_results,
+                "latency": round(research_duration, 3),
             },
         )
 
@@ -951,6 +1018,9 @@ class MarketRunner:
         log(f"    • fallback attempted: {telem.fallback_attempted}")
         log(f"    • fallback result   : {telem.fallback_result}")
         log(f"    • failure reason    : {telem.failure_reason}")
+        log(f"    • query count       : {telem.query_count}")
+        log(f"    • usable results    : {telem.usable_results_count}")
+        log(f"    • latency           : {round(telem.latency, 3)}s")
 
         return telem
 

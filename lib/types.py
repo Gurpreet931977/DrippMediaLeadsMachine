@@ -577,25 +577,26 @@ class ResearchLogEntry:
 
 class ResearchFailureState(str, Enum):
     """
-    Phase 11.1 Differentiated Research & Review Failure States.
-    Distinguishes the 8 failure states to prevent collapsing into generic 'missing reviews'.
+    Phase 11.1 & 11.2 Differentiated Research & Review Failure States.
+    Distinguishes failure states to prevent collapsing into generic 'missing reviews'.
     """
     NO_EVIDENCE_FOUND = "NO_EVIDENCE_FOUND"              # A. Genuinely no evidence found
     PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"        # B. Provider unavailable (connection refused / network)
     PROVIDER_NOT_CONFIGURED = "PROVIDER_NOT_CONFIGURED"  # C. Provider not configured (keys missing)
     PROVIDER_FAILED = "PROVIDER_FAILED"                  # D. Provider failed (circuit open / HTTP error)
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"                # E. Provider timed out
-    EXTRACTION_FAILED = "EXTRACTION_FAILED"              # F. Evidence extraction failed (unparseable)
-    IDENTITY_MISMATCH = "IDENTITY_MISMATCH"              # G. Identity mismatch (wrong branch / rejected)
-    EVIDENCE_CONFLICT = "EVIDENCE_CONFLICT"              # H. Evidence conflict (reconciliation conflict)
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"                    # F. Provider quota exhausted / budget reached
+    EXTRACTION_FAILED = "EXTRACTION_FAILED"              # G. Evidence extraction failed (unparseable)
+    IDENTITY_MISMATCH = "IDENTITY_MISMATCH"              # H. Identity mismatch (wrong branch / rejected)
+    EVIDENCE_CONFLICT = "EVIDENCE_CONFLICT"              # I. Evidence conflict (reconciliation conflict)
     NONE = "NONE"                                        # Evidence recovered successfully
 
 
 @dataclass
 class ResearchTelemetry:
     """
-    Phase 11.1 Candidate-level research telemetry.
-    Records granular provider attempts, results, signals, and failure reasons.
+    Phase 11.1 & 11.2 Candidate-level research telemetry.
+    Records granular provider attempts, results, signals, failure reasons, and performance metrics.
     """
     candidate: str
     provider_attempted: List[str] = field(default_factory=list)
@@ -605,6 +606,9 @@ class ResearchTelemetry:
     fallback_attempted: str = "NONE"
     fallback_result: str = "NOT_ATTEMPTED"
     failure_reason: str = ResearchFailureState.NONE.value
+    query_count: int = 0
+    usable_results_count: int = 0
+    latency: float = 0.0
     details: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -617,6 +621,9 @@ class ResearchTelemetry:
             "fallback_attempted": self.fallback_attempted,
             "fallback_result": self.fallback_result,
             "failure_reason": self.failure_reason,
+            "query_count": self.query_count,
+            "usable_results_count": self.usable_results_count,
+            "latency": round(self.latency, 3),
             "details": dict(self.details),
         }
 

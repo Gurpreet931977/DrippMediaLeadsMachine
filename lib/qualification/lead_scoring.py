@@ -432,6 +432,8 @@ class LeadScoringProvider:
                     qualification_reason = "Research Only: Review research provider timed out. Insufficient verified customer traction for outreach."
                 elif fail_state == ResearchFailureState.PROVIDER_FAILED.value:
                     qualification_reason = "Research Only: Review research provider failed (HTTP error or circuit open). Insufficient verified customer traction for outreach."
+                elif fail_state == ResearchFailureState.QUOTA_EXCEEDED.value:
+                    qualification_reason = "Research Only: Review research provider quota exceeded. Insufficient verified customer traction for outreach."
                 elif fail_state == ResearchFailureState.EXTRACTION_FAILED.value:
                     qualification_reason = "Research Only: Review evidence extraction failed from discovered sources. Insufficient verified customer traction for outreach."
                 elif fail_state == ResearchFailureState.IDENTITY_MISMATCH.value:

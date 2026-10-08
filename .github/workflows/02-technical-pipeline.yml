@@ -64,6 +64,8 @@ jobs:
       AUTOMATED_EMAIL_ENABLED: "false"
       TECHNICAL_AUTOMATION_ENABLED: "true"
       TZ: "UTC"
+      # Free Web Research Provider Secrets Contract (Optional)
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
       # Google Sheets Secrets Contract
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}

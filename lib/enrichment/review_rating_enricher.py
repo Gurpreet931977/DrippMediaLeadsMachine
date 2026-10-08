@@ -672,7 +672,12 @@ class ReviewRatingEnricher:
             "SEARCH_BLOCKED",
             "SEARCH_CIRCUIT_OPEN",
             "SEARCH_PROVIDER_UNAVAILABLE",
-            "SEARCH_TIMEOUT"
+            "SEARCH_TIMEOUT",
+            "PROVIDER_NOT_CONFIGURED",
+            "PROVIDER_FAILED",
+            "PROVIDER_TIMEOUT",
+            "PROVIDER_UNAVAILABLE",
+            "QUOTA_EXCEEDED",
         }
 
         # If pre-supplied search results (e.g. from tests or prior web search)

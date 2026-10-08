@@ -44,6 +44,12 @@ class SearchOutcome(str, Enum):
     SEARCH_CIRCUIT_OPEN = "SEARCH_CIRCUIT_OPEN"
     SEARCH_PROVIDER_UNAVAILABLE = "SEARCH_PROVIDER_UNAVAILABLE"
     SEARCH_TIMEOUT = "SEARCH_TIMEOUT"
+    # Phase 11.2 differentiated outcomes
+    PROVIDER_NOT_CONFIGURED = "PROVIDER_NOT_CONFIGURED"
+    PROVIDER_FAILED = "PROVIDER_FAILED"
+    PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
 
 
 class SearchResultList(list):
@@ -75,7 +81,13 @@ class SearchResultList(list):
         self.is_cached = is_cached
         self.retries = retries
         self.latency = latency
-        self.attempted = (outcome not in [SearchOutcome.SEARCH_CIRCUIT_OPEN, SearchOutcome.SEARCH_PROVIDER_UNAVAILABLE])
+        self.attempted = (outcome not in [
+            SearchOutcome.SEARCH_CIRCUIT_OPEN,
+            SearchOutcome.SEARCH_PROVIDER_UNAVAILABLE,
+            SearchOutcome.PROVIDER_UNAVAILABLE,
+            SearchOutcome.PROVIDER_NOT_CONFIGURED,
+            SearchOutcome.QUOTA_EXCEEDED,
+        ])
         self.succeeded = (outcome in [SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS, SearchOutcome.SEARCH_SUCCEEDED_EMPTY])
         self.result_count = len(self)
 
@@ -354,11 +366,17 @@ class WebSearchProvider(DiscoveryProvider):
         self.cache_hits: int = 0
         self.cache_misses: int = 0
 
+        self.quota_budget = None
+
         # Legacy stats dictionary compatibility layer
         self.stats_by_provider = self._build_stats_view()
 
         global _GLOBAL_WEB_SEARCH_PROVIDER
         _GLOBAL_WEB_SEARCH_PROVIDER = self
+
+    def set_quota_budget(self, quota_budget: Any) -> None:
+        """Attaches central QuotaBudget to WebSearchProvider for quota governance."""
+        self.quota_budget = quota_budget
 
     def _sync_stats(self):
         """Synchronizes circuit breaker states into stats_by_provider."""
@@ -534,6 +552,22 @@ class WebSearchProvider(DiscoveryProvider):
 
     def _search_tavily(self, query: str, num_results: int = 5, advanced: bool = False) -> SearchResultList:
         """Tavily search API (Basic search by default to conserve credits)."""
+        if not self.tavily_key:
+            return SearchResultList(
+                outcome=SearchOutcome.PROVIDER_NOT_CONFIGURED,
+                provider="TAVILY",
+                query=query,
+                error="Tavily API key is not configured"
+            )
+
+        if self.quota_budget is not None and not self.quota_budget.can_consume("tavily", 1):
+            return SearchResultList(
+                outcome=SearchOutcome.QUOTA_EXCEEDED,
+                provider="TAVILY",
+                query=query,
+                error="Tavily quota budget exhausted"
+            )
+
         cb = self.circuit_breakers["TAVILY"]
         if not cb.can_request():
             cb.circuit_open_queries += 1
@@ -560,7 +594,25 @@ class WebSearchProvider(DiscoveryProvider):
             resp = requests.post(url, json=payload, timeout=10)
             latency = time.time() - start_t
             if resp.status_code == 200:
-                data = resp.json()
+                try:
+                    data = resp.json()
+                except (ValueError, json.JSONDecodeError) as json_err:
+                    cb.record_failure(error_msg=f"Malformed JSON: {json_err}", latency=latency)
+                    self.record_call(latency=latency, error=True)
+                    self._sync_stats()
+                    return SearchResultList(
+                        outcome=SearchOutcome.PROVIDER_FAILED,
+                        provider="TAVILY",
+                        query=query,
+                        error=f"Malformed JSON response: {json_err}",
+                        http_status=200,
+                        circuit_state=cb.status,
+                        latency=latency
+                    )
+
+                if self.quota_budget is not None:
+                    self.quota_budget.consume("tavily", 1)
+
                 results = []
                 retrieved_at = datetime.now(timezone.utc).isoformat()
                 for r in data.get("results", []):
@@ -586,12 +638,25 @@ class WebSearchProvider(DiscoveryProvider):
                     circuit_state=cb.status,
                     latency=latency
                 )
+            elif resp.status_code == 429:
+                cb.record_failure(error_msg=f"HTTP 429 Quota Exceeded / Rate Limited", latency=latency)
+                self.record_call(latency=latency, error=True)
+                self._sync_stats()
+                return SearchResultList(
+                    outcome=SearchOutcome.QUOTA_EXCEEDED,
+                    provider="TAVILY",
+                    query=query,
+                    error="HTTP 429: Quota exceeded or rate limited",
+                    http_status=429,
+                    circuit_state=cb.status,
+                    latency=latency
+                )
             else:
                 cb.record_failure(error_msg=f"HTTP {resp.status_code}", latency=latency)
                 self.record_call(latency=latency, error=True)
                 self._sync_stats()
                 return SearchResultList(
-                    outcome=SearchOutcome.SEARCH_BLOCKED if resp.status_code in [403, 429] else SearchOutcome.SEARCH_FAILED,
+                    outcome=SearchOutcome.PROVIDER_FAILED,
                     provider="TAVILY",
                     query=query,
                     error=f"HTTP {resp.status_code}",
@@ -599,12 +664,40 @@ class WebSearchProvider(DiscoveryProvider):
                     circuit_state=cb.status,
                     latency=latency
                 )
+        except requests.Timeout as ex:
+            latency = time.time() - start_t
+            cb.record_failure(error_msg=str(ex), latency=latency)
+            self.record_call(latency=0.0, error=True)
+            self._sync_stats()
+            return SearchResultList(
+                outcome=SearchOutcome.PROVIDER_TIMEOUT,
+                provider="TAVILY",
+                query=query,
+                error=str(ex),
+                circuit_state=cb.status,
+                latency=latency
+            )
+        except (requests.ConnectionError, requests.exceptions.ConnectionError) as ex:
+            latency = time.time() - start_t
+            cb.record_failure(error_msg=str(ex), latency=latency)
+            self.record_call(latency=0.0, error=True)
+            self._sync_stats()
+            return SearchResultList(
+                outcome=SearchOutcome.PROVIDER_UNAVAILABLE,
+                provider="TAVILY",
+                query=query,
+                error=str(ex),
+                circuit_state=cb.status,
+                latency=latency
+            )
         except Exception as ex:
             latency = time.time() - start_t
             cb.record_failure(error_msg=str(ex), latency=latency)
             self.record_call(latency=0.0, error=True)
             self._sync_stats()
-            outcome = SearchOutcome.SEARCH_TIMEOUT if "Timeout" in type(ex).__name__ else SearchOutcome.SEARCH_FAILED
+            outcome = SearchOutcome.PROVIDER_TIMEOUT if "Timeout" in type(ex).__name__ else (
+                SearchOutcome.PROVIDER_UNAVAILABLE if ("Connection" in type(ex).__name__ or "ConnectionRefused" in str(ex)) else SearchOutcome.PROVIDER_FAILED
+            )
             return SearchResultList(
                 outcome=outcome,
                 provider="TAVILY",
@@ -1083,11 +1176,17 @@ class WebSearchProvider(DiscoveryProvider):
             return last_result
 
         # All providers unavailable / unconfigured
+        if not self.tavily_key and not self.brave_key and not self._searxng_explicitly_set:
+            outcome = SearchOutcome.PROVIDER_NOT_CONFIGURED
+            err_msg = "No search providers configured (TAVILY_API_KEY, BRAVE_API_KEY, or SEARXNG_URL missing)"
+        else:
+            outcome = SearchOutcome.SEARCH_PROVIDER_UNAVAILABLE
+            err_msg = "No search providers configured or available"
         return SearchResultList(
-            outcome=SearchOutcome.SEARCH_PROVIDER_UNAVAILABLE,
+            outcome=outcome,
             provider="NONE",
             query=query,
-            error="No search providers configured or available"
+            error=err_msg
         )
 
     def search_businesses(
