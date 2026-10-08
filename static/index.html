@@ -798,42 +798,93 @@
     .radar-display-area {
       position: relative;
       width: 100%;
-      height: 220px;
+      height: 250px;
       border-radius: var(--radius-sm);
-      background: radial-gradient(circle at 50% 50%, rgba(255, 229, 0, 0.04) 0%, rgba(0, 0, 0, 0.5) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: radial-gradient(circle at 50% 50%, rgba(255, 229, 0, 0.05) 0%, rgba(10, 10, 10, 0.95) 75%, #050505 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+    .radar-bracket {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      pointer-events: none;
+      border: 1px solid var(--accent-yellow);
+      opacity: 0.45;
+    }
+    .bracket-tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+    .bracket-tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+    .bracket-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+    .bracket-br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+
+    .radar-scope-legend {
+      position: absolute;
+      top: 10px;
+      left: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .radar-legend-tag {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--accent-yellow);
+      letter-spacing: 0.08em;
+    }
+    .radar-legend-sub {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--text-dim);
+    }
+
+    .radar-compass-axis {
+      position: absolute;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 800;
+      color: rgba(255, 229, 0, 0.45);
+      pointer-events: none;
+      user-select: none;
+    }
+    .compass-n { top: 6px; left: 50%; transform: translateX(-50%); }
+    .compass-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
+    .compass-w { left: 8px; top: 50%; transform: translateY(-50%); }
+    .compass-e { right: 8px; top: 50%; transform: translateY(-50%); }
+
     .radar-ring {
       position: absolute;
       border-radius: 50%;
-      border: 1px dashed rgba(255, 255, 255, 0.08);
       pointer-events: none;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
     }
-    .radar-ring span {
-      font-size: 0.58rem;
-      font-family: var(--font-mono);
-      color: rgba(255, 255, 255, 0.3);
-      margin-top: -8px;
-      background: #000;
-      padding: 0 4px;
+    .radar-ring-1 {
+      width: 70px;
+      height: 70px;
+      border: 1px solid rgba(255, 229, 0, 0.22);
     }
-    .radar-ring-1 { width: 75px; height: 75px; border-color: rgba(255, 229, 0, 0.18); }
-    .radar-ring-2 { width: 145px; height: 145px; }
-    .radar-ring-3 { width: 205px; height: 205px; }
+    .radar-ring-2 {
+      width: 140px;
+      height: 140px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    .radar-ring-3 {
+      width: 210px;
+      height: 210px;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+    }
+
     .radar-crosshair-h {
       position: absolute;
       left: 0;
       right: 0;
       top: 50%;
       height: 1px;
-      background: rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.08);
       pointer-events: none;
     }
     .radar-crosshair-v {
@@ -842,25 +893,27 @@
       bottom: 0;
       left: 50%;
       width: 1px;
-      background: rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.08);
       pointer-events: none;
     }
+
     .radar-sweep-beam {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 120px;
-      height: 120px;
-      transform-origin: top left;
-      background: conic-gradient(from 0deg, rgba(255, 229, 0, 0.22) 0deg, transparent 65deg);
+      width: 210px;
+      height: 210px;
       border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: conic-gradient(from 0deg, rgba(255, 229, 0, 0.32) 0deg, rgba(255, 229, 0, 0.06) 40deg, transparent 65deg);
       pointer-events: none;
       animation: radarRotate 4.5s linear infinite;
     }
     @keyframes radarRotate {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
     }
+
     .radar-ping-wave {
       position: absolute;
       top: 50%;
@@ -868,7 +921,8 @@
       width: 0;
       height: 0;
       border-radius: 50%;
-      border: 1px solid var(--accent-yellow);
+      border: 1.5px solid var(--accent-yellow);
+      box-shadow: 0 0 15px rgba(255, 229, 0, 0.6);
       transform: translate(-50%, -50%);
       pointer-events: none;
       opacity: 0;
@@ -877,53 +931,83 @@
       animation: pingWaveAnim 1.4s cubic-bezier(0, 0.2, 0.8, 1) forwards;
     }
     @keyframes pingWaveAnim {
-      0% { width: 0; height: 0; opacity: 0.9; }
-      100% { width: 280px; height: 280px; opacity: 0; }
+      0% { width: 0; height: 0; opacity: 0.95; }
+      100% { width: 260px; height: 260px; opacity: 0; }
     }
+
     .radar-blip-target {
       position: absolute;
-      transform: translate(-50%, -50%);
       cursor: pointer;
       z-index: 10;
       display: flex;
-      flex-direction: column;
       align-items: center;
       transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .radar-blip-target:hover {
-      transform: translate(-50%, -50%) scale(1.3);
+      transform: scale(1.15);
+      z-index: 20;
+    }
+
+    .blip-beacon-wrap {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .blip-beacon {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: var(--accent-yellow);
-      box-shadow: 0 0 10px var(--accent-yellow);
+      box-shadow: 0 0 10px var(--accent-yellow), 0 0 18px rgba(255, 229, 0, 0.6);
+      position: relative;
+      z-index: 2;
     }
+    .blip-pulse-ring {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 229, 0, 0.5);
+      animation: blipBeaconPulse 2s infinite ease-out;
+      pointer-events: none;
+    }
+    @keyframes blipBeaconPulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+
     .blip-tag {
-      font-size: 0.6rem;
+      font-size: 0.65rem;
       font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.03em;
       color: #FFFFFF;
-      background: rgba(0, 0, 0, 0.8);
-      padding: 0.1rem 0.35rem;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      margin-top: 3px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      padding: 0.14rem 0.5rem;
+      border-radius: 3px;
+      border: 1px solid rgba(255, 229, 0, 0.32);
       white-space: nowrap;
       pointer-events: none;
       transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
     }
     .radar-blip-target:hover .blip-tag {
-      color: #000;
+      color: #000000;
       background: var(--accent-yellow);
       border-color: var(--accent-yellow);
       font-weight: 800;
-      box-shadow: 0 0 10px rgba(255, 229, 0, 0.4);
+      box-shadow: 0 0 16px rgba(255, 229, 0, 0.6);
     }
+
     .radar-hud-footer {
       border-top: var(--glass-border);
-      padding-top: 0.65rem;
-      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      margin-top: 0.85rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -931,15 +1015,34 @@
       gap: 0.5rem;
     }
     .radar-hud-label {
-      font-size: 0.65rem;
+      font-size: 0.66rem;
       font-family: var(--font-mono);
       color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
     }
-    .radar-hud-target {
+    .radar-target-pill {
       font-size: 0.7rem;
       font-family: var(--font-mono);
       font-weight: 700;
       color: var(--accent-yellow);
+      background: rgba(255, 229, 0, 0.06);
+      border: 1px solid rgba(255, 229, 0, 0.25);
+      border-radius: var(--radius-pill);
+      padding: 0.2rem 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all var(--transition-fast);
+    }
+    .radar-lock-pulse {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent-yellow);
+      box-shadow: 0 0 6px var(--accent-yellow);
+      animation: navPulse 1.8s infinite alternate;
     }
 
     /* 3-Step Lead Machine Workflow Guide Strip */
@@ -1613,40 +1716,89 @@
           </div>
 
           <div class="radar-display-area" id="radarDisplayArea">
-            <div class="radar-ring radar-ring-3"><span>3.0 km</span></div>
-            <div class="radar-ring radar-ring-2"><span>1.5 km</span></div>
-            <div class="radar-ring radar-ring-1"><span>0.5 km (NQ)</span></div>
+            <!-- Corner Reticles -->
+            <div class="radar-bracket bracket-tl"></div>
+            <div class="radar-bracket bracket-tr"></div>
+            <div class="radar-bracket bracket-bl"></div>
+            <div class="radar-bracket bracket-br"></div>
+
+            <!-- Scope Legend -->
+            <div class="radar-scope-legend">
+              <span class="radar-legend-tag">3.0 KM SECTOR</span>
+              <span class="radar-legend-sub">0.5KM &bull; 1.5KM &bull; 3.0KM</span>
+            </div>
+
+            <!-- Cardinal Compass Markers -->
+            <div class="radar-compass-axis compass-n">N</div>
+            <div class="radar-compass-axis compass-s">S</div>
+            <div class="radar-compass-axis compass-w">W</div>
+            <div class="radar-compass-axis compass-e">E</div>
+
+            <!-- Range Rings (Clean, non-colliding) -->
+            <div class="radar-ring radar-ring-3"></div>
+            <div class="radar-ring radar-ring-2"></div>
+            <div class="radar-ring radar-ring-1"></div>
+
+            <!-- Axis Crosshairs -->
             <div class="radar-crosshair-h"></div>
             <div class="radar-crosshair-v"></div>
+
+            <!-- Rotating Radar Sweep Beam -->
             <div class="radar-sweep-beam" id="radarSweepBeam"></div>
+
+            <!-- Expanding Ping Shockwave -->
             <div class="radar-ping-wave" id="radarPingWave"></div>
 
-            <!-- Target Blips -->
-            <div class="radar-blip-target" style="top:36%; left:64%;" data-name="Mala" data-id="lead-mcr-001" onclick="openLeadDrawerById('lead-mcr-001')">
-              <div class="blip-beacon"></div>
-              <div class="blip-tag">Mala</div>
+            <!-- Target Blips (Carefully non-overlapping positions) -->
+            <div class="radar-blip-target" style="top:36%; left:65%;" data-name="Mala" data-id="lead-mcr-001" onclick="openLeadDrawerById('lead-mcr-001')">
+              <div class="blip-beacon-wrap">
+                <span class="blip-pulse-ring"></span>
+                <span class="blip-beacon"></span>
+              </div>
+              <span class="blip-tag" style="margin-left:6px;">Mala</span>
             </div>
-            <div class="radar-blip-target" style="top:62%; left:36%;" data-name="Dog & Partridge" data-id="lead-mcr-002" onclick="openLeadDrawerById('lead-mcr-002')">
-              <div class="blip-beacon"></div>
-              <div class="blip-tag">Dog &amp; Partridge</div>
+
+            <div class="radar-blip-target" style="top:22%; left:42%; flex-direction:column-reverse;" data-name="Mary D's" data-id="lead-mcr-003" onclick="openLeadDrawerById('lead-mcr-003')">
+              <div class="blip-beacon-wrap">
+                <span class="blip-pulse-ring"></span>
+                <span class="blip-beacon"></span>
+              </div>
+              <span class="blip-tag" style="margin-bottom:6px;">Mary D's</span>
             </div>
-            <div class="radar-blip-target" style="top:26%; left:42%;" data-name="Mary D's" data-id="lead-mcr-003" onclick="openLeadDrawerById('lead-mcr-003')">
-              <div class="blip-beacon"></div>
-              <div class="blip-tag">Mary D's</div>
+
+            <div class="radar-blip-target" style="top:64%; left:34%;" data-name="Dog & Partridge" data-id="lead-mcr-002" onclick="openLeadDrawerById('lead-mcr-002')">
+              <div class="blip-beacon-wrap">
+                <span class="blip-pulse-ring"></span>
+                <span class="blip-beacon"></span>
+              </div>
+              <span class="blip-tag" style="margin-left:6px;">Dog &amp; Partridge</span>
             </div>
+
             <div class="radar-blip-target" style="top:74%; left:68%;" data-name="The Marble Arch" data-id="lead-mcr-004" onclick="openLeadDrawerById('lead-mcr-004')">
-              <div class="blip-beacon"></div>
-              <div class="blip-tag">Marble Arch</div>
+              <div class="blip-beacon-wrap">
+                <span class="blip-pulse-ring"></span>
+                <span class="blip-beacon"></span>
+              </div>
+              <span class="blip-tag" style="margin-left:6px;">Marble Arch</span>
             </div>
-            <div class="radar-blip-target" style="top:52%; left:20%;" data-name="Cask" data-id="lead-mcr-005" onclick="openLeadDrawerById('lead-mcr-005')">
-              <div class="blip-beacon"></div>
-              <div class="blip-tag">Cask</div>
+
+            <div class="radar-blip-target" style="top:50%; left:16%; flex-direction:row-reverse;" data-name="Cask" data-id="lead-mcr-005" onclick="openLeadDrawerById('lead-mcr-005')">
+              <div class="blip-beacon-wrap">
+                <span class="blip-pulse-ring"></span>
+                <span class="blip-beacon"></span>
+              </div>
+              <span class="blip-tag" style="margin-right:6px;">Cask</span>
             </div>
           </div>
 
           <div class="radar-hud-footer">
-            <div class="radar-hud-label">COORDINATES: 53.4808° N, 2.2426° W</div>
-            <div class="radar-hud-target" id="radarActiveTarget">TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR</div>
+            <div class="radar-hud-label">
+              <span>COORDINATES: 53.4808° N, 2.2426° W</span>
+            </div>
+            <div class="radar-target-pill" id="radarActiveTarget">
+              <span class="radar-lock-pulse"></span>
+              <span id="radarActiveTargetText">TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2727,7 +2879,7 @@
     // Manchester Radar HUD Controller
     function triggerRadarPing() {
       const ping = document.getElementById('radarPingWave');
-      const targetHud = document.getElementById('radarActiveTarget');
+      const targetHud = document.getElementById('radarActiveTargetText') || document.getElementById('radarActiveTarget');
       if (ping) {
         ping.classList.remove('active');
         void ping.offsetWidth;
@@ -2756,7 +2908,7 @@
     }
 
     function initRadarInteractions() {
-      const targetHud = document.getElementById('radarActiveTarget');
+      const targetHud = document.getElementById('radarActiveTargetText') || document.getElementById('radarActiveTarget');
       document.querySelectorAll('.radar-blip-target').forEach(blip => {
         blip.addEventListener('pointerenter', () => {
           const name = blip.getAttribute('data-name');
