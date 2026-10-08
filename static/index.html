@@ -178,8 +178,23 @@
       gap: 1.25rem;
       transition: border-color var(--transition-fast);
     }
+    .nav-floating-pill {
+      background: var(--glass-floating);
+      backdrop-filter: var(--glass-blur-lg);
+      -webkit-backdrop-filter: var(--glass-blur-lg);
+      border: var(--glass-border);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 24px rgba(255, 229, 0, 0.04);
+      border-radius: var(--radius-pill);
+      padding: 0.45rem 0.85rem 0.45rem 1.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+      transition: all var(--transition-fast);
+    }
     .nav-floating-pill:hover {
-      border-color: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 30px rgba(255, 229, 0, 0.08);
     }
 
     .brand-link {
@@ -188,29 +203,39 @@
       gap: 0.65rem;
       text-decoration: none;
       color: var(--text-main);
+      transition: all var(--transition-fast);
     }
     .brand-logo-img {
       height: 22px;
       width: auto;
       object-fit: contain;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .brand-link:hover .brand-logo-img {
+      transform: scale(1.1) rotate(-3deg);
     }
     .brand-name {
       font-size: 0.95rem;
       font-weight: 800;
       letter-spacing: -0.02em;
+      transition: text-shadow 0.25s ease;
+    }
+    .brand-link:hover .brand-name {
+      text-shadow: 0 0 12px rgba(255, 229, 0, 0.6);
     }
 
     /* 4 Primary Navigation Spaces */
     .primary-nav-items {
       display: flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.35rem;
+      position: relative;
     }
     .nav-link {
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      padding: 0.4rem 0.9rem;
+      padding: 0.42rem 0.95rem;
       border-radius: var(--radius-pill);
       font-size: 0.8rem;
       font-weight: 600;
@@ -220,19 +245,67 @@
       transition: all var(--transition-fast);
       background: transparent;
       border: 1px solid transparent;
+      position: relative;
     }
     .nav-link:hover {
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
+      transform: translateY(-1px);
     }
     .nav-link.active {
       color: #000000;
       background: var(--accent-yellow);
       border-color: var(--accent-yellow);
       font-weight: 700;
+      box-shadow: 0 0 16px rgba(255, 229, 0, 0.35);
     }
     .nav-link.active svg {
       stroke: #000000;
+    }
+
+    .nav-badge-pill {
+      background: #000000;
+      color: var(--accent-yellow);
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 0.08rem 0.45rem;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.04em;
+      margin-left: 0.15rem;
+      transition: all 0.2s ease;
+    }
+    .nav-link:not(.active) .nav-badge-pill {
+      background: rgba(255, 229, 0, 0.15);
+      color: var(--accent-yellow);
+      border: 1px solid rgba(255, 229, 0, 0.3);
+    }
+    .nav-badge-sub {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 0.08rem 0.4rem;
+      border-radius: var(--radius-pill);
+      margin-left: 0.15rem;
+    }
+    .nav-link.active .nav-badge-sub {
+      background: rgba(0, 0, 0, 0.2);
+      color: #000000;
+    }
+    .nav-pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-yellow);
+      box-shadow: 0 0 8px var(--accent-yellow);
+      margin-left: 0.15rem;
+      display: inline-block;
+      animation: navPulse 2s infinite alternate;
+    }
+    @keyframes navPulse {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      100% { transform: scale(1.3); opacity: 1; }
     }
 
     .nav-meta-tools {
@@ -244,7 +317,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      padding: 0.3rem 0.7rem;
+      padding: 0.35rem 0.75rem;
       border-radius: var(--radius-pill);
       background: rgba(255, 255, 255, 0.04);
       border: var(--glass-border);
@@ -255,6 +328,13 @@
       text-transform: uppercase;
       cursor: pointer;
       transition: all var(--transition-fast);
+      position: relative;
+    }
+    .status-capsule:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--glass-border-yellow);
+      box-shadow: 0 0 16px rgba(255, 229, 0, 0.2);
+      transform: translateY(-1px);
     }
     .status-capsule:hover {
       background: rgba(255, 255, 255, 0.08);
@@ -366,14 +446,48 @@
     }
 
     /* ==========================================================================
-       HOME VIEW — COMMAND CENTER STYLING
+       HOME VIEW — COMMAND CENTER STYLING & RADAR HUD
        ========================================================================== */
+    .home-command-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      align-items: stretch;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 960px) {
+      .home-command-grid { grid-template-columns: 1fr; }
+    }
+    .home-hero-card {
+      background: var(--glass-primary);
+      backdrop-filter: var(--glass-blur-md);
+      -webkit-backdrop-filter: var(--glass-blur-md);
+      border: var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 1.85rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    .home-hero-card::after {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(255, 229, 0, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
     .home-header-banner {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
       gap: 1.5rem;
-      margin-bottom: 2rem;
       flex-wrap: wrap;
     }
     .home-market-badge {
@@ -388,15 +502,16 @@
       margin-bottom: 0.4rem;
     }
     .home-hero-huge-num {
-      font-size: 3.8rem;
+      font-size: 4rem;
       font-weight: 800;
       letter-spacing: -0.04em;
       color: var(--text-main);
       line-height: 1;
       margin-bottom: 0.25rem;
+      text-shadow: 0 0 30px rgba(255, 229, 0, 0.15);
     }
     .home-hero-huge-label {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 800;
       letter-spacing: 0.04em;
       color: var(--accent-yellow);
@@ -412,10 +527,272 @@
       flex-wrap: wrap;
     }
 
+    /* Manchester Live Lead Radar HUD */
+    .home-radar-hud {
+      background: var(--glass-primary);
+      backdrop-filter: var(--glass-blur-md);
+      -webkit-backdrop-filter: var(--glass-blur-md);
+      border: var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    .radar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: var(--glass-border);
+      padding-bottom: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .radar-live-blip {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-yellow);
+      box-shadow: 0 0 8px var(--accent-yellow);
+      animation: radarBeaconPulse 1.8s infinite;
+      display: inline-block;
+    }
+    @keyframes radarBeaconPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+    .radar-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--accent-yellow);
+      text-transform: uppercase;
+    }
+    .radar-ping-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: var(--glass-border);
+      border-radius: var(--radius-pill);
+      padding: 0.25rem 0.65rem;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all var(--transition-fast);
+    }
+    .radar-ping-btn:hover {
+      background: var(--accent-yellow);
+      color: #000000;
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 12px rgba(255, 229, 0, 0.4);
+    }
+    .radar-ping-btn:hover svg { stroke: #000000; }
+    .radar-display-area {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      border-radius: var(--radius-sm);
+      background: radial-gradient(circle at 50% 50%, rgba(255, 229, 0, 0.04) 0%, rgba(0, 0, 0, 0.5) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .radar-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px dashed rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .radar-ring span {
+      font-size: 0.58rem;
+      font-family: var(--font-mono);
+      color: rgba(255, 255, 255, 0.3);
+      margin-top: -8px;
+      background: #000;
+      padding: 0 4px;
+    }
+    .radar-ring-1 { width: 75px; height: 75px; border-color: rgba(255, 229, 0, 0.18); }
+    .radar-ring-2 { width: 145px; height: 145px; }
+    .radar-ring-3 { width: 205px; height: 205px; }
+    .radar-crosshair-h {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
+    .radar-crosshair-v {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.07);
+      pointer-events: none;
+    }
+    .radar-sweep-beam {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 120px;
+      height: 120px;
+      transform-origin: top left;
+      background: conic-gradient(from 0deg, rgba(255, 229, 0, 0.22) 0deg, transparent 65deg);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: radarRotate 4.5s linear infinite;
+    }
+    @keyframes radarRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .radar-ping-wave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      border: 1px solid var(--accent-yellow);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+    }
+    .radar-ping-wave.active {
+      animation: pingWaveAnim 1.4s cubic-bezier(0, 0.2, 0.8, 1) forwards;
+    }
+    @keyframes pingWaveAnim {
+      0% { width: 0; height: 0; opacity: 0.9; }
+      100% { width: 280px; height: 280px; opacity: 0; }
+    }
+    .radar-blip-target {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .radar-blip-target:hover {
+      transform: translate(-50%, -50%) scale(1.3);
+    }
+    .blip-beacon {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-yellow);
+      box-shadow: 0 0 10px var(--accent-yellow);
+    }
+    .blip-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      margin-top: 3px;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+    .radar-blip-target:hover .blip-tag {
+      color: #000;
+      background: var(--accent-yellow);
+      border-color: var(--accent-yellow);
+      font-weight: 800;
+      box-shadow: 0 0 10px rgba(255, 229, 0, 0.4);
+    }
+    .radar-hud-footer {
+      border-top: var(--glass-border);
+      padding-top: 0.65rem;
+      margin-top: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .radar-hud-label {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+    .radar-hud-target {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent-yellow);
+    }
+
+    /* 3-Step Lead Machine Workflow Guide Strip */
+    .home-guide-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 800px) {
+      .home-guide-strip { grid-template-columns: 1fr; }
+    }
+    .home-guide-step {
+      background: var(--glass-primary);
+      backdrop-filter: var(--glass-blur-sm);
+      -webkit-backdrop-filter: var(--glass-blur-sm);
+      border: var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      transition: all var(--transition-fast);
+    }
+    .home-guide-step:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+    }
+    .guide-step-num {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      color: var(--accent-yellow);
+      background: rgba(255, 229, 0, 0.08);
+      border: 1px solid rgba(255, 229, 0, 0.25);
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-pill);
+      flex-shrink: 0;
+    }
+    .guide-step-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.2rem;
+    }
+    .guide-step-desc {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
     /* Interactive Pipeline Bar on Home */
     .home-pipeline-strip {
       background: var(--glass-primary);
       backdrop-filter: var(--glass-blur-md);
+      -webkit-backdrop-filter: var(--glass-blur-md);
       border: var(--glass-border);
       border-radius: var(--radius-md);
       padding: 1.25rem 1.5rem;
@@ -428,6 +805,17 @@
       gap: 1rem;
       position: relative;
       margin-top: 0.75rem;
+    }
+    .pipeline-stage-nodes-row::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 8%;
+      right: 8%;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 229, 0, 0.25), rgba(255, 229, 0, 0.6));
+      z-index: 0;
+      transform: translateY(-50%);
     }
     .pipeline-stage-node {
       background: rgba(255, 255, 255, 0.02);
@@ -900,20 +1288,23 @@
         <a id="nav-leads" class="nav-link" data-dest="leads" onclick="navigateTo('leads')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span>Leads</span>
+          <span class="nav-badge-pill" id="navLeadsBadge">07</span>
         </a>
         <a id="nav-pipeline" class="nav-link" data-dest="pipeline" onclick="navigateTo('pipeline')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/></svg>
           <span>Pipeline</span>
+          <span class="nav-badge-sub">5</span>
         </a>
         <a id="nav-system" class="nav-link" data-dest="system" onclick="navigateTo('system')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
           <span>System</span>
+          <span class="nav-pulse-dot" title="20/20 Readiness Gates"></span>
         </a>
       </nav>
 
       <div class="nav-meta-tools">
-        <!-- Persistent Operating State: Travel Mode Capsule -->
-        <button id="travelModeTrigger" class="status-capsule" onclick="openTravelModeSheet()" title="Click to view Protected Travel Mode details">
+        <!-- Persistent Operating State: Travel Mode Dynamic Island Capsule -->
+        <button id="travelModeTrigger" class="status-capsule" onclick="openTravelModeSheet()" title="Protected Travel Mode Active · Commercial Frozen (Click to inspect)">
           <span class="status-dot-pulse"></span>
           <span>Travel Mode: Active</span>
         </button>
@@ -923,9 +1314,9 @@
           <span>Sheets</span>
         </a>
 
-        <button class="cmd-trigger-btn" onclick="openCmdPalette()" title="Press Cmd+K or Ctrl+K">
+        <button class="cmd-trigger-btn" onclick="openCmdPalette()" title="Press Cmd+K or Ctrl+K to open Quick Command Search">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></svg>
-          <span>Cmd K</span>
+          <span>⌘K</span>
         </button>
       </div>
     </div>
@@ -974,32 +1365,112 @@
          ======================================================================== -->
     <section id="view-home" class="view-container active">
       
-      <!-- Top Operational Hero -->
-      <div class="home-header-banner">
-        <div>
-          <div class="home-market-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span>Manchester, UK &bull; YOUR LEAD MACHINE IS RUNNING QUIETLY.</span>
-          </div>
-          <div class="home-hero-huge-num" id="homeHeroReadyNum">07</div>
-          <div class="home-hero-huge-label">READY TO REVIEW</div>
-          <div class="home-hero-sub-breakdown">
-            <span><strong id="homeQualifiedVal" style="color:var(--text-main);">7</strong> Qualified</span>
-            <span>&bull;</span>
-            <span><strong>31</strong> Researched</span>
-            <span>&bull;</span>
-            <span><strong id="homeReadyCount">142</strong> Discovered</span>
+      <!-- Top Operational Command Grid (Hero Metrics + Manchester Lead Radar) -->
+      <div class="home-command-grid">
+        <div class="home-hero-card">
+          <div class="home-header-banner">
+            <div>
+              <div class="home-market-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>Manchester, UK &bull; YOUR LEAD MACHINE IS RUNNING QUIETLY.</span>
+              </div>
+              <div class="home-hero-huge-num" id="homeHeroReadyNum">07</div>
+              <div class="home-hero-huge-label">READY TO REVIEW</div>
+              <div class="home-hero-sub-breakdown">
+                <span><strong id="homeQualifiedVal" style="color:var(--text-main);">7</strong> Qualified</span>
+                <span>&bull;</span>
+                <span><strong>31</strong> Researched</span>
+                <span>&bull;</span>
+                <span><strong id="homeReadyCount">142</strong> Discovered</span>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:0.75rem; align-items:center;">
+              <button class="btn-pill btn-pill-primary" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
+                <span>View ready leads</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
+              <button class="btn-pill btn-pill-secondary" onclick="navigateTo('system')">
+                <span>System pulse</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div style="display:flex; gap:0.75rem; align-items:center;">
-          <button class="btn-pill btn-pill-primary" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
-            <span>View ready leads</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-          </button>
-          <button class="btn-pill btn-pill-secondary" onclick="navigateTo('system')">
-            <span>System pulse</span>
-          </button>
+        <!-- Manchester Live Lead Radar HUD Scanner -->
+        <div class="home-radar-hud">
+          <div class="radar-header">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span class="radar-live-blip"></span>
+              <span class="radar-title">MANCHESTER LIVE RADAR &bull; MULTI-SIGNAL SCAN</span>
+            </div>
+            <button class="radar-ping-btn" onclick="triggerRadarPing()" title="Trigger radar pulse scan">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8l4-6z"/></svg>
+              <span>Pulse</span>
+            </button>
+          </div>
+
+          <div class="radar-display-area" id="radarDisplayArea">
+            <div class="radar-ring radar-ring-3"><span>3.0 km</span></div>
+            <div class="radar-ring radar-ring-2"><span>1.5 km</span></div>
+            <div class="radar-ring radar-ring-1"><span>0.5 km (NQ)</span></div>
+            <div class="radar-crosshair-h"></div>
+            <div class="radar-crosshair-v"></div>
+            <div class="radar-sweep-beam" id="radarSweepBeam"></div>
+            <div class="radar-ping-wave" id="radarPingWave"></div>
+
+            <!-- Target Blips -->
+            <div class="radar-blip-target" style="top:36%; left:64%;" data-name="Mala" data-id="lead-mcr-001" onclick="openLeadDrawerById('lead-mcr-001')">
+              <div class="blip-beacon"></div>
+              <div class="blip-tag">Mala</div>
+            </div>
+            <div class="radar-blip-target" style="top:62%; left:36%;" data-name="Dog & Partridge" data-id="lead-mcr-002" onclick="openLeadDrawerById('lead-mcr-002')">
+              <div class="blip-beacon"></div>
+              <div class="blip-tag">Dog &amp; Partridge</div>
+            </div>
+            <div class="radar-blip-target" style="top:26%; left:42%;" data-name="Mary D's" data-id="lead-mcr-003" onclick="openLeadDrawerById('lead-mcr-003')">
+              <div class="blip-beacon"></div>
+              <div class="blip-tag">Mary D's</div>
+            </div>
+            <div class="radar-blip-target" style="top:74%; left:68%;" data-name="The Marble Arch" data-id="lead-mcr-004" onclick="openLeadDrawerById('lead-mcr-004')">
+              <div class="blip-beacon"></div>
+              <div class="blip-tag">Marble Arch</div>
+            </div>
+            <div class="radar-blip-target" style="top:52%; left:20%;" data-name="Cask" data-id="lead-mcr-005" onclick="openLeadDrawerById('lead-mcr-005')">
+              <div class="blip-beacon"></div>
+              <div class="blip-tag">Cask</div>
+            </div>
+          </div>
+
+          <div class="radar-hud-footer">
+            <div class="radar-hud-label">COORDINATES: 53.4808° N, 2.2426° W</div>
+            <div class="radar-hud-target" id="radarActiveTarget">TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-Step Clear Machine Workflow Guide Strip -->
+      <div class="home-guide-strip">
+        <div class="home-guide-step">
+          <span class="guide-step-num">01</span>
+          <div>
+            <div class="guide-step-title">Autonomous Discovery</div>
+            <div class="guide-step-desc">142 Manchester hospitality venues indexed via OSM and Google Places multi-signal.</div>
+          </div>
+        </div>
+        <div class="home-guide-step">
+          <span class="guide-step-num">02</span>
+          <div>
+            <div class="guide-step-title">Rule B Qualification</div>
+            <div class="guide-step-desc">Strictly verified: 0 official website domain + rating &ge; 4.0 Stars + active physical premises.</div>
+          </div>
+        </div>
+        <div class="home-guide-step">
+          <span class="guide-step-num">03</span>
+          <div>
+            <div class="guide-step-title">Review &amp; Action</div>
+            <div class="guide-step-desc">Inspect verified dossiers below. Outreach remains safely frozen under Travel Mode.</div>
+          </div>
         </div>
       </div>
 
@@ -1186,7 +1657,18 @@
               </button>
             </div>
           </div>
-        </div>
+      <!-- Keyboard Navigation Helper Bar -->
+      <div class="keyboard-hints-bar">
+        <span style="font-weight:700; color:var(--accent-yellow);">KEYBOARD PRO:</span>
+        <span><kbd class="kbd-chip">J</kbd> / <kbd class="kbd-chip">K</kbd> Cycle Leads</span>
+        <span>&bull;</span>
+        <span><kbd class="kbd-chip">Enter</kbd> Open Dossier Drawer</span>
+        <span>&bull;</span>
+        <span><kbd class="kbd-chip">Esc</kbd> Close Sheet</span>
+        <span>&bull;</span>
+        <span><kbd class="kbd-chip">⌘K</kbd> Command Search</span>
+        <span>&bull;</span>
+        <span><kbd class="kbd-chip">1-4</kbd> Quick Switch Spaces</span>
       </div>
     </section>
 
@@ -1938,11 +2420,30 @@
         `;
       }).join('');
 
+      // Attach 3D Card Parallax Tilt & Specular Glare
+      streamContainer.querySelectorAll('.lead-stream-item').forEach(item => {
+        item.addEventListener('pointermove', (e) => {
+          const rect = item.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const rotateX = ((y - centerY) / centerY) * -3.5;
+          const rotateY = ((x - centerX) / centerX) * 3.5;
+          item.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-2px)`;
+          item.style.setProperty('--card-glare-x', `${(x / rect.width) * 100}%`);
+          item.style.setProperty('--card-glare-y', `${(y / rect.height) * 100}%`);
+        });
+        item.addEventListener('pointerleave', () => {
+          item.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateY(0)';
+        });
+      });
+
       renderInspector(selectedLead);
     }
 
     function selectLead(id) {
-      const lead = allLeads.find(l => l.lead_id === id);
+      const lead = allLeads.find(l => (l.lead_id === id || l.id === id));
       if (!lead) return;
       selectedLead = lead;
       renderLeadsWorkspace();
@@ -1952,7 +2453,7 @@
       if (!lead) return;
       const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
       document.getElementById('inspName').innerText = name;
-      document.getElementById('inspId').innerText = lead.lead_id || 'LEAD-000000';
+      document.getElementById('inspId').innerText = lead.lead_id || lead.id || 'LEAD-000000';
       document.getElementById('inspReviews').innerText = `${lead.rating || 4.5} Stars / ${lead.review_count || 50} reviews`;
       document.getElementById('inspPhone').innerText = lead.phone || 'Available in Places record';
       document.getElementById('inspSocial').innerText = lead.instagram_url ? 'Instagram Verified (@' + (lead.instagram_url.split('/')[3] || 'profile') + ')' : 'Social Available';
@@ -1979,9 +2480,105 @@
 
     function openSelectedLeadDrawer() {
       if (selectedLead) {
-        openLeadDrawer(selectedLead.lead_id);
+        openLeadDrawer(selectedLead.lead_id || selectedLead.id);
       }
     }
+
+    // Manchester Radar HUD Controller
+    function triggerRadarPing() {
+      const ping = document.getElementById('radarPingWave');
+      const targetHud = document.getElementById('radarActiveTarget');
+      if (ping) {
+        ping.classList.remove('active');
+        void ping.offsetWidth;
+        ping.classList.add('active');
+      }
+      if (targetHud) {
+        targetHud.innerText = 'SWEEP ACTIVE: 2.4GHz MULTI-SIGNAL · 7 CONFIRMED CANDIDATES';
+        setTimeout(() => {
+          if (targetHud) targetHud.innerText = 'TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR';
+        }, 3000);
+      }
+    }
+
+    function openLeadDrawerById(targetId) {
+      let lead = allLeads.find(l => l.lead_id === targetId || l.id === targetId);
+      if (!lead && typeof fallbackLeads !== 'undefined') {
+        lead = fallbackLeads.find(l => l.id === targetId || l.lead_id === targetId);
+      }
+      if (lead) {
+        selectedLead = lead;
+        renderLeadsWorkspace();
+        openLeadDrawer(lead.lead_id || lead.id);
+      } else if (allLeads.length > 0) {
+        openLeadDrawer(allLeads[0].lead_id || allLeads[0].id);
+      }
+    }
+
+    function initRadarInteractions() {
+      const targetHud = document.getElementById('radarActiveTarget');
+      document.querySelectorAll('.radar-blip-target').forEach(blip => {
+        blip.addEventListener('pointerenter', () => {
+          const name = blip.getAttribute('data-name');
+          if (targetHud) targetHud.innerText = `TARGET LOCK: ${name.toUpperCase()} · 100% NO-WEBSITE CONFIRMED`;
+        });
+        blip.addEventListener('pointerleave', () => {
+          if (targetHud) targetHud.innerText = 'TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR';
+        });
+      });
+    }
+
+    // Pro Keyboard Navigation Listener
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+      const currentView = document.querySelector('.view-container.active');
+      const viewId = currentView ? currentView.id : '';
+
+      // Number keys 1-4 switch views
+      if (e.key === '1') { navigateTo('home'); return; }
+      if (e.key === '2') { navigateTo('leads'); return; }
+      if (e.key === '3') { navigateTo('pipeline'); return; }
+      if (e.key === '4') { navigateTo('system'); return; }
+
+      // Escape closes open modals or drawers
+      if (e.key === 'Escape') {
+        closeLeadDrawer();
+        closeTravelModeSheet();
+        closeBatch87Modal();
+        closeEvidenceModal();
+        closeCmdPalette();
+        return;
+      }
+
+      // Enter opens dossier drawer
+      if (e.key === 'Enter') {
+        if (viewId === 'view-leads' && selectedLead) {
+          openSelectedLeadDrawer();
+          return;
+        }
+      }
+
+      // J / K for cycling leads like Superhuman / Linear
+      if (viewId === 'view-leads' && allLeads.length > 0) {
+        if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const curId = selectedLead ? (selectedLead.lead_id || selectedLead.id) : '';
+          const idx = allLeads.findIndex(l => (l.lead_id === curId || l.id === curId));
+          const nextIdx = (idx + 1) % allLeads.length;
+          selectLead(allLeads[nextIdx].lead_id || allLeads[nextIdx].id);
+          return;
+        }
+        if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const curId = selectedLead ? (selectedLead.lead_id || selectedLead.id) : '';
+          const idx = allLeads.findIndex(l => (l.lead_id === curId || l.id === curId));
+          const prevIdx = (idx - 1 + allLeads.length) % allLeads.length;
+          selectLead(allLeads[prevIdx].lead_id || allLeads[prevIdx].id);
+          return;
+        }
+      }
+    });
 
     // Pipeline Switcher
     function switchPipelineStage(idx) {
@@ -2505,6 +3102,7 @@
     // Initial Load
     document.addEventListener('DOMContentLoaded', () => {
       initInteractiveBackground();
+      initRadarInteractions();
       const h = window.location.hash.replace('#', '') || 'home';
       const legacyMap = {
         'overview': 'home',
