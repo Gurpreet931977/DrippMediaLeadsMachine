@@ -28,6 +28,8 @@ jobs:
       TZ: "UTC"
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
 
     steps:
       - name: "Checkout Repository"

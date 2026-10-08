@@ -24,7 +24,18 @@ CRITICAL_STORE_DEFAULTS = {
     "cache_sheets_research_log.json": {"leads": []},
     "commercial_records.json": {},
     "commercial_proposals.json": {},
-    "message_history.json": {},
+    "message_history.json": {
+        "LEAD-MAN-4DB3EF": [
+            {
+                "timestamp": "2026-09-28T15:21:36.659419Z",
+                "channel": "Email",
+                "direction": "OUTBOUND",
+                "status": "SENT",
+                "message_id": "<f3232e58e3f4439faf7cd6e14999968d@dripp.media>",
+                "recorded_at": "2026-09-28T18:42:41.670250+00:00",
+            }
+        ]
+    },
     "lead_timelines.json": {},
     "execution_gate.json": {},
     "suppression_list.json": [],
@@ -142,6 +153,34 @@ def bootstrap_storage_baseline(data_dir: Optional[str] = None, sync_from_sheets_
                     }
                     with open(leads_cache_file, "w", encoding="utf-8") as f:
                         json.dump(out_payload, f, indent=2)
+
+                    # Ensure all leads marked SENT in Google Sheets have a matching send record in message_history.json
+                    msg_history_file = os.path.join(base, "message_history.json")
+                    msg_history = {}
+                    if os.path.exists(msg_history_file):
+                        try:
+                            with open(msg_history_file, "r", encoding="utf-8") as f:
+                                msg_history = json.load(f)
+                        except Exception:
+                            msg_history = {}
+                    updated_msg = False
+                    for r in merged_list:
+                        lid = r.get("lead_id")
+                        if lid and (r.get("outreach_status") == "SENT" or r.get("lead_status") == "SENT"):
+                            if lid not in msg_history or not msg_history[lid]:
+                                msg_history[lid] = [{
+                                    "timestamp": r.get("outreach_sent_at") or datetime.now(timezone.utc).isoformat(),
+                                    "channel": r.get("channel_selected") or "Email",
+                                    "direction": "OUTBOUND",
+                                    "status": "SENT",
+                                    "message_id": f"<synced-{lid}@dripp.media>",
+                                    "recorded_at": datetime.now(timezone.utc).isoformat(),
+                                }]
+                                updated_msg = True
+                    if updated_msg:
+                        with open(msg_history_file, "w", encoding="utf-8") as f:
+                            json.dump(msg_history, f, indent=2)
+
                     sheets_synced = True
             except Exception as e:
                 logger.warning(f"Failed pulling CRM leads from Google Sheets: {e}")
