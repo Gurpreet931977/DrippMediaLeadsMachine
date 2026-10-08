@@ -21,13 +21,15 @@ class ApifyDiscoveryProvider(DiscoveryProvider):
         env_enabled = os.getenv("APIFY_ENABLED", "false").lower() in ["true", "1", "yes"]
         self.enabled = enabled if enabled is not None else env_enabled
         self.client = None
-        if self.token and self.enabled:
-            try:
-                from apify_client import ApifyClient
+
+        # Detect availability of optional apify_client dependency
+        try:
+            from apify_client import ApifyClient
+            if self.token and self.enabled:
                 self.client = ApifyClient(self.token)
-            except ImportError:
-                self.client = None
-                self.enabled = False
+        except (ImportError, Exception):
+            self.client = None
+            self.enabled = False
         self.country_validator = CountryValidator()
 
     def get_query_rounds(self, city: str, country: str, industry: str) -> List[List[str]]:
