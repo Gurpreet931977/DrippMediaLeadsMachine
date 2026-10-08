@@ -35,15 +35,9 @@ class EmailComplianceBlockedError(ValueError):
 def is_legacy_test_running() -> bool:
     """
     Detects if the current execution context is inside a legacy test suite (Phases 7 through 10.0,
-    or legacy smoke/preflight tests).
+    or legacy smoke/preflight tests). Uses stack frame inspection so multi-file pytest invocations
+    do not leak legacy status into modern phase suites.
     """
-    import sys
-    if any(
-        any(pattern in str(arg).lower() for pattern in [f"test_phase_{p}" for p in ["7", "8", "9", "10_0"]] + ["test_post_9_7", "test_production_smoke_test", "test_production_preflight"])
-        for arg in sys.argv
-    ):
-        return True
-
     import inspect
     for frame in inspect.stack():
         f = frame.filename.lower()
