@@ -95,6 +95,8 @@ class QuotaGovernor:
         # Check date rollover
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         if state.get("date") != today:
+            if "history" not in state or not isinstance(state["history"], list):
+                state["history"] = []
             state["history"].append({
                 "date": state.get("date"),
                 "usage": state.get("usage", {}),

@@ -10,6 +10,7 @@ Preserves Google Sheets as canonical CRM single source of truth.
 import os
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger("StorageBootstrap")
@@ -34,9 +35,14 @@ CRITICAL_STORE_DEFAULTS = {
     "technical_jobs.json": [],
     "controlled_batch_state.json": {},
     ".quota_state.json": {
-        "daily_usage": {},
-        "hourly_usage": {},
-        "last_reset": None,
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "limits": {},
+        "usage": {},
+        "history": [],
+    },
+    "incidents.json": {
+        "incidents": [],
+        "updated_at": None,
     },
 }
 

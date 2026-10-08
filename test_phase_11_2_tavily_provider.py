@@ -76,6 +76,11 @@ class TestPhase112TavilyProvider(unittest.TestCase):
         SystemConfig.TRAVEL_MODE = True
         SystemConfig.COMMERCIAL_ACTIONS_ENABLED = False
         SystemConfig.AUTOMATED_EMAIL_ENABLED = False
+        self._notify_patcher = patch("lib.discovery.web_search.WebSearchProvider._notify_tavily_monitor")
+        self._notify_patcher.start()
+
+    def tearDown(self):
+        self._notify_patcher.stop()
 
     # ──────────────────────────────────────────────────────────────────────────
     # 1. SUCCESSFUL SEARCH

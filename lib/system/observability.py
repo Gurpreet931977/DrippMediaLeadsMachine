@@ -18,10 +18,16 @@ logger = logging.getLogger("Observability")
 
 # Patterns to mask sensitive tokens and credentials
 SENSITIVE_PATTERNS = [
-    (re.compile(r"(Bearer\s+)[A-Za-z0-9_\-\.]{8,}", re.IGNORECASE), r"\1[MASKED_TOKEN]"),
-    (re.compile(r"(api[_\-]?key[\"'\s:=]+)[A-Za-z0-9_\-]{8,}", re.IGNORECASE), r"\1[MASKED_KEY]"),
-    (re.compile(r"(password[\"'\s:=]+)[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_PASSWORD]"),
-    (re.compile(r"(private[_\-]?key[\"'\s:=]+)[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_KEY]"),
+    (re.compile(r"tvly-[A-Za-z0-9_\-]{8,}", re.IGNORECASE), "[REDACTED_TAVILY_KEY]"),
+    (re.compile(r"ghp_[A-Za-z0-9_]{16,}", re.IGNORECASE), "[REDACTED_GITHUB_TOKEN]"),
+    (re.compile(r"gho_[A-Za-z0-9_]{16,}", re.IGNORECASE), "[REDACTED_GITHUB_TOKEN]"),
+    (re.compile(r"github_pat_[A-Za-z0-9_]{16,}", re.IGNORECASE), "[REDACTED_GITHUB_TOKEN]"),
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----", re.IGNORECASE), "[REDACTED_PRIVATE_KEY]"),
+    (re.compile(r"[A-Za-z0-9_\-\.]*service_account[A-Za-z0-9_\-\.]*\.json", re.IGNORECASE), "[REDACTED_CREDENTIALS_FILE]"),
+    (re.compile(r"(Bearer\s+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[A-Za-z0-9_\-\.]{8,}", re.IGNORECASE), r"\1[MASKED_TOKEN]"),
+    (re.compile(r"(api[_\-]?key[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[A-Za-z0-9_\-]{8,}", re.IGNORECASE), r"\1[MASKED_KEY]"),
+    (re.compile(r"(password[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_PASSWORD]"),
+    (re.compile(r"(private[_\-]?key[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_KEY]"),
 ]
 
 

@@ -43,6 +43,8 @@ class SystemHealthMonitor:
         self.scheduler = TechnicalScheduler(orchestrator=self.orchestrator)
         self.reconciler = ReconciliationEngine(data_dir=self.data_dir)
         self.identity_auditor = IdentityIntegrityAuditor(data_dir=self.data_dir)
+        from lib.monitoring.incident_manager import IncidentManager
+        self.incident_mgr = IncidentManager(data_dir=self.data_dir)
 
     def check_file_integrity(self) -> Dict[str, Any]:
         """Validates that all critical data stores exist and parse as valid JSON."""
@@ -110,19 +112,30 @@ class SystemHealthMonitor:
                     except Exception:
                         pass
 
-        # Determine Global System Health State
-        system_status = "HEALTHY"
+        # Active Incidents Integration (Phase 10.3)
+        active_incidents = self.incident_mgr.get_active_incidents()
+        active_critical = len([i for i in active_incidents if i.severity == "CRITICAL"])
+        active_error = len([i for i in active_incidents if i.severity == "ERROR"])
+        active_warning = len([i for i in active_incidents if i.severity == "WARNING"])
 
-        if file_health["status"] == "FAIL" or reconcile_report["status"] == "FAIL" or identity_report["status"] == "FAIL":
-            system_status = "FAILED"
+        # Determine Canonical Global System Health State
+        if active_critical > 0 or file_health["status"] == "FAIL":
+            system_status = "CRITICAL"
+        elif active_error > 0 or reconcile_report["status"] == "FAIL" or identity_report["status"] == "FAIL":
+            system_status = "UNHEALTHY"
         elif (
-            quota_status.get("status") == "QUOTA_EXHAUSTED"
+            active_warning > 0
+            or quota_status.get("status") == "QUOTA_EXHAUSTED"
             or len(failed_jobs) > 0
             or len(stale_jobs) > 0
             or reconcile_report["status"] == "WARN"
             or not recent_backup
         ):
             system_status = "DEGRADED"
+        else:
+            system_status = "HEALTHY"
+
+        canonical_health_status = system_status
 
         # Successful jobs
         successful_jobs = [j for j in jobs if j.get("status") == "COMPLETED"]
@@ -158,6 +171,9 @@ class SystemHealthMonitor:
         return {
             "generated_at": now.isoformat(),
             "system_status": system_status,
+            "canonical_health_status": canonical_health_status,
+            "incidents_summary": self.incident_mgr.get_summary(),
+            "active_incidents": [i.to_dict() for i in active_incidents],
             "operating_mode": "TRAVEL_MODE" if SystemConfig.TRAVEL_MODE else "STANDARD",
             "travel_mode": SystemConfig.TRAVEL_MODE,
             "commercial_actions_enabled": SystemConfig.COMMERCIAL_ACTIONS_ENABLED,

@@ -75,6 +75,13 @@ class SystemConfig:
     # Default market configuration: only MANCHESTER_UK is enabled
     DEFAULT_ENABLED_MARKET: str = "MANCHESTER_UK"
 
+    # Phase 10.3: Central Technical Alerting & Notification Controls (Disabled by default)
+    ALERTS_ENABLED: bool = os.environ.get("ALERTS_ENABLED", "false").lower() in ("true", "1", "yes")
+    ALERT_WEBHOOK_ENABLED: bool = os.environ.get("ALERT_WEBHOOK_ENABLED", "false").lower() in ("true", "1", "yes")
+    ALERT_EMAIL_ENABLED: bool = os.environ.get("ALERT_EMAIL_ENABLED", "false").lower() in ("true", "1", "yes")
+    ALERT_COOLDOWN_SECONDS: int = int(os.environ.get("ALERT_COOLDOWN_SECONDS", "3600"))
+    CRITICAL_ALERT_COOLDOWN_SECONDS: int = int(os.environ.get("CRITICAL_ALERT_COOLDOWN_SECONDS", "900"))
+
     @classmethod
     def set_travel_mode(cls, enabled: bool) -> None:
         """Sets Travel Mode on or off."""

@@ -158,16 +158,37 @@ def run_health_check(verbose: bool = True) -> int:
     print(f"  ANALYTICS_ENABLED            : {SystemConfig.ANALYTICS_ENABLED}")
     print(f"  BACKUP_ENABLED               : {SystemConfig.BACKUP_ENABLED}")
 
+    # 9. Production Monitoring & Active Incidents (Phase 10.3)
+    incidents_info = health.get("incidents_summary", {})
+    active_incidents = health.get("active_incidents", [])
+    canon_status = health.get("canonical_health_status", health.get("system_status", "HEALTHY"))
+    print("\n[9/9] Production Monitoring & Canonical Incidents:")
+    print(f"  Canonical Health State : {canon_status}")
+    print(f"  Total Incidents Tracked: {incidents_info.get('total_incidents', 0)}")
+    print(f"  Open / Active Incidents: {incidents_info.get('open_incidents', 0)}")
+    print(f"  Resolved Incidents     : {incidents_info.get('resolved_incidents', 0)}")
+    if active_incidents:
+        print("  Active Incidents Details:")
+        for inc in active_incidents:
+            print(f"    - [{inc.get('severity')}] {inc.get('incident_type')} ({inc.get('component')}): {inc.get('summary')}")
+            if inc.get("severity") in ("CRITICAL", "ERROR"):
+                issues.append(f"Incident active: {inc.get('incident_type')} - {inc.get('summary')}")
+            else:
+                warnings.append(f"Incident active: {inc.get('incident_type')} - {inc.get('summary')}")
+    else:
+        print("  ✓ Zero active open incidents.")
+
     # Overall Verdict
     print("\n" + "=" * 72)
     overall_status = "PASS"
-    if issues:
+    if issues or canon_status in ("CRITICAL", "UNHEALTHY"):
         overall_status = "FAIL"
-    elif warnings:
+    elif warnings or canon_status == "DEGRADED":
         overall_status = "WARN"
 
     print(f"  OVERALL SYSTEM STATUS: [ {overall_status} ]")
     print(f"  SYSTEM HEALTH STATE  : {health['system_status']}")
+    print(f"  CANONICAL HEALTH     : {canon_status}")
     print("=" * 72)
 
     if issues:
@@ -198,11 +219,14 @@ def run_health_check(verbose: bool = True) -> int:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "overall_status": overall_status,
         "system_health_state": health["system_status"],
+        "canonical_health_status": canon_status,
         "operating_mode": "TRAVEL_MODE" if SystemConfig.TRAVEL_MODE else "STANDARD",
         "travel_mode": SystemConfig.TRAVEL_MODE,
         "commercial_actions_enabled": SystemConfig.COMMERCIAL_ACTIONS_ENABLED,
         "critical_issues": issues,
         "warnings": warnings,
+        "incidents_summary": incidents_info,
+        "active_incidents": active_incidents,
         "details": health,
     }
 
@@ -212,13 +236,26 @@ def run_health_check(verbose: bool = True) -> int:
     with open(report_file, "w", encoding="utf-8") as rf:
         json.dump(report_data, rf, indent=2)
 
+    monitoring_file = os.path.join(data_dir, "monitoring_report.json")
+    with open(monitoring_file, "w", encoding="utf-8") as mf_json:
+        json.dump({
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "overall_status": overall_status,
+            "canonical_health_status": canon_status,
+            "incidents_summary": incidents_info,
+            "active_incidents": active_incidents,
+            "operating_mode": "TRAVEL_MODE" if SystemConfig.TRAVEL_MODE else "STANDARD",
+        }, mf_json, indent=2)
+
     md_summary = f"""# System Health Audit Summary
 
 - **Timestamp (UTC):** `{report_data['timestamp_utc']}`
 - **Overall Status:** `[{overall_status}]`
 - **Health State:** `{health['system_status']}`
+- **Canonical Health:** `{canon_status}`
 - **Mode:** `{'TRAVEL_MODE (Safe)' if SystemConfig.TRAVEL_MODE else 'STANDARD'}`
 - **Commercial Actions Locked:** `{'YES' if not SystemConfig.can_execute_commercial_actions() else 'NO'}`
+- **Active Incidents:** `{incidents_info.get('open_incidents', 0)}`
 
 ## Issues & Warnings
 - **Critical Issues:** `{len(issues)}`

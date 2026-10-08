@@ -484,6 +484,11 @@ def cleanup_reset_to_accurate_state():
             print(f"  [Cleanup] Message history reset failed (non-fatal): {e}")
 
 
+def teardown_module(module=None):
+    """Pytest / unittest module teardown to ensure test isolation."""
+    cleanup_reset_to_accurate_state()
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # SUPPLEMENTARY: CAMPAIGN DASHBOARD TEST
 # ──────────────────────────────────────────────────────────────────────────

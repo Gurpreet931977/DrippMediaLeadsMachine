@@ -484,6 +484,8 @@ class MarketRunner:
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         # Execution State
+        from lib.monitoring.incident_manager import get_incident_manager
+        self.incident_mgr = get_incident_manager(data_dir=os.path.join(project_root, "data"))
         self.run_id = f"RUN-{self.market_config.city[:3].upper()}-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
         self.status = RunState.CREATED.value
         self.started_at: Optional[str] = None
@@ -758,6 +760,25 @@ class MarketRunner:
         self._persist_checkpoint()
         log(f"\n[MarketRunner] Run {self.run_id} finished with status '{self.status}'.")
 
+        # Phase 10.3 Monitoring integration
+        try:
+            from lib.monitoring.detectors import DiscoveryMonitor, DeduplicationMonitor
+            disc_mon = DiscoveryMonitor(self.incident_mgr)
+            disc_mon.evaluate_run_results(
+                market_id=self.market_config.market_id,
+                discovered_count=self.discovered_count,
+                processed_count=self.processed_count,
+                qualified_count=self.qualified_count,
+            )
+            dedup_mon = DeduplicationMonitor(self.incident_mgr)
+            dedup_mon.evaluate_duplicate_rate(
+                market_id=self.market_config.market_id,
+                total_discovered=self.discovered_count,
+                duplicates_skipped=self.duplicates_skipped,
+            )
+        except Exception as mon_ex:
+            log(f"  [Monitoring Warning] Error evaluating pipeline monitors: {mon_ex}")
+
         return self.get_summary()
 
     def _enrich_and_recover_reviews(
@@ -1021,6 +1042,23 @@ class MarketRunner:
         log(f"    • query count       : {telem.query_count}")
         log(f"    • usable results    : {telem.usable_results_count}")
         log(f"    • latency           : {round(telem.latency, 3)}s")
+
+        # Phase 10.3 Monitoring integration: Tavily & Research
+        if "TAVILY" in providers_attempted:
+            try:
+                from lib.monitoring.detectors import TavilyMonitor
+                tav_mon = TavilyMonitor(self.incident_mgr)
+                q_rem = getattr(self.quota, "search_remaining", None)
+                q_lim = getattr(self.quota, "search_budget", None)
+                tav_mon.record_call_outcome(
+                    outcome_str=provider_result,
+                    query=f"{cname} {city}",
+                    latency=research_duration,
+                    quota_remaining=q_rem,
+                    quota_limit=q_lim,
+                )
+            except Exception as mon_ex:
+                log(f"  [Monitoring Warning] TavilyMonitor record error: {mon_ex}")
 
         return telem
 

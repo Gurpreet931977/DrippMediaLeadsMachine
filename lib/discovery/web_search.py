@@ -550,6 +550,21 @@ class WebSearchProvider(DiscoveryProvider):
             "telemetry": self.get_telemetry()
         }
 
+    def _notify_tavily_monitor(self, outcome_str: str, query: str, latency: float = 0.0) -> None:
+        try:
+            from lib.monitoring.detectors import TavilyMonitor
+            rem = getattr(self.quota_budget, "search_remaining", None) if self.quota_budget else None
+            lim = getattr(self.quota_budget, "search_budget", None) if self.quota_budget else None
+            TavilyMonitor().record_call_outcome(
+                outcome_str=outcome_str,
+                query=query,
+                latency=latency,
+                quota_remaining=rem,
+                quota_limit=lim,
+            )
+        except Exception:
+            pass
+
     def _search_tavily(self, query: str, num_results: int = 5, advanced: bool = False) -> SearchResultList:
         """Tavily search API (Basic search by default to conserve credits)."""
         if not self.tavily_key:
@@ -561,6 +576,7 @@ class WebSearchProvider(DiscoveryProvider):
             )
 
         if self.quota_budget is not None and not self.quota_budget.can_consume("tavily", 1):
+            self._notify_tavily_monitor("QUOTA_EXCEEDED", query, 0.0)
             return SearchResultList(
                 outcome=SearchOutcome.QUOTA_EXCEEDED,
                 provider="TAVILY",
@@ -600,6 +616,7 @@ class WebSearchProvider(DiscoveryProvider):
                     cb.record_failure(error_msg=f"Malformed JSON: {json_err}", latency=latency)
                     self.record_call(latency=latency, error=True)
                     self._sync_stats()
+                    self._notify_tavily_monitor("PROVIDER_FAILED", query, latency)
                     return SearchResultList(
                         outcome=SearchOutcome.PROVIDER_FAILED,
                         provider="TAVILY",
@@ -630,6 +647,7 @@ class WebSearchProvider(DiscoveryProvider):
                 self.record_call(latency=latency, candidates_count=len(results), cost=0.005 if advanced else 0.001)
                 self._sync_stats()
                 outcome = SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if results else SearchOutcome.SEARCH_SUCCEEDED_EMPTY
+                self._notify_tavily_monitor(outcome.value, query, latency)
                 return SearchResultList(
                     iterable=results,
                     outcome=outcome,
@@ -643,6 +661,7 @@ class WebSearchProvider(DiscoveryProvider):
                 cb.record_failure(error_msg=f"HTTP 429 Quota Exceeded / Rate Limited", latency=latency)
                 self.record_call(latency=latency, error=True)
                 self._sync_stats()
+                self._notify_tavily_monitor("QUOTA_EXCEEDED", query, latency)
                 return SearchResultList(
                     outcome=SearchOutcome.QUOTA_EXCEEDED,
                     provider="TAVILY",
@@ -656,6 +675,7 @@ class WebSearchProvider(DiscoveryProvider):
                 cb.record_failure(error_msg=f"HTTP {resp.status_code}", latency=latency)
                 self.record_call(latency=latency, error=True)
                 self._sync_stats()
+                self._notify_tavily_monitor("PROVIDER_FAILED", query, latency)
                 return SearchResultList(
                     outcome=SearchOutcome.PROVIDER_FAILED,
                     provider="TAVILY",
@@ -670,6 +690,7 @@ class WebSearchProvider(DiscoveryProvider):
             cb.record_failure(error_msg=str(ex), latency=latency)
             self.record_call(latency=0.0, error=True)
             self._sync_stats()
+            self._notify_tavily_monitor("PROVIDER_TIMEOUT", query, latency)
             return SearchResultList(
                 outcome=SearchOutcome.PROVIDER_TIMEOUT,
                 provider="TAVILY",
@@ -683,6 +704,7 @@ class WebSearchProvider(DiscoveryProvider):
             cb.record_failure(error_msg=str(ex), latency=latency)
             self.record_call(latency=0.0, error=True)
             self._sync_stats()
+            self._notify_tavily_monitor("PROVIDER_FAILED", query, latency)
             return SearchResultList(
                 outcome=SearchOutcome.PROVIDER_UNAVAILABLE,
                 provider="TAVILY",
@@ -699,6 +721,7 @@ class WebSearchProvider(DiscoveryProvider):
             outcome = SearchOutcome.PROVIDER_TIMEOUT if "Timeout" in type(ex).__name__ else (
                 SearchOutcome.PROVIDER_UNAVAILABLE if ("Connection" in type(ex).__name__ or "ConnectionRefused" in str(ex)) else SearchOutcome.PROVIDER_FAILED
             )
+            self._notify_tavily_monitor(outcome.value, query, latency)
             return SearchResultList(
                 outcome=outcome,
                 provider="TAVILY",

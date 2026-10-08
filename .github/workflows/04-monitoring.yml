@@ -68,4 +68,5 @@ jobs:
           path: |
             data/latest_health_report.json
             data/latest_health_summary.md
+            data/monitoring_report.json
           retention-days: 14

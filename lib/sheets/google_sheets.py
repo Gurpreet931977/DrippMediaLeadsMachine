@@ -238,7 +238,15 @@ class GoogleSheetsStorageProvider:
     @property
     def gc(self):
         if not self._gc:
-            self._gc = get_sheet_client()
+            try:
+                self._gc = get_sheet_client()
+            except Exception as e:
+                try:
+                    from lib.monitoring.detectors import GoogleSheetsMonitor
+                    GoogleSheetsMonitor().record_auth_failure(e, context="connect")
+                except Exception:
+                    pass
+                raise
         return self._gc
 
     @property
@@ -246,7 +254,20 @@ class GoogleSheetsStorageProvider:
         if not self._spreadsheet:
             if not self.sheet_url:
                 raise ValueError("GOOGLE_SHEET_URL is not set.")
-            self._spreadsheet = self.gc.open_by_url(self.sheet_url)
+            try:
+                self._spreadsheet = self.gc.open_by_url(self.sheet_url)
+                try:
+                    from lib.monitoring.detectors import GoogleSheetsMonitor
+                    GoogleSheetsMonitor().record_success()
+                except Exception:
+                    pass
+            except Exception as e:
+                try:
+                    from lib.monitoring.detectors import GoogleSheetsMonitor
+                    GoogleSheetsMonitor().record_api_failure(e, sheet_id=self.sheet_url)
+                except Exception:
+                    pass
+                raise
         return self._spreadsheet
 
     def _get_or_create_worksheet(self, title: str, cols: int = 40) -> gspread.Worksheet:
