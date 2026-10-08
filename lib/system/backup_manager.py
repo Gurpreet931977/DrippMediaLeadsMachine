@@ -13,7 +13,7 @@ import shutil
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Set
 
 from lib.system.atomic_writer import atomic_write_json
 
@@ -75,7 +75,9 @@ class BackupManager:
         target_files: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
-        Creates an immutable point-in-time snapshot with SHA-256 checksums and manifest.json.
+        Creates an immutable point-in-time snapshot with SHA-256 checksums,
+        manifest.json, and mandatory post-creation integrity verification.
+        A backup is only marked SUCCESS after verification passes.
         """
         now = datetime.now(timezone.utc)
         ts_str = now.strftime("%Y%m%d_%H%M%S")
@@ -106,22 +108,115 @@ class BackupManager:
                 }
                 backed_up_count += 1
 
+        # Calculate deterministic aggregate checksum of all backed up files
+        sorted_checksums = [f"{k}:{v['checksum_sha256']}" for k, v in sorted(manifest_files.items())]
+        aggregate_checksum = hashlib.sha256("|".join(sorted_checksums).encode("utf-8")).hexdigest()
+
         manifest = {
             "backup_id": backup_id,
+            "created_at": now.isoformat(),
+            "timestamp": now.isoformat(),
             "run_id": rid,
             "label": label,
             "schema_version": SCHEMA_VERSION,
-            "timestamp": now.isoformat(),
+            "source_state": self.data_dir,
+            "manifest_checksum": aggregate_checksum,
+            "checksum": aggregate_checksum,
             "files_count": backed_up_count,
+            "file_count": backed_up_count,
             "total_bytes": total_bytes,
+            "byte_size": total_bytes,
+            "completion_status": "PENDING_VERIFICATION",
             "files": manifest_files,
         }
 
         manifest_path = os.path.join(backup_folder, "manifest.json")
         atomic_write_json(manifest_path, manifest)
 
-        logger.info(f"Created backup {backup_id} with {backed_up_count} files ({total_bytes} bytes).")
+        # Mandatory integrity verification before marking SUCCESS
+        is_valid, errors = self.verify_backup_integrity(backup_id)
+        if not is_valid:
+            manifest["completion_status"] = "FAILED"
+            manifest["verification_errors"] = errors
+            atomic_write_json(manifest_path, manifest)
+            logger.error(f"Backup verification failed for {backup_id}: {errors}")
+            raise RuntimeError(f"Backup verification failed for {backup_id}: {'; '.join(errors)}")
+
+        manifest["completion_status"] = "SUCCESS"
+        atomic_write_json(manifest_path, manifest)
+
+        logger.info(f"Created verified backup {backup_id} with {backed_up_count} files ({total_bytes} bytes).")
         return manifest
+
+    def prune_backups(
+        self,
+        retention_count: int = 5,
+        min_valid_to_keep: int = 2,
+    ) -> Dict[str, Any]:
+        """
+        Safely prunes old backups according to retention policies.
+        Guarantees:
+          1. Never deletes the only available valid backup.
+          2. Preserves the newest valid backup and the previous valid backup (at least min_valid_to_keep).
+          3. Prunes only when excess backups exist beyond retention limits.
+        """
+        backups = self.list_backups()  # Newest to oldest
+        if not backups:
+            return {
+                "pruned_count": 0,
+                "pruned_backups": [],
+                "retained_count": 0,
+                "retained_backups": [],
+                "protected_valid_backups": [],
+            }
+
+        valid_backup_ids = []
+        for b in backups:
+            bid = b.get("backup_id")
+            if not bid:
+                continue
+            is_valid, _ = self.verify_backup_integrity(bid)
+            if is_valid:
+                valid_backup_ids.append(bid)
+
+        # Protect newest valid and previous valid backup(s)
+        protected_ids: Set[str] = set(valid_backup_ids[:min_valid_to_keep])
+        if len(valid_backup_ids) == 1:
+            protected_ids.add(valid_backup_ids[0])
+
+        pruned = []
+        retained = []
+
+        for idx, b in enumerate(backups):
+            bid = b.get("backup_id")
+            if not bid:
+                continue
+            folder = self.get_backup_path(bid)
+            if not folder:
+                continue
+
+            if bid in protected_ids:
+                retained.append(bid)
+                continue
+
+            if idx >= retention_count:
+                try:
+                    shutil.rmtree(folder, ignore_errors=True)
+                    pruned.append(bid)
+                except Exception as e:
+                    logger.warning(f"Failed to remove backup folder {folder}: {e}")
+                    retained.append(bid)
+            else:
+                retained.append(bid)
+
+        logger.info(f"Pruned {len(pruned)} backups; retained {len(retained)}.")
+        return {
+            "pruned_count": len(pruned),
+            "pruned_backups": pruned,
+            "retained_count": len(retained),
+            "retained_backups": retained,
+            "protected_valid_backups": list(protected_ids),
+        }
 
     def list_backups(self) -> List[Dict[str, Any]]:
         """Lists all existing backups ordered from newest to oldest."""

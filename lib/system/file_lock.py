@@ -62,6 +62,10 @@ class FileLock:
     def acquired(self) -> bool:
         return self._fd is not None
 
+    @property
+    def is_locked(self) -> bool:
+        return self._fd is not None
+
     def acquire(self) -> bool:
         """
         Attempts to acquire the lock before timeout expires.

@@ -847,3 +847,97 @@ class FreshnessMonitor:
                 fingerprint=fp,
                 resolution_note=f"Leads successfully refreshed in market '{clean_market}' ({leads_refreshed} updated)."
             )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 11. SECURITY, DATA INTEGRITY & RECOVERY MONITOR (Phase 10.5)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SecurityAndIntegrityMonitor:
+    """
+    Monitors repository secret scans, backups, restores, state corruption, and reconciliation.
+    Emits technical incidents strictly for security and data integrity events (Section 15).
+    """
+
+    def __init__(self, incident_mgr: Optional[IncidentManager] = None):
+        self.incident_mgr = incident_mgr or get_incident_manager()
+
+    def record_security_scan_failure(self, secret_count: int, finding_summary: str) -> None:
+        clean_summary = sanitize_text(finding_summary)
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.SECURITY_SCAN_FAILURE.value,
+            severity=IncidentSeverity.CRITICAL.value,
+            component="Security Auditor",
+            source="SecurityAndIntegrityMonitor",
+            summary=f"Security secret audit detected {secret_count} potential credential pattern(s): {clean_summary[:120]}",
+            impact="Risk of sensitive credential exposure in repository files or commit history.",
+            recommended_action="Immediately purge credentials, revoke exposed keys, and update .gitignore.",
+            component_key="security_scanner",
+            metric_name="secrets_found_count",
+            metric_value=secret_count,
+            threshold_value=0,
+            metadata={"secret_count": secret_count},
+        )
+
+    def record_backup_failure(self, error_msg: str, context: str = "backup_creation") -> None:
+        clean_err = sanitize_text(error_msg)
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.BACKUP_FAILURE.value,
+            severity=IncidentSeverity.ERROR.value,
+            component="Backup Manager",
+            source="SecurityAndIntegrityMonitor",
+            summary=f"System state snapshot failed during {context}: {clean_err[:120]}",
+            impact="Data snapshot not created or failed integrity verification; data loss risk if mutated.",
+            recommended_action="Inspect disk space, file system permissions, and source file integrity.",
+            component_key="backup_manager",
+            metadata={"error": clean_err},
+        )
+
+    def record_restore_failure(self, error_msg: str, backup_id: str) -> None:
+        clean_err = sanitize_text(error_msg)
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.RESTORE_FAILURE.value,
+            severity=IncidentSeverity.CRITICAL.value,
+            component="Backup Manager",
+            source="SecurityAndIntegrityMonitor",
+            summary=f"Restore from backup '{backup_id}' failed: {clean_err[:120]}",
+            impact="System state could not be safely restored from archived snapshot.",
+            recommended_action="Inspect backup manifest checksums, verify file permissions, and test isolated restore.",
+            component_key="backup_manager",
+            target_identifier=backup_id,
+            metadata={"backup_id": backup_id, "error": clean_err},
+        )
+
+    def record_state_corruption(self, store_name: str, reason: str) -> None:
+        clean_store = sanitize_text(store_name)
+        clean_reason = sanitize_text(reason)
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.STATE_CORRUPTION.value,
+            severity=IncidentSeverity.CRITICAL.value,
+            component="Storage & Data Integrity",
+            source="SecurityAndIntegrityMonitor",
+            summary=f"Data store '{clean_store}' is corrupt or unparseable: {clean_reason[:120]}",
+            impact="Operations on this store are blocked to prevent propagating corruption.",
+            recommended_action="Restore store from newest valid verified backup and investigate root cause.",
+            component_key="state_integrity",
+            target_identifier=clean_store,
+            metadata={"store": clean_store, "reason": clean_reason},
+        )
+
+    def record_reconciliation_failure(self, critical_issue_count: int, issues_summary: str) -> None:
+        clean_sum = sanitize_text(issues_summary)
+        self.incident_mgr.report_incident(
+            incident_type=IncidentType.RECONCILIATION_FAILURE.value,
+            severity=IncidentSeverity.ERROR.value,
+            component="Reconciliation Engine",
+            source="SecurityAndIntegrityMonitor",
+            summary=f"Cross-system reconciliation detected {critical_issue_count} critical contradiction(s): {clean_sum[:120]}",
+            impact="Multi-store state divergence detected between CRM, message history, or commercial pipelines.",
+            recommended_action="Execute reconciliation audit, identify contradictory records, and apply non-destructive alignment.",
+            component_key="reconciliation_engine",
+            metric_name="critical_issues",
+            metric_value=critical_issue_count,
+            threshold_value=0,
+            metadata={"critical_issues": critical_issue_count},
+        )
+

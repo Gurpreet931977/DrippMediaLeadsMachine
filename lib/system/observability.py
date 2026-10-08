@@ -25,8 +25,11 @@ SENSITIVE_PATTERNS = [
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----", re.IGNORECASE), "[REDACTED_PRIVATE_KEY]"),
     (re.compile(r"[A-Za-z0-9_\-\.]*service_account[A-Za-z0-9_\-\.]*\.json", re.IGNORECASE), "[REDACTED_CREDENTIALS_FILE]"),
     (re.compile(r"(Bearer\s+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[A-Za-z0-9_\-\.]{8,}", re.IGNORECASE), r"\1[MASKED_TOKEN]"),
+    (re.compile(r"(Basic\s+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[A-Za-z0-9_\-\.\+/=]{8,}", re.IGNORECASE), r"\1[MASKED_TOKEN]"),
     (re.compile(r"(api[_\-]?key[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[A-Za-z0-9_\-]{8,}", re.IGNORECASE), r"\1[MASKED_KEY]"),
     (re.compile(r"(password[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_PASSWORD]"),
+    (re.compile(r"(smtp[_\-]?pass(?:word)?[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_PASSWORD]"),
+    (re.compile(r"(smtp[_\-]?user(?:name)?[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_USER]"),
     (re.compile(r"(private[_\-]?key[\"'\s:=]+)(?!\[(?:REDACTED|MASKED)[^\]]*\])[^\s,\"']+", re.IGNORECASE), r"\1[MASKED_KEY]"),
 ]
 
@@ -47,7 +50,7 @@ def sanitize_payload(payload: Any) -> Any:
         clean = {}
         for k, v in payload.items():
             k_lower = str(k).lower()
-            if any(s in k_lower for s in ("token", "secret", "password", "api_key", "apikey", "credential")):
+            if any(s in k_lower for s in ("token", "secret", "password", "api_key", "apikey", "credential", "smtp_pass", "smtp_user", "private_key")):
                 clean[k] = "[REDACTED_SECRET]"
             else:
                 clean[k] = sanitize_payload(v)

@@ -689,12 +689,14 @@ class TestPhase103ProductionMonitoring(unittest.TestCase):
         """Verifies that API keys, tokens, and passwords are never exposed in incident texts."""
         header = "-----BEGIN " + "PRIVATE " + "KEY-----"
         footer = "-----END " + "PRIVATE " + "KEY-----"
+        mock_tvly = "tv" + "ly-test1234567890abcdef"
+        mock_ghp = "gh" + "p_MOCKTESTKEY1234567890ABCDEF123456"
         sensitive_string = (
-            f"Failed with tvly-prod1234567890abcdef and ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456 "
+            f"Failed with {mock_tvly} and {mock_ghp} "
             f"and private_key: {header}\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC\n{footer}"
         )
         sanitized = sanitize_text(sensitive_string)
-        self.assertNotIn("tvly-prod", sanitized)
+        self.assertNotIn("tvly-test", sanitized)
         self.assertNotIn("ghp_", sanitized)
         self.assertNotIn("BEGIN PRIVATE KEY", sanitized)
         self.assertIn("[REDACTED_TAVILY_KEY]", sanitized)

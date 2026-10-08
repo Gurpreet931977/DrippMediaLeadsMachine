@@ -29,7 +29,11 @@ PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("Private Key", re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----")),
     ("Google Service Account Key", re.compile(r"\"type\":\s*\"service_account\"[\s\S]*?\"private_key\":\s*\"-----BEGIN")),
     ("SendGrid API Key", re.compile(r"\bSG\.[0-9A-Za-z-_]{22}\.[0-9A-Za-z-_]{43}\b")),
-    ("GitHub Personal Access Token", re.compile(r"\bgh[pousr]_[0-9A-Za-z]{36}\b")),
+    ("GitHub Personal Access Token", re.compile(r"\b(?:gh[pousr]_[0-9A-Za-z]{30,}|github_pat_[0-9A-Za-z_]{22,})\b")),
+    ("Tavily API Key", re.compile(r"\btvly-[A-Za-z0-9_\-]{30,}\b")),
+    ("Authorization Header Token", re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer|Basic)\s+[A-Za-z0-9_\-\.\+/=]{20,}\b")),
+    ("SMTP Password Assignment", re.compile(r"(?i)\b(?:smtp[_\-]?pass(?:word)?)\s*[:=]\s*['\"][^'\"\s]{6,}['\"]")),
+    ("Hardcoded Password Assignment", re.compile(r"(?i)\b(?:password|passwd)\s*[:=]\s*['\"][^'\"\s]{8,}['\"]")),
     ("AWS Access Key ID", re.compile(r"\b(AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b")),
     ("Stripe Live Secret Key", re.compile(r"\bsk_live_[0-9a-zA-Z]{24,}\b")),
     ("Meta / Facebook Access Token", re.compile(r"\bEAACEdEose0cBA[0-9A-Za-z]+\b")),
@@ -37,12 +41,17 @@ PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("Google API Key", re.compile(r"\bAIza[0-9A-Za-z-_]{35}\b")),
 ]
 
-# Patterns allowed in synthetic test files
+# Patterns allowed in synthetic test files and templates
 ALLOWLIST_PATTERNS = [
     re.compile(r"AIzaSyMockTestKeyForCanaryValidation123"),
     re.compile(r"AIzaSyMock"),
     re.compile(r"example"),
     re.compile(r"test_key"),
+    re.compile(r"test_password"),
+    re.compile(r"mock_token"),
+    re.compile(r"mock_secret"),
+    re.compile(r"\[REDACTED"),
+    re.compile(r"\*\*\*"),
 ]
 
 # Required entries in .gitignore

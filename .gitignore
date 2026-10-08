@@ -11,14 +11,29 @@ ENV/
 dist/
 build/
 
-# Environment / Secrets
+# Environment / Secrets / Private Keys
 .env
 .env.*
 secrets.json
+secrets/
 credentials.json
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+poised-eye-509816-a4-5444ff3f8520.json
 
-# Data files (may contain PII / lead data)
+# Local Runtime & Persistent Application State
 data/
+backups/
+data_backup_sweep/
+data_backup*/
+scratch/
+artifacts/
+reports/
+
+# Local Databases
 *.db
 *.sqlite
 *.sqlite3
@@ -26,12 +41,28 @@ data/
 # Logs
 *.log
 logs/
+npm-debug.log*
+
+# Caches
+.cache/
+caches/
+*.cache
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Node
 node_modules/
-npm-debug.log*
 
-# macOS
+# Scraper Binaries
+bin/gosom*
+gosom_bin/
+
+# Temporary files
+*.tmp
+*.temp
+
+# macOS / OS
 .DS_Store
 
 # IDE
@@ -39,17 +70,7 @@ npm-debug.log*
 .idea/
 *.swp
 
-# Test cache
-.pytest_cache/
-.coverage
-htmlcov/
-
 # Keep these JSON configs
 !package.json
 !tsconfig.json
-scratch/
-poised-eye-509816-a4-5444ff3f8520.json
-scratch/
-artifacts/
-backups/
-data_backup_sweep/
+
