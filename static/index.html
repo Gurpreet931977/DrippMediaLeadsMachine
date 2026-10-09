@@ -1686,6 +1686,570 @@
       .home-header-banner { flex-direction: column; align-items: flex-start; }
       .home-hero-huge-num { font-size: 3rem; }
     }
+    /* ==========================================================================
+       MODERN & CREATIVE DISCOVERY ENGINE DESIGN SYSTEM
+       ========================================================================== */
+    .discovery-hero-card {
+      background: var(--glass-primary);
+      backdrop-filter: var(--glass-blur-lg);
+      -webkit-backdrop-filter: var(--glass-blur-lg);
+      border: var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem 2.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 16px 40px -15px rgba(0, 0, 0, 0.7);
+    }
+    .discovery-hero-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 400px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255, 229, 0, 0.08) 0%, rgba(255, 229, 0, 0.01) 60%, transparent 80%);
+      pointer-events: none;
+    }
+    .discovery-grid-layout {
+      display: grid;
+      grid-template-columns: 1.22fr 1fr;
+      gap: 1.75rem;
+      margin-bottom: 2rem;
+      align-items: start;
+    }
+    @media (max-width: 1100px) {
+      .discovery-grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .discovery-kpi-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .discovery-kpi-card {
+      background: var(--glass-secondary);
+      border: var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.4rem;
+      backdrop-filter: var(--glass-blur-sm);
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    .discovery-kpi-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+    .discovery-kpi-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .discovery-kpi-num {
+      font-size: 1.75rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .discovery-kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.45rem;
+    }
+
+    /* Step Section Cards */
+    .discovery-panel-card {
+      background: var(--glass-primary);
+      backdrop-filter: var(--glass-blur-lg);
+      -webkit-backdrop-filter: var(--glass-blur-lg);
+      border: var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      position: relative;
+      box-shadow: var(--glass-highlight);
+    }
+    .discovery-step-group {
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    .discovery-step-group:last-child {
+      margin-bottom: 0;
+    }
+    .discovery-step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.95rem;
+    }
+    .discovery-step-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .discovery-step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(255, 229, 0, 0.12);
+      color: var(--accent-yellow);
+      font-size: 0.68rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      border: 1px solid rgba(255, 229, 0, 0.3);
+    }
+    .discovery-step-title {
+      font-size: 0.88rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-main);
+    }
+    .discovery-step-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Territory Grid Tiles */
+    .discovery-city-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    @media (max-width: 600px) {
+      .discovery-city-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .discovery-city-tile {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.15rem;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-align: left;
+    }
+    .discovery-city-tile:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    .discovery-city-tile.active {
+      background: rgba(255, 229, 0, 0.07);
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 20px rgba(255, 229, 0, 0.12);
+    }
+    .discovery-city-tile-name {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .discovery-city-tile.active .discovery-city-tile-name {
+      color: var(--accent-yellow);
+    }
+    .discovery-city-tile-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+      font-family: var(--font-mono);
+    }
+    .discovery-city-tile-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all var(--transition-fast);
+    }
+    .discovery-city-tile.active .discovery-city-tile-indicator {
+      border-color: var(--accent-yellow);
+      background: var(--accent-yellow);
+    }
+    .discovery-city-tile.active .discovery-city-tile-indicator::after {
+      content: '';
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #000000;
+    }
+
+    /* Category Visual Cards */
+    .discovery-niche-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    @media (max-width: 600px) {
+      .discovery-niche-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .discovery-niche-card {
+      padding: 1rem 1.15rem;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      text-align: left;
+    }
+    .discovery-niche-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    .discovery-niche-card.active {
+      background: rgba(255, 229, 0, 0.07);
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 20px rgba(255, 229, 0, 0.12);
+    }
+    .discovery-niche-icon-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-muted);
+      transition: all var(--transition-fast);
+    }
+    .discovery-niche-card.active .discovery-niche-icon-wrap {
+      background: var(--accent-yellow);
+      border-color: var(--accent-yellow);
+      color: #000000;
+    }
+    .discovery-niche-name {
+      font-size: 0.86rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .discovery-niche-card.active .discovery-niche-name {
+      color: var(--accent-yellow);
+    }
+    .discovery-niche-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+      line-height: 1.35;
+    }
+
+    /* Lead Yield Segmented Bar */
+    .discovery-yield-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .discovery-yield-btn {
+      padding: 0.95rem 0.85rem;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      text-align: center;
+      transition: all var(--transition-fast);
+    }
+    .discovery-yield-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .discovery-yield-btn.active {
+      background: rgba(255, 229, 0, 0.08);
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 16px rgba(255, 229, 0, 0.12);
+    }
+    .discovery-yield-num {
+      font-size: 1.25rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+    }
+    .discovery-yield-btn.active .discovery-yield-num {
+      color: var(--accent-yellow);
+    }
+    .discovery-yield-sub {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Quality Banner Card */
+    .discovery-quality-shield-box {
+      background: rgba(255, 229, 0, 0.04);
+      border: 1px solid rgba(255, 229, 0, 0.25);
+      border-radius: var(--radius-md);
+      padding: 1.15rem 1.35rem;
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+      margin-bottom: 2rem;
+    }
+    .discovery-shield-icon-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(255, 229, 0, 0.15);
+      border: 1px solid rgba(255, 229, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-yellow);
+      flex-shrink: 0;
+    }
+    .discovery-quality-title {
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      letter-spacing: 0.02em;
+    }
+    .discovery-quality-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.45;
+    }
+
+    /* Launch Glow Action Button */
+    .discovery-launch-hero-btn {
+      width: 100%;
+      background: var(--accent-yellow);
+      color: #000000;
+      border: none;
+      border-radius: var(--radius-pill);
+      padding: 1.15rem 1.75rem;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      box-shadow: none;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    .discovery-launch-hero-btn:hover {
+      background: var(--accent-yellow-hover);
+      transform: translateY(-2px);
+      box-shadow: none;
+    }
+    .discovery-launch-hero-btn:active {
+      transform: translateY(0);
+    }
+    .discovery-launch-hero-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Accordion for Advanced Controls */
+    .discovery-advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0.75rem 0.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      transition: color var(--transition-fast);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      margin-top: 1.5rem;
+    }
+    .discovery-advanced-toggle:hover {
+      color: var(--accent-yellow);
+    }
+    .discovery-advanced-drawer {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      padding-top: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .discovery-advanced-drawer.open {
+      display: grid;
+    }
+
+    /* Right Pipeline Stepper Upgrades */
+    .discovery-stepper-chain {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .discovery-stage-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.15rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+    .discovery-stage-card.stage-active {
+      background: rgba(255, 229, 0, 0.06);
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 24px rgba(255, 229, 0, 0.12);
+    }
+    .discovery-stage-card.stage-completed {
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+    .discovery-stage-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.85rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .discovery-stage-card.stage-active .discovery-stage-icon-circle {
+      background: var(--accent-yellow);
+      color: #000000;
+    }
+    .discovery-stage-card.stage-completed .discovery-stage-icon-circle {
+      color: var(--accent-yellow);
+      border: 1px solid rgba(255, 229, 0, 0.3);
+    }
+    .discovery-stage-title-text {
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .discovery-stage-sub-text {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+    }
+    .discovery-stage-tag {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+    }
+    .discovery-stage-tag.tag-pulse {
+      background: var(--accent-yellow);
+      color: #000000;
+      border-color: var(--accent-yellow);
+      animation: stagePulse 1.2s infinite;
+    }
+    @keyframes stagePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(0.97); }
+    }
+
+    /* Terminal Upgrade */
+    .discovery-terminal-window {
+      background: #050505;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 260px;
+    }
+    .discovery-terminal-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.15rem;
+      background: #0C0C0C;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .discovery-terminal-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .discovery-terminal-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .discovery-terminal-body {
+      padding: 1.15rem 1.25rem;
+      min-height: 220px;
+      flex: 1;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent-yellow);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      background: #050505;
+    }
+    .discovery-providers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .discovery-provider-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem;
+    }
   </style>
 </head>
 <body>
@@ -1706,12 +2270,17 @@
         <img src="/static/logos/dripp-logo-yellow-cropped.png" alt="Dripp Media" class="brand-logo-img">
       </a>
 
-      <!-- 4 Primary Navigation Spaces with Smooth Animated Slider -->
+      <!-- 5 Primary Navigation Spaces with Smooth Animated Slider -->
       <nav class="primary-nav-items">
         <div class="nav-indicator-slider" id="navIndicatorSlider"></div>
         <a id="nav-home" class="nav-link active" data-dest="home" onclick="navigateTo('home')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <span>Home</span>
+        </a>
+        <a id="nav-discovery" class="nav-link" data-dest="discovery" onclick="navigateTo('discovery')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          <span>Discovery</span>
+          <span class="nav-badge-pill" id="navDiscoveryBadge" style="background:var(--accent-yellow); color:#000000; font-weight:800; font-size:0.62rem; padding:0.12rem 0.4rem;">SCAN</span>
         </a>
         <a id="nav-leads" class="nav-link" data-dest="leads" onclick="navigateTo('leads')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1749,7 +2318,7 @@
 
         <button class="cmd-trigger-btn" onclick="openCmdPalette()" title="Press Cmd+K or Ctrl+K to open Quick Command Search">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></svg>
-          <span>⌘K</span>
+          <span>&#8984;K</span>
         </button>
       </div>
     </div>
@@ -1760,6 +2329,10 @@
     <a class="mobile-nav-link active" data-dest="home" onclick="navigateTo('home')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Home</span>
+    </a>
+    <a class="mobile-nav-link" data-dest="discovery" onclick="navigateTo('discovery')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span>Discovery</span>
     </a>
     <a class="mobile-nav-link" data-dest="leads" onclick="navigateTo('leads')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1822,9 +2395,13 @@
               </div>
             </div>
 
-            <div style="display:flex; gap:0.75rem; align-items:center;">
-              <button class="btn-pill btn-pill-primary" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
-                <span>View ready leads</span>
+            <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+              <button class="btn-pill btn-pill-primary" onclick="navigateTo('discovery')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                <span>Launch Discovery Engine</span>
+              </button>
+              <button class="btn-pill btn-pill-secondary" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
+                <span>View ready leads (07)</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
               <button class="btn-pill btn-pill-secondary" onclick="navigateTo('system')">
@@ -2030,7 +2607,576 @@
     </section>
 
     <!-- ========================================================================
-         VIEW 2: LEADS: OPERATING WORKSPACE (SPLIT LAYOUT)
+         VIEW: DISCOVERY: AUTONOMOUS LEAD GENERATION ENGINE
+         ======================================================================== -->
+    <section id="view-discovery" class="view-container">
+      
+      <!-- Top Hero / Command Banner -->
+      <div class="discovery-hero-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1.25rem;">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:0.5rem; background:var(--accent-yellow-subtle); border:1px solid var(--glass-border-yellow); border-radius:var(--radius-pill); padding:0.25rem 0.75rem; font-size:0.7rem; font-weight:800; font-family:var(--font-mono); color:var(--accent-yellow); margin-bottom:0.6rem; text-transform:uppercase; letter-spacing:0.06em;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Autonomous Acquisition Machine &bull; V3.2 Multi-Signal Scanner</span>
+            </div>
+            <h2 style="font-size:1.85rem; font-weight:800; color:var(--text-main); letter-spacing:-0.025em; line-height:1.2;">Lead Discovery &amp; Boundary Acquisition</h2>
+            <p style="font-size:0.86rem; color:var(--text-muted); max-width:680px; margin-top:0.35rem;">
+              Harvest live commercial entities within verified territorial polygons, conduct automated multi-engine web presence checks, and identify high-value businesses without official websites under Frozen Rule B criteria.
+            </p>
+          </div>
+
+          <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <span class="status-capsule" id="pageEngineStatusCapsule" style="color:var(--accent-yellow); border-color:var(--accent-yellow); font-size:0.7rem;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>
+              <span>Hybrid Scanner Ready</span>
+            </span>
+            <button id="btnPageRunDiscovery" class="btn-pill btn-pill-primary" onclick="openDiscoveryConfirmModal()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Run Lead Discovery</span>
+            </button>
+            <button class="btn-pill btn-pill-secondary" onclick="checkDiscoveryProvidersHealth()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <span>Test Providers</span>
+            </button>
+            <button class="btn-pill btn-pill-secondary" onclick="navigateTo('leads')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <span>Leads Directory</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-time HUD KPI Metrics Grid -->
+      <div class="discovery-kpi-bar">
+        <div class="discovery-kpi-card">
+          <div class="discovery-kpi-label">Target Territory</div>
+          <div class="discovery-kpi-num" id="hudTerritoryName" style="color:var(--accent-yellow);">Manchester</div>
+          <div class="discovery-kpi-sub">OSM Polygon #162378 &bull; UK</div>
+        </div>
+        <div class="discovery-kpi-card">
+          <div class="discovery-kpi-label">Raw Candidates</div>
+          <div class="discovery-kpi-num" id="hudRawDiscovered">142</div>
+          <div class="discovery-kpi-sub">Total Overpass &amp; Places nodes</div>
+        </div>
+        <div class="discovery-kpi-card">
+          <div class="discovery-kpi-label">No-Website Rate</div>
+          <div class="discovery-kpi-num" id="hudNoWebRate">21.8%</div>
+          <div class="discovery-kpi-sub">31 confirmed absent websites</div>
+        </div>
+        <div class="discovery-kpi-card">
+          <div class="discovery-kpi-label">Rule B Qualified</div>
+          <div class="discovery-kpi-num" id="hudQualifiedNum" style="color:var(--accent-yellow);">07</div>
+          <div class="discovery-kpi-sub">&gt;= 4.0 Stars &bull; Ready to Review</div>
+        </div>
+        <div class="discovery-kpi-card">
+          <div class="discovery-kpi-label">Safety State</div>
+          <div class="discovery-kpi-num" style="font-size:1.15rem; color:var(--text-main);">PROTECTED</div>
+          <div class="discovery-kpi-sub">Zero commercial sends enabled</div>
+        </div>
+      </div>
+
+      <!-- Main Discovery Grid: Left Configuration & Parameters, Right 5-Stage Live Engine -->
+      <div class="discovery-grid-layout">
+        
+        <!-- Left Panel: Interactive Acquisition Controls -->
+        <div class="discovery-panel-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.75rem; padding-bottom:1.25rem; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div>
+              <div style="font-size:0.7rem; font-weight:800; color:var(--accent-yellow); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.25rem;">Autonomous Scanner Controls</div>
+              <h3 style="color:var(--text-main); font-size:1.25rem; font-weight:800; letter-spacing:-0.015em; margin:0;">Configure Acquisition Mission</h3>
+            </div>
+            <span class="status-capsule" style="font-size:0.7rem; color:var(--accent-yellow); border-color:var(--accent-yellow); padding:0.3rem 0.75rem;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              Boundary Armed
+            </span>
+          </div>
+
+          <!-- Step 01: Target Territory Selection -->
+          <div class="discovery-step-group">
+            <div class="discovery-step-header">
+              <div class="discovery-step-title-wrap">
+                <span class="discovery-step-badge">01</span>
+                <span class="discovery-step-title">Target Territory &amp; Market</span>
+              </div>
+              <span class="discovery-step-hint">Pre-mapped OSM Polygon Boundaries</span>
+            </div>
+
+            <div class="discovery-city-grid" id="territoryPresetsRow">
+              <button type="button" class="discovery-city-tile active discovery-preset-chip" onclick="setDiscoveryCityPreset('Manchester', 'Restaurants', this)">
+                <div>
+                  <div class="discovery-city-tile-name">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>Manchester</span>
+                  </div>
+                  <div class="discovery-city-tile-sub">OSM #162378 &bull; North West</div>
+                </div>
+                <span class="discovery-city-tile-indicator"></span>
+              </button>
+
+              <button type="button" class="discovery-city-tile discovery-preset-chip" onclick="setDiscoveryCityPreset('Leeds', 'Restaurants', this)">
+                <div>
+                  <div class="discovery-city-tile-name">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>Leeds</span>
+                  </div>
+                  <div class="discovery-city-tile-sub">OSM #162379 &bull; Yorkshire</div>
+                </div>
+                <span class="discovery-city-tile-indicator"></span>
+              </button>
+
+              <button type="button" class="discovery-city-tile discovery-preset-chip" onclick="setDiscoveryCityPreset('Birmingham', 'Restaurants', this)">
+                <div>
+                  <div class="discovery-city-tile-name">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>Birmingham</span>
+                  </div>
+                  <div class="discovery-city-tile-sub">OSM #162378 &bull; Midlands</div>
+                </div>
+                <span class="discovery-city-tile-indicator"></span>
+              </button>
+
+              <button type="button" class="discovery-city-tile discovery-preset-chip" onclick="setDiscoveryCityPreset('London', 'Restaurants', this)">
+                <div>
+                  <div class="discovery-city-tile-name">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>London</span>
+                  </div>
+                  <div class="discovery-city-tile-sub">OSM #65606 &bull; Capital Metro</div>
+                </div>
+                <span class="discovery-city-tile-indicator"></span>
+              </button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:0.75rem; margin-top:0.75rem;">
+              <div>
+                <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.35rem; display:block;">Active City / Municipality</label>
+                <input type="text" id="pageDiscCityInput" value="Manchester" class="setting-select-field" style="width:100%; font-size:0.85rem;" placeholder="Or type custom city">
+              </div>
+              <div>
+                <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.35rem; display:block;">Jurisdiction</label>
+                <input type="text" id="pageDiscCountryInput" value="United Kingdom" class="setting-select-field" style="width:100%; font-size:0.85rem; color:var(--text-dim);" readonly>
+              </div>
+            </div>
+
+            <div style="font-size:0.72rem; font-family:var(--font-mono); color:var(--accent-yellow); margin-top:0.6rem; display:flex; align-items:center; gap:0.4rem;" id="pageBoundaryRelationText">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>OSM Relation #162378 &bull; Bounds: [53.38, 53.55, -2.33, -2.14] &bull; Section 24 Rule 1 &amp; 2 Active</span>
+            </div>
+          </div>
+
+          <!-- Step 02: Commercial Sector Selection -->
+          <div class="discovery-step-group">
+            <div class="discovery-step-header">
+              <div class="discovery-step-title-wrap">
+                <span class="discovery-step-badge">02</span>
+                <span class="discovery-step-title">Commercial Sector</span>
+              </div>
+              <span class="discovery-step-hint">High-Intent Local Niches</span>
+            </div>
+
+            <div class="discovery-niche-grid" id="nichePresetsRow">
+              <button type="button" class="discovery-niche-card active discovery-preset-chip" onclick="setDiscoveryNichePreset('Restaurants', this)">
+                <div class="discovery-niche-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/><path d="M15 2v19"/><path d="M5 2v7a3 3 0 0 0 3 3 3 3 0 0 0 3-3V2"/><path d="M8 2v19"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-niche-name">Restaurants &amp; Dining</div>
+                  <div class="discovery-niche-desc">Bistros, steakhouses, fine dining</div>
+                </div>
+              </button>
+
+              <button type="button" class="discovery-niche-card discovery-preset-chip" onclick="setDiscoveryNichePreset('Coffee &amp; Bakeries', this)">
+                <div class="discovery-niche-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-niche-name">Coffee &amp; Bakeries</div>
+                  <div class="discovery-niche-desc">Artisan roasters, cafes, patisseries</div>
+                </div>
+              </button>
+
+              <button type="button" class="discovery-niche-card discovery-preset-chip" onclick="setDiscoveryNichePreset('Pubs &amp; Bars', this)">
+                <div class="discovery-niche-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 22 1-7"/><path d="m15 22-1-7"/><path d="M12 15v7"/><path d="M8 2h8l-1 9a3 3 0 0 1-6 0Z"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-niche-name">Pubs &amp; Bars</div>
+                  <div class="discovery-niche-desc">Traditional pubs, cocktail lounges</div>
+                </div>
+              </button>
+
+              <button type="button" class="discovery-niche-card discovery-preset-chip" onclick="setDiscoveryNichePreset('Boutiques', this)">
+                <div class="discovery-niche-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-niche-name">Luxury Boutiques</div>
+                  <div class="discovery-niche-desc">Independent fashion, fine jewelers</div>
+                </div>
+              </button>
+            </div>
+
+            <div style="margin-top:0.75rem;">
+              <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.35rem; display:block;">Active Industry Query</label>
+              <input type="text" id="pageDiscIndustryInput" value="Restaurants" class="setting-select-field" style="width:100%; font-size:0.85rem;" placeholder="e.g. Restaurants, Specialty Cafes, Dental Studios">
+            </div>
+          </div>
+
+          <!-- Step 03: Lead Acquisition Target -->
+          <div class="discovery-step-group">
+            <div class="discovery-step-header">
+              <div class="discovery-step-title-wrap">
+                <span class="discovery-step-badge">03</span>
+                <span class="discovery-step-title">Target Lead Yield</span>
+              </div>
+              <span class="discovery-step-hint">Qualified leads meeting Rule B</span>
+            </div>
+
+            <div class="discovery-yield-selector">
+              <button type="button" class="discovery-yield-btn active" onclick="setDiscoveryYield('10', this)">
+                <div class="discovery-yield-num">10</div>
+                <div class="discovery-yield-sub">Quick Scan &bull; ~2m</div>
+              </button>
+              <button type="button" class="discovery-yield-btn" onclick="setDiscoveryYield('25', this)">
+                <div class="discovery-yield-num">25</div>
+                <div class="discovery-yield-sub">Standard &bull; ~5m</div>
+              </button>
+              <button type="button" class="discovery-yield-btn" onclick="setDiscoveryYield('50', this)">
+                <div class="discovery-yield-num">50</div>
+                <div class="discovery-yield-sub">Deep Sweep &bull; ~10m</div>
+              </button>
+            </div>
+
+            <!-- Programmatic fallback select for compatibility -->
+            <select id="pageDiscLimitInput" style="display:none;">
+              <option value="10" selected>10 Qualified Leads</option>
+              <option value="25">25 Qualified Leads</option>
+              <option value="50">50 Qualified Leads</option>
+            </select>
+          </div>
+
+          <!-- Step 04: Quality Guarantee Card -->
+          <div class="discovery-quality-shield-box">
+            <div class="discovery-shield-icon-wrap">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <div>
+              <div class="discovery-quality-title">
+                <span>Frozen Rule B Quality Filter &bull; Zero Website Verified</span>
+              </div>
+              <div class="discovery-quality-sub">
+                Automatic multi-engine crawler ensures every ingested candidate has verified zero official website, a Google rating of &ge; 4.0 stars, and &ge; 10 organic customer reviews.
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsible Advanced Engine Tuning Drawer -->
+          <button type="button" class="discovery-advanced-toggle" onclick="toggleAdvancedDiscovery()">
+            <span>Advanced Engine Tuning (Mode, Batch Size &amp; Dry-Run)</span>
+            <svg id="discAdvancedChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="discovery-advanced-drawer" id="discAdvancedDrawer">
+            <div>
+              <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Discovery Engine Mode</label>
+              <select id="pageDiscModeInput" class="setting-select-field" style="width:100%;">
+                <option value="HYBRID" selected>Hybrid (OSM + Places + Apify)</option>
+                <option value="OSM">OpenStreetMap Overpass Only</option>
+                <option value="APIFY">Apify Actors Only</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Batch Processing Size</label>
+              <select id="pageDiscBatchInput" class="setting-select-field" style="width:100%;">
+                <option value="5">5 Candidates / Batch</option>
+                <option value="10" selected>10 Candidates / Batch (Balanced)</option>
+                <option value="15">15 Candidates / Batch</option>
+                <option value="20">20 Candidates / Batch (Max)</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Research Depth Multiplier</label>
+              <select id="pageDiscMultiplierInput" class="setting-select-field" style="width:100%;">
+                <option value="5" selected>5x Standard Depth (Balanced)</option>
+                <option value="3">3x Fast Batch</option>
+                <option value="10">10x Deep Polygon Harvest</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Apify Cloud Enrichment</label>
+              <select id="pageDiscApifyToggle" class="setting-select-field" style="width:100%;">
+                <option value="false" selected>Disabled (Zero Cloud Cost)</option>
+                <option value="true">Enabled (Actor Scraping)</option>
+              </select>
+            </div>
+            <div style="grid-column: span 2; display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:rgba(255,255,255,0.025); border:1px solid rgba(255,229,0,0.25); border-radius:var(--radius-sm); margin-top:0.25rem;">
+              <div>
+                <strong style="color:var(--text-main); font-size:0.8rem; display:block;">Safe Dry-Run / Preflight Evaluation</strong>
+                <span style="color:var(--text-muted); font-size:0.7rem;">Runs real discovery &amp; verification without mutating Google Sheets CRM</span>
+              </div>
+              <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                <input type="checkbox" id="pageDiscDryRunInput" checked style="accent-color:var(--accent-yellow); width:16px; height:16px; cursor:pointer;">
+                <span style="font-size:0.72rem; font-family:var(--font-mono); color:var(--accent-yellow); font-weight:700;">DRY-RUN</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Primary Trigger Button (Opens Confirmation Summary) -->
+          <button id="btnLaunchDiscoveryPageAction" class="discovery-launch-hero-btn" onclick="openDiscoveryConfirmModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>LAUNCH AUTONOMOUS DISCOVERY TASK</span>
+          </button>
+          <div style="text-align:center; margin-top:0.7rem; font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono);">
+            Protected Environment &bull; Commercial Actions Locked &bull; Zero External Dispatches
+          </div>
+        </div>
+
+        <!-- Right Panel: Live 5-Stage Progression Pipeline & Telemetry Logs -->
+        <div class="discovery-panel-card" style="display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:1.25rem; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div>
+              <div style="font-size:0.7rem; font-weight:800; color:var(--accent-yellow); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.25rem;">Real-Time Pipeline</div>
+              <h3 style="color:var(--text-main); font-size:1.25rem; font-weight:800; letter-spacing:-0.015em; margin:0;">Live Acquisition Pipeline</h3>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <button id="btnCancelDiscoveryRun" class="btn-pill btn-pill-secondary" style="display:none; font-size:0.7rem; color:var(--status-critical); border-color:rgba(255,75,75,0.3);" onclick="cancelDiscoveryJob()">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                <span>Cancel Run</span>
+              </button>
+              <span id="pageDiscoveryStageBadge" class="status-capsule" style="font-size:0.7rem; color:var(--text-muted);">
+                Engine Idle &bull; Ready
+              </span>
+            </div>
+          </div>
+
+          <!-- 5-Stage Visual Progression Pipeline Stepper -->
+          <div class="discovery-stepper-chain" id="discoveryStageTrack">
+            
+            <div class="discovery-stage-card" id="discStage1">
+              <div style="display:flex; align-items:center;">
+                <div class="discovery-stage-icon-circle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-stage-title-text">Stage 1: Territory Spatial Harvest</div>
+                  <div class="discovery-stage-sub-text">Querying OSM Overpass / Places nodes within polygon</div>
+                </div>
+              </div>
+              <span class="discovery-stage-tag" id="tagStage1">Ready</span>
+            </div>
+
+            <div class="discovery-stage-card" id="discStage2">
+              <div style="display:flex; align-items:center;">
+                <div class="discovery-stage-icon-circle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-stage-title-text">Stage 2: Deduplication &amp; Address Resolution</div>
+                  <div class="discovery-stage-sub-text">Merging coordinates, phone records &amp; identities</div>
+                </div>
+              </div>
+              <span class="discovery-stage-tag" id="tagStage2">Queued</span>
+            </div>
+
+            <div class="discovery-stage-card" id="discStage3">
+              <div style="display:flex; align-items:center;">
+                <div class="discovery-stage-icon-circle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-stage-title-text">Stage 3: Deep Website Presence Verification</div>
+                  <div class="discovery-stage-sub-text">Multi-engine DNS, Search &amp; crawler checking no website</div>
+                </div>
+              </div>
+              <span class="discovery-stage-tag" id="tagStage3">Queued</span>
+            </div>
+
+            <div class="discovery-stage-card" id="discStage4">
+              <div style="display:flex; align-items:center;">
+                <div class="discovery-stage-icon-circle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-stage-title-text">Stage 4: Frozen Rule B Qualification Gate</div>
+                  <div class="discovery-stage-sub-text">Validating &ge; 4.0 stars, &ge; 10 reviews &amp; indie status</div>
+                </div>
+              </div>
+              <span class="discovery-stage-tag" id="tagStage4">Queued</span>
+            </div>
+
+            <div class="discovery-stage-card" id="discStage5">
+              <div style="display:flex; align-items:center;">
+                <div class="discovery-stage-icon-circle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                </div>
+                <div>
+                  <div class="discovery-stage-title-text">Stage 5: CRM Ingestion &amp; Serialization</div>
+                  <div class="discovery-stage-sub-text">Atomic record storage into local database and Google Sheets</div>
+                </div>
+              </div>
+              <span class="discovery-stage-tag" id="tagStage5">Queued</span>
+            </div>
+          </div>
+
+          <!-- macOS-style Dark Telemetry Window -->
+          <div class="discovery-terminal-window" style="margin-top:auto;">
+            <div class="discovery-terminal-bar">
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <div class="discovery-terminal-dots">
+                  <span class="discovery-terminal-dot" style="background:#555555;"></span>
+                  <span class="discovery-terminal-dot" style="background:var(--accent-yellow);"></span>
+                  <span class="discovery-terminal-dot" style="background:#888888;"></span>
+                </div>
+                <span style="font-weight:700; letter-spacing:0.04em;">DISCOVERY ENGINE TELEMETRY CONSOLE</span>
+              </div>
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                <button class="btn-pill btn-pill-secondary" style="font-size:0.65rem; padding:0.18rem 0.5rem;" onclick="clearPageDiscoveryLogs()">Clear</button>
+                <button class="btn-pill btn-pill-secondary" style="font-size:0.65rem; padding:0.18rem 0.5rem;" onclick="copyPageDiscoveryLogs()">Copy</button>
+              </div>
+            </div>
+            <div id="pageDiscoveryTerminalLogs" class="discovery-terminal-body">[READY] Lead Discovery Engine initialized in HYBRID mode.
+[READY] Target polygon armed: Manchester, UK (#162378).
+[READY] Press "LAUNCH AUTONOMOUS DISCOVERY TASK" to begin polygon scan.
+</div>
+          </div>
+
+          <!-- Completion CTA & Structured Results Card (Phase Temp Section 5) -->
+          <div id="pageDiscoveryResultsCard" style="display:none; margin-top:1.25rem; padding:1.25rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,229,0,0.25); border-radius:var(--radius-md);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; padding-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.06);">
+              <div>
+                <span style="font-size:0.68rem; font-weight:800; color:var(--accent-yellow); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.06em;">MISSION OUTCOME &bull; VERIFIED</span>
+                <div id="resRunIdText" style="font-size:0.82rem; font-weight:800; color:var(--text-main); font-family:var(--font-mono); margin-top:2px;">RUN-ID: --</div>
+              </div>
+              <span id="resStatusBadge" class="status-capsule" style="color:var(--accent-yellow); border-color:var(--accent-yellow); font-size:0.7rem;">COMPLETED</span>
+            </div>
+
+            <!-- Execution Timing -->
+            <div style="display:flex; gap:1.25rem; font-size:0.72rem; font-family:var(--font-mono); color:var(--text-muted); margin-bottom:1rem; flex-wrap:wrap;">
+              <div>Started: <span id="resStartTime" style="color:var(--text-main);">--</span></div>
+              <div>Finished: <span id="resEndTime" style="color:var(--text-main);">--</span></div>
+              <div>Duration: <span id="resElapsed" style="color:var(--accent-yellow);">--</span></div>
+            </div>
+
+            <!-- 6-Metric Funnel Results Grid -->
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.65rem; margin-bottom:1rem;">
+              <div style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); padding:0.6rem 0.75rem;">
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Discovered</div>
+                <div id="resDiscovered" style="font-size:1.15rem; font-weight:800; font-family:var(--font-mono); color:var(--text-main); margin-top:2px;">0</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); padding:0.6rem 0.75rem;">
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Researched</div>
+                <div id="resResearched" style="font-size:1.15rem; font-weight:800; font-family:var(--font-mono); color:var(--text-main); margin-top:2px;">0</div>
+              </div>
+              <div style="background:rgba(255,229,0,0.06); border:1px solid rgba(255,229,0,0.3); border-radius:var(--radius-sm); padding:0.6rem 0.75rem;">
+                <div style="font-size:0.65rem; color:var(--accent-yellow); text-transform:uppercase; font-weight:800;">Rule B Qualified</div>
+                <div id="resQualified" style="font-size:1.15rem; font-weight:800; font-family:var(--font-mono); color:var(--accent-yellow); margin-top:2px;">0</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); padding:0.6rem 0.75rem;">
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Manual Review</div>
+                <div id="resManualRev" style="font-size:1.15rem; font-weight:800; font-family:var(--font-mono); color:var(--text-main); margin-top:2px;">0</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); padding:0.6rem 0.75rem;">
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Rejected / Excluded</div>
+                <div id="resRejected" style="font-size:1.15rem; font-weight:800; font-family:var(--font-mono); color:var(--text-muted); margin-top:2px;">0</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); padding:0.6rem 0.75rem;">
+                <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Duplicates Skipped</div>
+                <div id="resDuplicates" style="font-size:1.15rem; font-weight:800; font-family:var(--font-mono); color:var(--text-muted); margin-top:2px;">0</div>
+              </div>
+            </div>
+
+            <!-- Provider Health & Quota Strip -->
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--text-muted); padding:0.55rem 0.85rem; background:rgba(255,255,255,0.02); border-radius:var(--radius-sm); margin-bottom:0.75rem;">
+              <span>Provider Status: <strong id="resProviderStatus" style="color:var(--text-main);">0 Failures &bull; Quotas Normal</strong></span>
+              <span id="resQuotaStatus" style="color:var(--accent-yellow); font-family:var(--font-mono);">Quota Headroom: 100%</span>
+            </div>
+
+            <!-- CRM Reconciliation Outcome -->
+            <div style="font-size:0.74rem; line-height:1.45; color:var(--text-muted); padding:0.65rem 0.85rem; background:rgba(255,229,0,0.03); border:1px solid rgba(255,229,0,0.15); border-radius:var(--radius-sm);">
+              <strong style="color:var(--text-main); display:block; margin-bottom:2px;">CRM Reconciliation Outcome</strong>
+              <span id="resCrmOutcome">Verified candidates reconciled.</span>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:1rem;">
+              <button class="btn-pill btn-pill-primary" onclick="navigateTo('leads')">
+                <span>View Leads in Workspace</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Basic Done Bar for simple status sync -->
+          <div id="pageDiscoveryDoneBar" style="display:none; justify-content:space-between; align-items:center; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:0.78rem; color:var(--accent-yellow); font-weight:700;">
+              Acquisition cycle completed. Real backend metrics updated.
+            </div>
+            <button class="btn-pill btn-pill-primary" onclick="navigateTo('leads')">
+              <span>View Discovered Leads in Workspace</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connected Providers & External Integration Status -->
+      <div class="glass-card" style="margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <div style="font-size:0.72rem; font-weight:800; color:var(--accent-yellow); text-transform:uppercase; letter-spacing:0.06em;">External Connectors</div>
+            <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main); margin-top:2px;">Discovery Provider Health &amp; Quota Matrix</h3>
+          </div>
+          <button class="btn-pill btn-pill-secondary" style="font-size:0.72rem;" onclick="checkDiscoveryProvidersHealth()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Run Provider Diagnostics</span>
+          </button>
+        </div>
+
+        <div class="discovery-providers-grid">
+          <div class="discovery-provider-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <strong style="color:var(--text-main); font-size:0.85rem;">OpenStreetMap</strong>
+              <span id="pageOsmBadge" class="status-capsule" style="font-size:0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">ACTIVE</span>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+              Overpass QL polygon boundary queries with zero API cost. Relational geometry caching active.
+            </p>
+          </div>
+
+          <div class="discovery-provider-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <strong style="color:var(--text-main); font-size:0.85rem;">Web Search &amp; DNS</strong>
+              <span id="pageWebBadge" class="status-capsule" style="font-size:0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">CONNECTED</span>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+              Multi-engine web crawler &amp; domain resolution verifies authentic absence of business websites.
+            </p>
+          </div>
+
+          <div class="discovery-provider-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <strong style="color:var(--text-main); font-size:0.85rem;">Apify Cloud Actors</strong>
+              <span id="pageApifyBadge" class="status-capsule" style="font-size:0.65rem; color:var(--text-muted);">STANDBY</span>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+              Google Maps scraper actors for deep geographic sweeps and creator review cross-referencing.
+            </p>
+          </div>
+
+          <div class="discovery-provider-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <strong style="color:var(--text-main); font-size:0.85rem;">Google Sheets CRM</strong>
+              <span class="status-capsule" style="font-size:0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">AUTHENTICATED</span>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+              Single source of truth. Automatic bi-directional reconciliation with atomic schema locks.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================
+         VIEW 3: LEADS: OPERATING WORKSPACE (SPLIT LAYOUT)
          ======================================================================== -->
     <section id="view-leads" class="view-container">
       <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
@@ -3138,6 +4284,65 @@
   </div>
 
   <!-- ========================================================================
+       LEAD DISCOVERY CONFIRMATION SUMMARY MODAL (PHASE TEMP)
+       ======================================================================== -->
+  <div id="discoveryConfirmModal" class="glass-modal-scrim" style="display:none;" onclick="closeDiscoveryConfirmModal()">
+    <div class="glass-card" style="width:580px; max-width:92vw; padding:2rem;" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.08);">
+        <div>
+          <div style="font-size:0.7rem; font-weight:800; color:var(--accent-yellow); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.25rem;">Pre-Launch Verification</div>
+          <h3 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin:0;">Confirm Lead Discovery Mission</h3>
+        </div>
+        <button class="drawer-close-circle" onclick="closeDiscoveryConfirmModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Confirmation Summary Details -->
+      <div style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm);">
+          <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Target Territory</span>
+          <strong id="confirmSummaryMarket" style="font-size:0.88rem; color:var(--accent-yellow); font-family:var(--font-mono);">Manchester, UK (#162378)</strong>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm);">
+          <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Commercial Sector</span>
+          <strong id="confirmSummaryNiche" style="font-size:0.88rem; color:var(--text-main);">Restaurants &amp; Dining</strong>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm);">
+          <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Target Qualified Yield</span>
+          <strong id="confirmSummaryYield" style="font-size:0.88rem; color:var(--accent-yellow); font-family:var(--font-mono);">10 Qualified Leads</strong>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm);">
+          <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Batch Processing Size</span>
+          <strong id="confirmSummaryBatch" style="font-size:0.88rem; color:var(--text-main); font-family:var(--font-mono);">10 Candidates / Batch</strong>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(255,229,0,0.04); border:1px solid rgba(255,229,0,0.25); border-radius:var(--radius-sm);">
+          <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Execution Mode</span>
+          <strong id="confirmSummaryMode" style="font-size:0.88rem; color:var(--accent-yellow);">Safe Dry-Run (Preflight Evaluation)</strong>
+        </div>
+
+        <div style="padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); font-size:0.72rem; color:var(--text-muted); line-height:1.45;">
+          <strong style="color:var(--text-main); display:block; margin-bottom:2px;">Safety Invariants Guard</strong>
+          Travel Mode ACTIVE &bull; Commercial Actions LOCKED &bull; Zero Emails Dispatched
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+        <button class="btn-pill btn-pill-secondary" onclick="closeDiscoveryConfirmModal()">Cancel / Adjust</button>
+        <button id="btnConfirmAndLaunchDiscovery" class="btn-pill btn-pill-primary" style="font-weight:800;" onclick="executeConfirmedDiscovery()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Confirm &amp; Launch Mission</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        AUTONOMOUS BOUNDARY DISCOVERY JOB MODAL
        ======================================================================== -->
   <div id="discoveryJobModal" class="glass-modal-scrim" onclick="closeDiscoveryModal()">
@@ -3231,6 +4436,10 @@
           <strong style="color:var(--text-main);">Go to Home</strong>
           <div style="font-size:0.74rem; color:var(--text-muted);">Overview and system pulse</div>
         </div>
+        <div class="pipeline-stage-node" onclick="navigateTo('discovery'); closeCmdPalette();">
+          <strong style="color:var(--accent-yellow);">Go to Lead Discovery Engine</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">Autonomous boundary polygon scan &amp; acquisition</div>
+        </div>
         <div class="pipeline-stage-node" onclick="navigateTo('leads'); closeCmdPalette();">
           <strong style="color:var(--text-main);">Go to Leads</strong>
           <div style="font-size:0.74rem; color:var(--text-muted);">Search and inspect all businesses</div>
@@ -3319,7 +4528,7 @@
 
     // Navigation Router with Smooth Sliding Indicator
     function navigateTo(dest) {
-      const validViews = ['home', 'leads', 'pipeline', 'system'];
+      const validViews = ['home', 'discovery', 'leads', 'pipeline', 'system'];
       if (!validViews.includes(dest)) dest = 'home';
 
       document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
@@ -3334,6 +4543,10 @@
       });
 
       updateNavIndicator();
+
+      if (dest === 'discovery') {
+        updateDiscoveryPageHUD();
+      }
 
       if (window.location.hash !== `#${dest}`) {
         if (history.replaceState) {
@@ -3364,6 +4577,8 @@
         loadReadinessData(),
         loadHealthData()
       ]);
+      updateDiscoveryPageHUD();
+      await syncDiscoveryStatusOnLoad();
     }
 
     async function loadLeadsData() {
@@ -3623,11 +4838,12 @@
       const currentView = document.querySelector('.view-container.active');
       const viewId = currentView ? currentView.id : '';
 
-      // Number keys 1-4 switch views
+      // Number keys 1-5 switch views
       if (e.key === '1') { navigateTo('home'); return; }
-      if (e.key === '2') { navigateTo('leads'); return; }
-      if (e.key === '3') { navigateTo('pipeline'); return; }
-      if (e.key === '4') { navigateTo('system'); return; }
+      if (e.key === '2') { navigateTo('discovery'); return; }
+      if (e.key === '3') { navigateTo('leads'); return; }
+      if (e.key === '4') { navigateTo('pipeline'); return; }
+      if (e.key === '5') { navigateTo('system'); return; }
 
       // Escape closes open modals or drawers
       if (e.key === 'Escape') {
@@ -4159,6 +5375,19 @@
         if (osmEl && data.providers?.OpenStreetMap) osmEl.innerText = data.providers.OpenStreetMap;
         if (crawlEl && data.providers?.Crawl4AI) crawlEl.innerText = data.providers.Crawl4AI;
         if (apifyEl && data.providers?.Apify) apifyEl.innerText = data.providers.Apify;
+
+        // Update dedicated Discovery page provider cards
+        const pageOsm = document.getElementById('pageOsmBadge');
+        const pageWeb = document.getElementById('pageWebBadge');
+        const pageApify = document.getElementById('pageApifyBadge');
+        if (pageOsm && data.providers?.OpenStreetMap) pageOsm.innerText = data.providers.OpenStreetMap;
+        if (pageWeb && (data.providers?.WebSearch || data.providers?.Crawl4AI)) pageWeb.innerText = data.providers?.WebSearch || data.providers?.Crawl4AI;
+        if (pageApify && data.providers?.Apify) pageApify.innerText = data.providers.Apify;
+
+        const pageCapsule = document.getElementById('pageEngineStatusCapsule');
+        if (pageCapsule) {
+          pageCapsule.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg><span>${escapeHtml(data.discovery_mode || 'HYBRID')} Ready</span>`;
+        }
         showToast(`Discovery provider status updated: ${data.discovery_mode || 'HYBRID'} active`);
       } catch (e) {
         showToast('Provider check failed: ' + e.message);
@@ -4243,6 +5472,257 @@
       }
     }
 
+    // ========================================================================
+    // DEDICATED DISCOVERY ENGINE CONTROLLER
+    // ========================================================================
+    function setDiscoveryCityPreset(city, defaultIndustry, btnEl) {
+      playOperatorClickSound();
+      const cityInp = document.getElementById('pageDiscCityInput');
+      if (cityInp) cityInp.value = city;
+      
+      const hudTerritory = document.getElementById('hudTerritoryName');
+      if (hudTerritory) hudTerritory.innerText = city;
+
+      document.querySelectorAll('#territoryPresetsRow .discovery-preset-chip').forEach(c => c.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+
+      const relText = document.getElementById('pageBoundaryRelationText');
+      if (relText) {
+        if (city === 'Manchester') {
+          relText.innerHTML = 'OSM Relation #162378 &bull; Bounds: [53.38, 53.55, -2.33, -2.14] &bull; Section 24 Rule 1 &amp; 2 Active';
+        } else if (city === 'Leeds') {
+          relText.innerHTML = 'OSM Relation #162379 &bull; Bounds: [53.74, 53.86, -1.65, -1.45] &bull; Section 24 Active';
+        } else if (city === 'Birmingham') {
+          relText.innerHTML = 'OSM Relation #162378 &bull; Bounds: [52.38, 52.60, -2.03, -1.75] &bull; Section 24 Active';
+        } else if (city === 'London') {
+          relText.innerHTML = 'OSM Relation #65606 &bull; Greater London Boundary &bull; Section 24 Active';
+        } else {
+          relText.innerHTML = `Territory Target: ${escapeHtml(city)} &bull; United Kingdom &bull; Boundary Enforced`;
+        }
+      }
+      showToast(`Territory switched: ${city}`);
+    }
+
+    function setDiscoveryNichePreset(niche, btnEl) {
+      playOperatorClickSound();
+      const indInp = document.getElementById('pageDiscIndustryInput');
+      if (indInp) indInp.value = niche;
+
+      document.querySelectorAll('#nichePresetsRow .discovery-preset-chip').forEach(c => c.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      showToast(`Category filter: ${niche}`);
+    }
+
+    function setDiscoveryYield(limit, btnEl) {
+      playOperatorClickSound();
+      const sel = document.getElementById('pageDiscLimitInput');
+      if (sel) sel.value = limit;
+
+      document.querySelectorAll('.discovery-yield-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      showToast(`Target yield set: ${limit} qualified leads`);
+    }
+
+    function toggleAdvancedDiscovery() {
+      playOperatorClickSound();
+      const drawer = document.getElementById('discAdvancedDrawer');
+      const chev = document.getElementById('discAdvancedChevron');
+      if (drawer) {
+        drawer.classList.toggle('open');
+        if (chev) {
+          chev.style.transform = drawer.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+      }
+    }
+
+    function updateDiscoveryPageHUD() {
+      const readyNum = document.getElementById('homeHeroReadyNum');
+      const hudQual = document.getElementById('hudQualifiedNum');
+      if (hudQual && readyNum) {
+        hudQual.innerText = readyNum.innerText;
+      }
+      const rawCount = document.getElementById('homeReadyCount');
+      const hudRaw = document.getElementById('hudRawDiscovered');
+      if (hudRaw && rawCount) {
+        hudRaw.innerText = rawCount.innerText;
+      }
+    }
+
+    async function syncDiscoveryStatusOnLoad() {
+      try {
+        const res = await fetch('/api/status');
+        const state = await res.json();
+        if (!state) return;
+
+        const pageBtnAction = document.getElementById('btnLaunchDiscoveryPageAction');
+        const pageBtnHeader = document.getElementById('btnPageRunDiscovery');
+        const pageBtnCancel = document.getElementById('btnCancelDiscoveryRun');
+        const pageStageBadge = document.getElementById('pageDiscoveryStageBadge');
+        const pageTerm = document.getElementById('pageDiscoveryTerminalLogs');
+
+        if (state.progress_logs && state.progress_logs.length && pageTerm) {
+          pageTerm.innerHTML = state.progress_logs.map(l => escapeHtml(l)).join('\n');
+          pageTerm.scrollTop = pageTerm.scrollHeight;
+        }
+
+        if (state.is_running) {
+          if (pageBtnAction) pageBtnAction.disabled = true;
+          if (pageBtnHeader) pageBtnHeader.disabled = true;
+          if (pageBtnCancel) pageBtnCancel.style.display = 'inline-flex';
+          if (pageStageBadge) {
+            pageStageBadge.innerText = `Active Run: ${state.market || 'Scanning'}`;
+            pageStageBadge.style.color = 'var(--accent-yellow)';
+            pageStageBadge.style.borderColor = 'var(--accent-yellow)';
+          }
+          listenToDiscoveryStream();
+        } else if (state.results || state.status) {
+          const finalStatus = state.status || (state.results ? state.results.final_status : 'COMPLETED');
+          const isError = finalStatus === 'FAILED' || finalStatus === 'CANCELLED';
+          const statusColor = isError ? 'var(--status-critical)' : 'var(--accent-yellow)';
+          if (pageStageBadge) {
+            pageStageBadge.innerHTML = `Last Run: ${finalStatus}`;
+            pageStageBadge.style.color = statusColor;
+            pageStageBadge.style.borderColor = statusColor;
+          }
+
+          if (state.results) {
+            const resultsCard = document.getElementById('pageDiscoveryResultsCard');
+            if (resultsCard) {
+              resultsCard.style.display = 'block';
+              const runIdText = document.getElementById('resRunIdText');
+              if (runIdText) runIdText.innerText = `RUN-ID: ${state.run_id || 'PREVIOUS'}`;
+              const resBadge = document.getElementById('resStatusBadge');
+              if (resBadge) {
+                resBadge.innerText = finalStatus;
+                resBadge.style.color = statusColor;
+                resBadge.style.borderColor = statusColor;
+              }
+              const resStart = document.getElementById('resStartTime');
+              if (resStart) resStart.innerText = state.started_at ? new Date(state.started_at).toLocaleTimeString() : '--';
+              const resEnd = document.getElementById('resEndTime');
+              if (resEnd) resEnd.innerText = state.finished_at ? new Date(state.finished_at).toLocaleTimeString() : '--';
+              const resElapsed = document.getElementById('resElapsed');
+              if (resElapsed) resElapsed.innerText = `${state.elapsed_seconds || 0}s`;
+
+              const resObj = state.results;
+              const discEl = document.getElementById('resDiscovered');
+              if (discEl) discEl.innerText = resObj.candidates_discovered ?? 0;
+              const resrEl = document.getElementById('resResearched');
+              if (resrEl) resrEl.innerText = resObj.candidates_researched ?? 0;
+              const qualEl = document.getElementById('resQualified');
+              if (qualEl) qualEl.innerText = resObj.qualified_leads ?? 0;
+              const manEl = document.getElementById('resManualRev');
+              if (manEl) manEl.innerText = resObj.manual_review_leads ?? 0;
+              const rejEl = document.getElementById('resRejected');
+              if (rejEl) rejEl.innerText = resObj.rejected_leads ?? 0;
+              const dupEl = document.getElementById('resDuplicates');
+              if (dupEl) dupEl.innerText = resObj.duplicates_skipped ?? 0;
+
+              const provStatusEl = document.getElementById('resProviderStatus');
+              if (provStatusEl) {
+                const fails = resObj.provider_failures || 0;
+                provStatusEl.innerHTML = fails > 0 ? `${fails} Failures Handled` : '0 Failures &bull; Quotas Normal';
+              }
+              const quotaEl = document.getElementById('resQuotaStatus');
+              if (quotaEl) quotaEl.innerText = resObj.quota_exhaustion ? `Exhausted: ${resObj.quota_exhaustion}` : 'Quota Headroom: 100%';
+              const crmOutcomeEl = document.getElementById('resCrmOutcome');
+              if (crmOutcomeEl) {
+                const crm = resObj.crm_reconciliation || {};
+                const isDry = state.dry_run || crm.mode === 'SHADOW_MODE_DRY_RUN';
+                if (isDry) {
+                  crmOutcomeEl.innerHTML = `Safe Dry-Run: Evaluated without mutating live Google Sheets CRM (Leads: ${resObj.qualified_leads || 0}, Review Queue: ${resObj.manual_review_leads || 0}).`;
+                } else {
+                  crmOutcomeEl.innerHTML = `Live Google Sheets Reconciled: ${crm.saved_to_leads || 0} Leads appended &bull; ${crm.saved_to_review_queue || 0} Review Queue items &bull; ${crm.saved_to_research_log || 0} Research Log entries.`;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync discovery status:', err);
+      }
+    }
+
+    function clearPageDiscoveryLogs() {
+      const t = document.getElementById('pageDiscoveryTerminalLogs');
+      if (t) t.innerText = '[CONSOLE CLEARED] Ready for next scan dispatch...\n';
+    }
+
+    function copyPageDiscoveryLogs() {
+      const t = document.getElementById('pageDiscoveryTerminalLogs');
+      if (t && navigator.clipboard) {
+        navigator.clipboard.writeText(t.innerText).then(() => {
+          showToast('Discovery telemetry copied to clipboard');
+        });
+      }
+    }
+
+    function setDiscoveryStage(num, state) {
+      const box = document.getElementById(`discStage${num}`);
+      const tag = document.getElementById(`tagStage${num}`);
+      if (!box || !tag) return;
+
+      box.classList.remove('stage-active', 'stage-completed');
+      tag.classList.remove('tag-pulse');
+
+      if (state === 'active') {
+        box.classList.add('stage-active');
+        tag.classList.add('tag-pulse');
+        tag.innerText = 'Scanning';
+      } else if (state === 'completed') {
+        box.classList.add('stage-completed');
+        tag.innerText = 'Verified';
+        tag.style.color = 'var(--accent-yellow)';
+        tag.style.borderColor = 'var(--glass-border-yellow)';
+      } else {
+        tag.innerText = 'Queued';
+        tag.style.color = 'var(--text-muted)';
+        tag.style.borderColor = 'rgba(255,255,255,0.12)';
+      }
+    }
+
+    function openDiscoveryConfirmModal() {
+      playOperatorClickSound();
+      const city = document.getElementById('pageDiscCityInput')?.value || 'Manchester';
+      const industry = document.getElementById('pageDiscIndustryInput')?.value || 'Restaurants';
+      const limit = document.getElementById('pageDiscLimitInput')?.value || '10';
+      const batch = document.getElementById('pageDiscBatchInput')?.value || '10';
+      const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? true;
+      const mode = document.getElementById('pageDiscModeInput')?.value || 'HYBRID';
+
+      const mEl = document.getElementById('confirmSummaryMarket');
+      if (mEl) mEl.textContent = `${city}, UK (#162378)`;
+      const nEl = document.getElementById('confirmSummaryNiche');
+      if (nEl) nEl.textContent = industry;
+      const yEl = document.getElementById('confirmSummaryYield');
+      if (yEl) yEl.textContent = `${limit} Qualified Leads`;
+      const bEl = document.getElementById('confirmSummaryBatch');
+      if (bEl) bEl.textContent = `${batch} Candidates / Batch`;
+      const modeEl = document.getElementById('confirmSummaryMode');
+      if (modeEl) {
+        if (dryRun) {
+          modeEl.textContent = `Safe Dry-Run (${mode} Mode - No CRM Mutation)`;
+          modeEl.style.color = 'var(--accent-yellow)';
+        } else {
+          modeEl.textContent = `Approved Technical Processing (${mode} - Live CRM Sync)`;
+          modeEl.style.color = 'var(--accent-yellow)';
+        }
+      }
+
+      const modal = document.getElementById('discoveryConfirmModal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeDiscoveryConfirmModal() {
+      const modal = document.getElementById('discoveryConfirmModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function executeConfirmedDiscovery() {
+      closeDiscoveryConfirmModal();
+      await executeDiscoveryJobFromPage();
+    }
+
     function openDiscoveryModal() {
       const m = document.getElementById('discoveryJobModal');
       if (m) m.classList.add('active');
@@ -4251,6 +5731,105 @@
     function closeDiscoveryModal() {
       const m = document.getElementById('discoveryJobModal');
       if (m) m.classList.remove('active');
+    }
+
+    async function executeDiscoveryJobFromPage() {
+      playOperatorClickSound();
+      const city = document.getElementById('pageDiscCityInput')?.value || 'Manchester';
+      const industry = document.getElementById('pageDiscIndustryInput')?.value || 'Restaurants';
+      const limit = parseInt(document.getElementById('pageDiscLimitInput')?.value || '10', 10);
+      const batch = parseInt(document.getElementById('pageDiscBatchInput')?.value || '10', 10);
+      const mode = document.getElementById('pageDiscModeInput')?.value || 'HYBRID';
+      const multiplier = parseInt(document.getElementById('pageDiscMultiplierInput')?.value || '5', 10);
+      const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? true;
+      const apifyToggle = document.getElementById('pageDiscApifyToggle')?.value === 'true';
+
+      const btnAction = document.getElementById('btnLaunchDiscoveryPageAction');
+      const btnHeader = document.getElementById('btnPageRunDiscovery');
+      const btnCancel = document.getElementById('btnCancelDiscoveryRun');
+      if (btnAction) btnAction.disabled = true;
+      if (btnHeader) btnHeader.disabled = true;
+      if (btnCancel) btnCancel.style.display = 'inline-flex';
+
+      // Hide results card from prior run while active
+      const resCard = document.getElementById('pageDiscoveryResultsCard');
+      if (resCard) resCard.style.display = 'none';
+
+      // Reset stages to active state
+      setDiscoveryStage(1, 'active');
+      setDiscoveryStage(2, 'queued');
+      setDiscoveryStage(3, 'queued');
+      setDiscoveryStage(4, 'queued');
+      setDiscoveryStage(5, 'queued');
+
+      const stageBadge = document.getElementById('pageDiscoveryStageBadge');
+      if (stageBadge) {
+        stageBadge.innerText = `Scanning: ${city}`;
+        stageBadge.style.color = 'var(--accent-yellow)';
+        stageBadge.style.borderColor = 'var(--accent-yellow)';
+      }
+
+      const term = document.getElementById('pageDiscoveryTerminalLogs');
+      if (term) {
+        term.innerHTML = `[INIT] Launching autonomous boundary acquisition for ${city} (${industry})...\n` +
+          `[CONFIG] Engine Mode: ${mode} | Target Yield: ${limit} | Batch Size: ${batch} | Multiplier: ${multiplier}x | Dry-Run: ${dryRun ? 'TRUE' : 'FALSE'}\n` +
+          `[SAFETY] Invariant Guard: TRAVEL_MODE=ACTIVE | COMMERCIAL_ACTIONS=LOCKED | AUTOMATED_EMAIL=DISABLED\n` +
+          `[STAGE 01] Commencing spatial Overpass boundary polygon queries...\n`;
+      }
+
+      const doneBar = document.getElementById('pageDiscoveryDoneBar');
+      if (doneBar) doneBar.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            country: 'United Kingdom',
+            cities: [city],
+            industry: industry,
+            qualified_leads_needed: limit,
+            batch_size: batch,
+            max_research_multiplier: multiplier,
+            discovery_mode: mode,
+            apify_enabled: apifyToggle || (mode === 'APIFY' || mode === 'HYBRID'),
+            dry_run: dryRun
+          })
+        });
+
+        const data = await res.json();
+        if (res.status === 409) {
+          if (term) term.innerHTML += `[NOTICE] A task is already in progress: ${data.message}\n`;
+          listenToDiscoveryStream();
+          return;
+        }
+
+        if (term) term.innerHTML += `[DISPATCH] Pipeline task ${data.run_id || ''} dispatched (${data.lifecycle || 'QUEUED'}). Subscribed to live telemetry stream...\n`;
+        listenToDiscoveryStream();
+      } catch (err) {
+        if (term) term.innerHTML += `[ERROR] Failed to start discovery task: ${err.message}\n`;
+        if (btnAction) btnAction.disabled = false;
+        if (btnHeader) btnHeader.disabled = false;
+        if (btnCancel) btnCancel.style.display = 'none';
+      }
+    }
+
+    async function cancelDiscoveryJob() {
+      playOperatorClickSound();
+      const term = document.getElementById('pageDiscoveryTerminalLogs');
+      if (term) term.innerHTML += `[CANCEL] Requesting safe cancellation of active pipeline run...\n`;
+      try {
+        const res = await fetch('/api/search/cancel', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          if (term) term.innerHTML += `[CANCELLED] ${data.message}\n`;
+          showToast('Lead discovery task cancelled.');
+        } else {
+          if (term) term.innerHTML += `[NOTICE] ${data.message}\n`;
+        }
+      } catch (err) {
+        if (term) term.innerHTML += `[ERROR] Cancel request failed: ${err.message}\n`;
+      }
     }
 
     async function executeDiscoveryJob() {
@@ -4279,7 +5858,8 @@
             qualified_leads_needed: limit,
             batch_size: 10,
             discovery_mode: mode,
-            apify_enabled: (mode === 'APIFY' || mode === 'HYBRID')
+            apify_enabled: (mode === 'APIFY' || mode === 'HYBRID'),
+            dry_run: true
           })
         });
 
@@ -4299,35 +5879,177 @@
     }
 
     function listenToDiscoveryStream() {
-      const term = document.getElementById('discoveryTerminalLogs');
-      const btn = document.getElementById('btnRunDiscoveryTask');
-      const doneArea = document.getElementById('discoveryDoneActions');
-      const badge = document.getElementById('discoveryStatusBadge');
+      const modalTerm = document.getElementById('discoveryTerminalLogs');
+      const pageTerm = document.getElementById('pageDiscoveryTerminalLogs');
+      const modalBtn = document.getElementById('btnRunDiscoveryTask');
+      const pageBtnAction = document.getElementById('btnLaunchDiscoveryPageAction');
+      const pageBtnHeader = document.getElementById('btnPageRunDiscovery');
+      const pageBtnCancel = document.getElementById('btnCancelDiscoveryRun');
+      const modalDoneArea = document.getElementById('discoveryDoneActions');
+      const modalBadge = document.getElementById('discoveryStatusBadge');
+      const pageStageBadge = document.getElementById('pageDiscoveryStageBadge');
+      const pageDoneBar = document.getElementById('pageDiscoveryDoneBar');
 
       const pollInterval = setInterval(async () => {
         try {
           const res = await fetch('/api/status');
           const state = await res.json();
-          if (term && state.progress_logs && state.progress_logs.length) {
-            term.innerHTML = state.progress_logs.map(l => escapeHtml(l)).join('\n');
-            term.scrollTop = term.scrollHeight;
+
+          const logText = (state.progress_logs && state.progress_logs.length)
+            ? state.progress_logs.map(l => escapeHtml(l)).join('\n')
+            : '';
+
+          if (modalTerm && logText) {
+            modalTerm.innerHTML = logText;
+            modalTerm.scrollTop = modalTerm.scrollHeight;
+          }
+          if (pageTerm && logText) {
+            pageTerm.innerHTML = logText;
+            pageTerm.scrollTop = pageTerm.scrollHeight;
+          }
+
+          // Advance stage indicators based on telemetry
+          const stats = state.current_stats || {};
+          const raw = stats.raw_discovered || state.discovery_transparency?.businesses_discovered_total || 0;
+          const researched = stats.businesses_researched || stats.valid_candidates_researched || 0;
+          const qualified = stats.qualified_leads || stats.outreach_ready || 0;
+
+          if (raw > 0) {
+            setDiscoveryStage(1, 'completed');
+            setDiscoveryStage(2, 'active');
+          }
+          if (researched > 0) {
+            setDiscoveryStage(2, 'completed');
+            setDiscoveryStage(3, 'active');
+          }
+          if (stats.no_website_confirmed > 0 || stats.website_exists > 0) {
+            setDiscoveryStage(3, 'completed');
+            setDiscoveryStage(4, 'active');
+          }
+          if (qualified > 0) {
+            setDiscoveryStage(4, 'completed');
+            setDiscoveryStage(5, 'active');
+          }
+
+          if (raw > 0) {
+            const el = document.getElementById('hudRawDiscovered');
+            if (el) el.innerText = raw;
+          }
+          if (qualified > 0) {
+            const el = document.getElementById('hudQualifiedNum');
+            if (el) el.innerText = String(qualified).padStart(2, '0');
           }
 
           if (!state.is_running) {
             clearInterval(pollInterval);
-            if (btn) btn.disabled = false;
-            if (badge) {
-              badge.innerText = 'Completed';
-              badge.style.color = 'var(--accent-yellow)';
-              badge.style.borderColor = 'var(--accent-yellow)';
+            if (modalBtn) modalBtn.disabled = false;
+            if (pageBtnAction) pageBtnAction.disabled = false;
+            if (pageBtnHeader) pageBtnHeader.disabled = false;
+            if (pageBtnCancel) pageBtnCancel.style.display = 'none';
+
+            setDiscoveryStage(1, 'completed');
+            setDiscoveryStage(2, 'completed');
+            setDiscoveryStage(3, 'completed');
+            setDiscoveryStage(4, 'completed');
+            setDiscoveryStage(5, 'completed');
+
+            const finalStatus = state.status || (state.results ? state.results.final_status : 'COMPLETED');
+            const isError = finalStatus === 'FAILED' || finalStatus === 'CANCELLED';
+            const statusColor = isError ? 'var(--status-critical)' : 'var(--accent-yellow)';
+
+            if (modalBadge) {
+              modalBadge.innerText = finalStatus;
+              modalBadge.style.color = statusColor;
+              modalBadge.style.borderColor = statusColor;
             }
-            if (doneArea) doneArea.style.display = 'flex';
-            showToast('Boundary discovery finished! Syncing verified candidates...');
+            if (pageStageBadge) {
+              pageStageBadge.innerHTML = `Mission ${finalStatus} &bull; Verified`;
+              pageStageBadge.style.color = statusColor;
+              pageStageBadge.style.borderColor = statusColor;
+            }
+
+            // Populate Structured Results Breakdown Card (Phase Temp Section 5)
+            const resultsCard = document.getElementById('pageDiscoveryResultsCard');
+            if (resultsCard) {
+              resultsCard.style.display = 'block';
+
+              const runIdText = document.getElementById('resRunIdText');
+              if (runIdText) runIdText.innerText = `RUN-ID: ${state.run_id || 'LOCAL-CYCLE'}`;
+
+              const resBadge = document.getElementById('resStatusBadge');
+              if (resBadge) {
+                resBadge.innerText = finalStatus;
+                resBadge.style.color = statusColor;
+                resBadge.style.borderColor = statusColor;
+              }
+
+              const resStart = document.getElementById('resStartTime');
+              if (resStart) resStart.innerText = state.started_at ? new Date(state.started_at).toLocaleTimeString() : '--';
+
+              const resEnd = document.getElementById('resEndTime');
+              if (resEnd) resEnd.innerText = state.finished_at ? new Date(state.finished_at).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+              const resElapsed = document.getElementById('resElapsed');
+              if (resElapsed) {
+                const sec = state.elapsed_seconds || 0;
+                resElapsed.innerText = `${sec}s`;
+              }
+
+              const resObj = state.results || {};
+              const discEl = document.getElementById('resDiscovered');
+              if (discEl) discEl.innerText = resObj.candidates_discovered ?? (state.current_stats?.raw_discovered || 0);
+
+              const resrEl = document.getElementById('resResearched');
+              if (resrEl) resrEl.innerText = resObj.candidates_researched ?? (state.current_stats?.businesses_researched || 0);
+
+              const qualEl = document.getElementById('resQualified');
+              if (qualEl) qualEl.innerText = resObj.qualified_leads ?? (state.current_stats?.qualified_leads || 0);
+
+              const manEl = document.getElementById('resManualRev');
+              if (manEl) manEl.innerText = resObj.manual_review_leads ?? (state.current_stats?.manual_review || 0);
+
+              const rejEl = document.getElementById('resRejected');
+              if (rejEl) rejEl.innerText = resObj.rejected_leads ?? (state.current_stats?.not_qualified || 0);
+
+              const dupEl = document.getElementById('resDuplicates');
+              if (dupEl) dupEl.innerText = resObj.duplicates_skipped ?? (state.current_stats?.duplicates || 0);
+
+              const provStatusEl = document.getElementById('resProviderStatus');
+              if (provStatusEl) {
+                const fails = resObj.provider_failures || 0;
+                provStatusEl.innerHTML = fails > 0 ? `${fails} Failures Handled` : '0 Failures &bull; Quotas Normal';
+              }
+
+              const quotaEl = document.getElementById('resQuotaStatus');
+              if (quotaEl) {
+                quotaEl.innerText = resObj.quota_exhaustion ? `Exhausted: ${resObj.quota_exhaustion}` : 'Quota Headroom: 100%';
+              }
+
+              const crmOutcomeEl = document.getElementById('resCrmOutcome');
+              if (crmOutcomeEl) {
+                const crm = resObj.crm_reconciliation || {};
+                const isDry = state.dry_run || crm.mode === 'SHADOW_MODE_DRY_RUN';
+                if (isDry) {
+                  crmOutcomeEl.innerHTML = `Safe Dry-Run: Evaluated without mutating live Google Sheets CRM (Leads: ${resObj.qualified_leads || 0}, Review Queue: ${resObj.manual_review_leads || 0}).`;
+                } else {
+                  crmOutcomeEl.innerHTML = `Live Google Sheets Reconciled: ${crm.saved_to_leads || 0} Leads appended &bull; ${crm.saved_to_review_queue || 0} Review Queue items &bull; ${crm.saved_to_research_log || 0} Research Log entries.`;
+                }
+              }
+            }
+
+            if (modalDoneArea) modalDoneArea.style.display = 'flex';
+            if (pageDoneBar) pageDoneBar.style.display = 'flex';
+
+            showToast(`Discovery cycle ${finalStatus}! Real metrics updated.`);
             await loadAllData();
+            updateDiscoveryPageHUD();
           }
         } catch (e) {
           clearInterval(pollInterval);
-          if (btn) btn.disabled = false;
+          if (modalBtn) modalBtn.disabled = false;
+          if (pageBtnAction) pageBtnAction.disabled = false;
+          if (pageBtnHeader) pageBtnHeader.disabled = false;
+          if (pageBtnCancel) pageBtnCancel.style.display = 'none';
         }
       }, 900);
     }
@@ -4357,7 +6079,15 @@
         view: 'home',
         tag: 'QUICK NAVIGATION',
         title: 'Effortless Space Switching',
-        desc: 'Use the navigation pill at the top to switch between Home, Leads, Pipeline, and System. The smooth yellow slider highlights your active space. You can also use keys 1, 2, 3, and 4 on your keyboard for instant switching.',
+        desc: 'Use the navigation pill at the top to switch between Home, Discovery, Leads, Pipeline, and System. The smooth yellow slider highlights your active space. You can also use keys 1, 2, 3, 4, and 5 on your keyboard for instant switching.',
+        placement: 'below'
+      },
+      {
+        target: '#nav-discovery',
+        view: 'discovery',
+        tag: 'DISCOVERY ENGINE',
+        title: 'Autonomous Lead Acquisition Engine',
+        desc: 'This is the core machine of the platform: scan territorial boundaries across UK markets, harvest commercial nodes, verify genuine website absence, and enforce Frozen Rule B qualification in real time.',
         placement: 'below'
       },
       {
