@@ -4567,7 +4567,12 @@
         if (typeof window.__ENV__ !== 'undefined' && window.__ENV__.BACKEND_API_URL) {
           return window.__ENV__.BACKEND_API_URL.replace(/\/$/, '');
         }
-        return '';
+        // If loaded directly from the backend server (e.g. localhost:8000 or 127.0.0.1:8000):
+        if (window.location.port === '8000' || (window.location.hostname === 'localhost' && window.location.port !== '3000')) {
+          return '';
+        }
+        // When loaded from Vercel (or any other domain/port), default to localhost:8000
+        return 'http://localhost:8000';
       },
       getOperatorKey: function() {
         return localStorage.getItem('dripp_operator_key') || (typeof window.__ENV__ !== 'undefined' ? window.__ENV__.OPERATOR_KEY : '') || '';
@@ -4602,8 +4607,20 @@
 
       try {
         const res = await fetch(url, fetchOpts);
+        const contentType = res.headers.get('content-type') || '';
+
+        // Safeguard: Verify response is authentic JSON, not an HTML error or SPA fallback
+        if (!contentType.includes('application/json')) {
+          const errText = `API endpoint ${cleanEndpoint} returned non-JSON (${contentType || 'empty'}). Check backend server status.`;
+          console.error('[API Gateway Error]', errText);
+          updateBackendConnectionStatus(false, errText);
+          throw new Error(errText);
+        }
+
         if (res.ok) {
           updateBackendConnectionStatus(true);
+        } else {
+          updateBackendConnectionStatus(false, `HTTP ${res.status}`);
         }
         return res;
       } catch (err) {
@@ -4714,12 +4731,12 @@
       const urlInput = document.getElementById('inputBackendUrl');
       const keyInput = document.getElementById('inputOperatorKey');
       const envInd = document.getElementById('backendEnvIndicator');
-      if (urlInput) urlInput.value = localStorage.getItem('dripp_backend_api_url') || '';
+      if (urlInput) urlInput.value = localStorage.getItem('dripp_backend_api_url') || (window.location.hostname.includes('vercel.app') ? 'http://localhost:8000' : '');
       if (keyInput) keyInput.value = localStorage.getItem('dripp_operator_key') || '';
       if (envInd) {
         const custom = localStorage.getItem('dripp_backend_api_url');
         if (custom) envInd.innerText = 'CUSTOM HOSTED URL';
-        else if (window.location.hostname.includes('vercel.app')) envInd.innerText = 'VERCEL HOSTED';
+        else if (window.location.hostname.includes('vercel.app')) envInd.innerText = 'DEFAULT LOCAL GATEWAY (PORT 8000)';
         else envInd.innerText = 'LOCAL / RELATIVE';
       }
     }
@@ -4913,6 +4930,26 @@
         renderHomeRadarBlips();
       } catch (err) {
         console.error('Failed to load leads:', err);
+        const streamContainer = document.getElementById('leadsStreamContainer');
+        if (streamContainer && (!allLeads || allLeads.length === 0)) {
+          const targetUrl = DrippConfig.getBackendUrl() || 'http://localhost:8000';
+          streamContainer.innerHTML = `
+            <div style="padding:3.5rem 1.5rem; text-align:center;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--accent-yellow); margin-bottom:0.75rem;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-bottom:0.4rem;">
+                Backend Connection Required
+              </div>
+              <div style="font-size:0.8rem; color:var(--text-muted); max-width:420px; margin:0 auto 1.25rem; line-height:1.5;">
+                Could not retrieve leads from <code style="color:var(--accent-yellow); font-family:var(--font-mono);">${targetUrl}</code>.<br>
+                Make sure the backend is running with <code style="color:var(--text-main); font-family:var(--font-mono);">uvicorn server:app</code> or configure your public gateway in Settings.
+              </div>
+              <div style="display:flex; justify-content:center; gap:0.75rem;">
+                <button class="btn-pill" style="font-size:0.75rem; padding:0.45rem 1rem;" onclick="loadLeadsData()">Retry Connection</button>
+                <button class="btn-pill btn-pill-secondary" style="font-size:0.75rem; padding:0.45rem 1rem;" onclick="navigateTo('system')">Configure Gateway</button>
+              </div>
+            </div>
+          `;
+        }
       }
     }
 

@@ -44,6 +44,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_private_network=True,
 )
 
 def check_operator_authorization(request: Request) -> bool:
