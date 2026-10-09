@@ -1,5 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": null,
   "outputDirectory": "static",
   "cleanUrls": true,
   "rewrites": [
@@ -16,7 +18,7 @@
       "destination": "/logos/favicon.png"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
