@@ -1155,10 +1155,15 @@ app.post('/api/outreach-queue/edit', async (req, res) => {
 });
 
 
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`=======================================================`);
-  console.log(`[DRIPP MEDIA] Node.js Integration Backend Running`);
-  console.log(`[NETWORK] URL: http://127.0.0.1:${PORT}`);
-  console.log(`[SECURITY] All API Credentials Stored Server-Side`);
-  console.log(`=======================================================`);
-});
+if (require.main === module) {
+  app.listen(PORT, '127.0.0.1', () => {
+    console.log(`=======================================================`);
+    console.log(`[DRIPP MEDIA] Node.js Integration Backend Running`);
+    console.log(`[NETWORK] URL: http://127.0.0.1:${PORT}`);
+    console.log(`[SECURITY] All API Credentials Stored Server-Side`);
+    console.log(`=======================================================`);
+  });
+}
+
+module.exports = app;
+

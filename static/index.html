@@ -2311,7 +2311,13 @@
           <span>Guide</span>
         </button>
 
-        <a id="sheetLink" href="https://docs.google.com/spreadsheets/d/1BnyAM_88Pvd_d56bL8m6_a0A939G-Xq7P5G2G8gR_O4/edit" target="_blank" rel="noopener" class="nav-meta-link" title="Google Sheets CRM Source of Truth">
+        <!-- Live Backend API Connection Status Indicator -->
+        <button id="backendConnectionIndicator" class="status-capsule" onclick="navigateTo('system')" title="Live Backend API Connection (Click to configure in Settings)" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+          <span class="blip-beacon" id="backendStatusBeacon" style="width:6px; height:6px; background:var(--accent-yellow); border-radius:50%; display:inline-block;"></span>
+          <span id="backendStatusText" style="font-size:0.7rem; font-family:var(--font-mono); font-weight:700;">API: CONNECTING</span>
+        </button>
+
+        <a id="sheetLink" href="https://docs.google.com/spreadsheets/d/1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc/edit" target="_blank" rel="noopener" class="nav-meta-link" title="Google Sheets CRM Source of Truth">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           <span>Sheets</span>
         </a>
@@ -2458,41 +2464,8 @@
             <!-- Expanding Ping Shockwave -->
             <div class="radar-ping-wave" id="radarPingWave"></div>
 
-            <!-- Target Blips (Precision coordinate diamond pips without halos) -->
-            <div class="radar-blip-target" style="top:36%; left:65%;" data-name="Mala" data-id="lead-mcr-001" onclick="openLeadDrawerById('lead-mcr-001')">
-              <div class="blip-beacon-wrap">
-                <span class="blip-beacon"></span>
-              </div>
-              <span class="blip-tag" style="margin-left:6px;">Mala</span>
-            </div>
-
-            <div class="radar-blip-target" style="top:22%; left:42%; flex-direction:column-reverse;" data-name="Mary D's" data-id="lead-mcr-003" onclick="openLeadDrawerById('lead-mcr-003')">
-              <div class="blip-beacon-wrap">
-                <span class="blip-beacon"></span>
-              </div>
-              <span class="blip-tag" style="margin-bottom:6px;">Mary D's</span>
-            </div>
-
-            <div class="radar-blip-target" style="top:64%; left:34%;" data-name="Dog & Partridge" data-id="lead-mcr-002" onclick="openLeadDrawerById('lead-mcr-002')">
-              <div class="blip-beacon-wrap">
-                <span class="blip-beacon"></span>
-              </div>
-              <span class="blip-tag" style="margin-left:6px;">Dog &amp; Partridge</span>
-            </div>
-
-            <div class="radar-blip-target" style="top:74%; left:68%;" data-name="The Marble Arch" data-id="lead-mcr-004" onclick="openLeadDrawerById('lead-mcr-004')">
-              <div class="blip-beacon-wrap">
-                <span class="blip-beacon"></span>
-              </div>
-              <span class="blip-tag" style="margin-left:6px;">Marble Arch</span>
-            </div>
-
-            <div class="radar-blip-target" style="top:50%; left:16%; flex-direction:row-reverse;" data-name="Cask" data-id="lead-mcr-005" onclick="openLeadDrawerById('lead-mcr-005')">
-              <div class="blip-beacon-wrap">
-                <span class="blip-beacon"></span>
-              </div>
-              <span class="blip-tag" style="margin-right:6px;">Cask</span>
-            </div>
+            <!-- Target Blips: Dynamically rendered from authentic Google Sheets CRM records -->
+            <div id="homeRadarBlipsContainer"></div>
           </div>
 
           <div class="radar-hud-footer">
@@ -2501,7 +2474,7 @@
             </div>
             <div class="radar-target-pill" id="radarActiveTarget">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-yellow); flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M5 12h2m10 0h2M12 5v2m0 10v2"/></svg>
-              <span id="radarActiveTargetText">TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR</span>
+              <span id="radarActiveTargetText">RADAR SCANNING: CONNECTING TO CRM...</span>
             </div>
           </div>
         </div>
@@ -2545,27 +2518,27 @@
         <div class="pipeline-stage-nodes-row">
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('ALL')">
             <div class="p-stage-header">STAGE 01</div>
-            <div class="p-stage-val" id="plDiscoveredVal">7</div>
+            <div class="p-stage-val" id="plDiscoveredVal">--</div>
             <div class="p-stage-title">Discovered</div>
           </div>
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('RESEARCHING')">
             <div class="p-stage-header">STAGE 02</div>
-            <div class="p-stage-val" id="plResearchedVal">7</div>
+            <div class="p-stage-val" id="plResearchedVal">--</div>
             <div class="p-stage-title">Research</div>
           </div>
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('QUALIFIED')">
             <div class="p-stage-header">STAGE 03</div>
-            <div class="p-stage-val" id="plQualifiedVal">7</div>
+            <div class="p-stage-val" id="plQualifiedVal">--</div>
             <div class="p-stage-title">Qualified</div>
           </div>
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('CONTACTABLE')">
             <div class="p-stage-header">STAGE 04</div>
-            <div class="p-stage-val" id="plContactableVal">7</div>
+            <div class="p-stage-val" id="plContactableVal">--</div>
             <div class="p-stage-title">Contactable</div>
           </div>
           <div class="pipeline-stage-node active-ready" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
             <div class="p-stage-header" style="color:var(--accent-yellow);">STAGE 05</div>
-            <div class="p-stage-val" style="color:var(--accent-yellow);" id="plReadyVal">7</div>
+            <div class="p-stage-val" style="color:var(--accent-yellow);" id="plReadyVal">--</div>
             <div class="p-stage-title" style="color:var(--accent-yellow);">Ready to Review</div>
           </div>
         </div>
@@ -3227,15 +3200,16 @@
 
         <!-- Right Side Live Inspector (Always visible on desktop) -->
         <div class="lead-inspector-pane" id="leadInspectorPane">
-          <div id="inspectorEmptyState" style="text-align:center; padding:4rem 2rem; color:var(--text-muted); display:none;">
-            Select any lead on the left to inspect its live evidence dossier.
+          <div id="inspectorEmptyState" style="text-align:center; padding:4rem 2rem; color:var(--text-muted); display:block;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin-bottom:0.75rem; color:var(--text-dim);"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <div>Select any verified business on the left to inspect its live evidence dossier.</div>
           </div>
 
-          <div id="inspectorDetailContent">
+          <div id="inspectorDetailContent" style="display:none;">
             <div class="inspector-header-wrap">
               <div>
-                <div class="inspector-biz-name" id="inspName">Mala</div>
-                <div class="inspector-biz-id" id="inspId">LEAD-MAN-14A2D3</div>
+                <div class="inspector-biz-name" id="inspName">--</div>
+                <div class="inspector-biz-id" id="inspId">--</div>
               </div>
               <button class="btn-pill btn-pill-secondary" style="font-size:0.75rem; padding:0.35rem 0.75rem;" onclick="openSelectedLeadDrawer()">
                 <span>Open Drawer</span>
@@ -3247,7 +3221,7 @@
             <div class="inspector-section-block">
               <div class="inspector-section-title">Why This Lead Matters</div>
               <div class="inspector-narrative-text" id="inspWhy">
-                Confirmed absence of an official business website. Strong customer traction in Manchester polygon with verified reviews &gt;= 4.0 stars within 180 days.
+                Select any lead to inspect verified evidence and Rule B criteria.
               </div>
             </div>
 
@@ -3257,19 +3231,19 @@
               <div style="border:var(--glass-border); border-radius:var(--radius-sm); overflow:hidden;">
                 <div class="evidence-table-row">
                   <span style="color:var(--text-muted);">Customer Reviews</span>
-                  <strong id="inspReviews">4.5 Stars / 3,801 reviews</strong>
+                  <strong id="inspReviews">--</strong>
                 </div>
                 <div class="evidence-table-row">
                   <span style="color:var(--text-muted);">Website Verification</span>
-                  <strong style="color:var(--accent-yellow);" id="inspWebsite">No Domain Found (Tavily Verified)</strong>
+                  <strong style="color:var(--accent-yellow);" id="inspWebsite">Awaiting Inspection</strong>
                 </div>
                 <div class="evidence-table-row">
                   <span style="color:var(--text-muted);">Social Verification</span>
-                  <strong id="inspSocial">Instagram Verified</strong>
+                  <strong id="inspSocial">--</strong>
                 </div>
                 <div class="evidence-table-row">
                   <span style="color:var(--text-muted);">Contact Phone</span>
-                  <strong id="inspPhone">+44 7479 592107</strong>
+                  <strong id="inspPhone">--</strong>
                 </div>
               </div>
             </div>
@@ -3698,6 +3672,50 @@
             </div>
           </div>
 
+          <!-- Card: Live Backend API Gateway & Endpoint Configuration -->
+          <div class="glass-card" id="backendConfigCard">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+              <div>
+                <strong style="color:var(--text-main); font-size:0.95rem;">Backend Connection &amp; Gateway</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">FastAPI Backend &bull; Real Data Source Authority</div>
+              </div>
+              <span id="gatewayStatusBadge" class="status-pill-mini pass">ACTIVE</span>
+            </div>
+
+            <div class="settings-action-row" style="flex-direction:column; align-items:flex-start; gap:0.4rem;">
+              <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <strong style="font-size:0.82rem; color:var(--text-main);">Backend API URL</strong>
+                <span id="backendEnvIndicator" style="font-size:0.7rem; font-family:var(--font-mono); color:var(--accent-yellow);">LOCAL / RELATIVE</span>
+              </div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Leave empty to use current origin / localhost:8000, or enter hosted FastAPI URL (e.g. https://api.drippmedia.com)</div>
+              <div style="display:flex; gap:0.5rem; width:100%; margin-top:4px;">
+                <input id="inputBackendUrl" type="url" placeholder="http://127.0.0.1:8000 or https://..." class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
+              </div>
+            </div>
+
+            <div class="settings-action-row" style="flex-direction:column; align-items:flex-start; gap:0.4rem; margin-top:0.75rem;">
+              <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <strong style="font-size:0.82rem; color:var(--text-main);">Operator API Key</strong>
+                <span style="font-size:0.7rem; color:var(--text-muted);">Optional for local dev</span>
+              </div>
+              <div style="display:flex; gap:0.5rem; width:100%; margin-top:4px;">
+                <input id="inputOperatorKey" type="password" placeholder="Enter Operator Key" class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
+              </div>
+            </div>
+
+            <div style="display:flex; gap:0.6rem; margin-top:1.15rem;">
+              <button class="btn-pill btn-pill-secondary" style="flex:1; justify-content:center;" onclick="testBackendGatewayConnection()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <span>Test Gateway</span>
+              </button>
+              <button class="btn-pill btn-pill-primary" style="flex:1; justify-content:center;" onclick="saveBackendConfiguration()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Save &amp; Reconnect</span>
+              </button>
+            </div>
+            <div id="gatewayProbeResult" style="margin-top:0.75rem; font-size:0.74rem; font-family:var(--font-mono); color:var(--text-muted); display:none;"></div>
+          </div>
+
           <!-- Card 2: Connected Providers & External Services -->
           <div class="glass-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
@@ -3712,7 +3730,7 @@
                 <strong style="font-size:0.82rem; color:var(--text-main);">Google Sheets CRM</strong>
                 <div class="settings-label-sub">Outreach staging &amp; lead truth record</div>
               </div>
-              <a href="https://docs.google.com/spreadsheets/d/1BnyAM_88Pvd_d56bL8m6_a0A939G-Xq7P5G2G8gR_O4/edit" target="_blank" rel="noopener" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+              <a href="https://docs.google.com/spreadsheets/d/1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc/edit" target="_blank" rel="noopener" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
                 <span>Open CRM</span>
               </a>
             </div>
@@ -4539,6 +4557,222 @@
     let currentPipelineStageIdx = 4; // Ready stage
     let readinessData = null;
 
+    // ========================================================================
+    // PHASE 12.1 UNIFIED API CLIENT & CONFIGURATION
+    // ========================================================================
+    const DrippConfig = {
+      getBackendUrl: function() {
+        const stored = localStorage.getItem('dripp_backend_api_url');
+        if (stored && stored.trim()) return stored.trim().replace(/\/$/, '');
+        if (typeof window.__ENV__ !== 'undefined' && window.__ENV__.BACKEND_API_URL) {
+          return window.__ENV__.BACKEND_API_URL.replace(/\/$/, '');
+        }
+        return '';
+      },
+      getOperatorKey: function() {
+        return localStorage.getItem('dripp_operator_key') || (typeof window.__ENV__ !== 'undefined' ? window.__ENV__.OPERATOR_KEY : '') || '';
+      },
+      setBackendUrl: function(url) {
+        if (url) localStorage.setItem('dripp_backend_api_url', url.trim());
+        else localStorage.removeItem('dripp_backend_api_url');
+      },
+      setOperatorKey: function(key) {
+        if (key) localStorage.setItem('dripp_operator_key', key.trim());
+        else localStorage.removeItem('dripp_operator_key');
+      }
+    };
+
+    async function apiFetch(endpoint, options = {}) {
+      const baseUrl = DrippConfig.getBackendUrl();
+      const cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+      const url = (baseUrl ? baseUrl : '') + cleanEndpoint;
+      
+      const headers = Object.assign({}, options.headers || {});
+      const opKey = DrippConfig.getOperatorKey();
+      if (opKey && !headers['Authorization'] && !headers['X-Operator-Key']) {
+        headers['Authorization'] = `Bearer ${opKey}`;
+        headers['X-Operator-Key'] = opKey;
+      }
+
+      const fetchOpts = { ...options, headers: headers };
+      const timeoutMs = options.timeoutMs || 15000;
+      if (!fetchOpts.signal && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        fetchOpts.signal = AbortSignal.timeout(timeoutMs);
+      }
+
+      try {
+        const res = await fetch(url, fetchOpts);
+        if (res.ok) {
+          updateBackendConnectionStatus(true);
+        }
+        return res;
+      } catch (err) {
+        console.error(`[API Gateway Error] Request failed to ${url}:`, err);
+        updateBackendConnectionStatus(false, err.message);
+        throw err;
+      }
+    }
+
+    function updateBackendConnectionStatus(connected, message = '') {
+      const beacon = document.getElementById('backendStatusBeacon');
+      const text = document.getElementById('backendStatusText');
+      const cardBadge = document.getElementById('gatewayStatusBadge');
+      const cardProbe = document.getElementById('gatewayProbeResult');
+
+      if (connected) {
+        if (beacon) beacon.style.background = 'var(--accent-yellow)';
+        if (text) {
+          text.innerText = 'API: LIVE';
+          text.style.color = 'var(--accent-yellow)';
+        }
+        if (cardBadge) {
+          cardBadge.innerText = 'CONNECTED';
+          cardBadge.className = 'status-pill-mini pass';
+          cardBadge.style.color = 'var(--accent-yellow)';
+        }
+      } else {
+        if (beacon) beacon.style.background = '#FF4D4D';
+        if (text) {
+          text.innerText = 'API: OFFLINE';
+          text.style.color = '#FF4D4D';
+        }
+        if (cardBadge) {
+          cardBadge.innerText = 'DISCONNECTED';
+          cardBadge.className = 'status-pill-mini fail';
+          cardBadge.style.color = '#FF4D4D';
+        }
+        if (cardProbe && message) {
+          cardProbe.style.display = 'block';
+          cardProbe.style.color = '#FF4D4D';
+          cardProbe.innerText = `Connection Notice: ${message}`;
+        }
+      }
+    }
+
+    async function testBackendGatewayConnection() {
+      const urlInput = document.getElementById('inputBackendUrl');
+      const keyInput = document.getElementById('inputOperatorKey');
+      const probeResult = document.getElementById('gatewayProbeResult');
+      
+      const testUrl = (urlInput ? urlInput.value.trim() : '') || DrippConfig.getBackendUrl();
+      const testKey = (keyInput ? keyInput.value.trim() : '') || DrippConfig.getOperatorKey();
+
+      if (probeResult) {
+        probeResult.style.display = 'block';
+        probeResult.style.color = 'var(--accent-yellow)';
+        probeResult.innerText = `Testing connection to: ${testUrl || '(current origin / localhost:8000)'}...`;
+      }
+
+      const startTime = Date.now();
+      try {
+        const headers = {};
+        if (testKey) {
+          headers['Authorization'] = `Bearer ${testKey}`;
+          headers['X-Operator-Key'] = testKey;
+        }
+        const targetUrl = (testUrl ? testUrl.replace(/\/$/, '') : '') + '/api/system/health';
+        const res = await fetch(targetUrl, { headers, signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined) });
+        const latency = Date.now() - startTime;
+        if (res.ok) {
+          const data = await res.json();
+          if (probeResult) {
+            probeResult.style.color = 'var(--accent-yellow)';
+            probeResult.innerText = `Verified! Latency: ${latency}ms • Status: ${data.canonical_health_status || 'OPERATIONAL'} • Google Sheets CRM Connected`;
+          }
+          showToast(`Gateway connection verified (${latency}ms)`);
+          updateBackendConnectionStatus(true);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (probeResult) {
+            probeResult.style.color = '#FF4D4D';
+            probeResult.innerText = `Error HTTP ${res.status}: ${errData.message || res.statusText}`;
+          }
+          showToast(`Gateway probe returned HTTP ${res.status}`);
+          updateBackendConnectionStatus(false, `HTTP ${res.status}`);
+        }
+      } catch (e) {
+        if (probeResult) {
+          probeResult.style.color = '#FF4D4D';
+          probeResult.innerText = `Connection failed: ${e.message}. Ensure backend is running and CORS allows origin.`;
+        }
+        showToast(`Connection failed: ${e.message}`);
+        updateBackendConnectionStatus(false, e.message);
+      }
+    }
+
+    function saveBackendConfiguration() {
+      const urlInput = document.getElementById('inputBackendUrl');
+      const keyInput = document.getElementById('inputOperatorKey');
+      if (urlInput) DrippConfig.setBackendUrl(urlInput.value.trim());
+      if (keyInput) DrippConfig.setOperatorKey(keyInput.value.trim());
+      showToast('Backend gateway configuration saved. Re-synchronizing CRM...');
+      initBackendConfigInputs();
+      loadAllData();
+    }
+
+    function initBackendConfigInputs() {
+      const urlInput = document.getElementById('inputBackendUrl');
+      const keyInput = document.getElementById('inputOperatorKey');
+      const envInd = document.getElementById('backendEnvIndicator');
+      if (urlInput) urlInput.value = localStorage.getItem('dripp_backend_api_url') || '';
+      if (keyInput) keyInput.value = localStorage.getItem('dripp_operator_key') || '';
+      if (envInd) {
+        const custom = localStorage.getItem('dripp_backend_api_url');
+        if (custom) envInd.innerText = 'CUSTOM HOSTED URL';
+        else if (window.location.hostname.includes('vercel.app')) envInd.innerText = 'VERCEL HOSTED';
+        else envInd.innerText = 'LOCAL / RELATIVE';
+      }
+    }
+
+    function renderHomeRadarBlips() {
+      const container = document.getElementById('homeRadarBlipsContainer');
+      if (!container) return;
+
+      const targetHud = document.getElementById('radarActiveTargetText');
+      if (!allLeads || allLeads.length === 0) {
+        container.innerHTML = '';
+        if (targetHud) targetHud.innerText = 'RADAR SCANNING: AWAITING DISCOVERY OR CONNECTED CRM';
+        return;
+      }
+
+      const positions = [
+        { top: '36%', left: '65%', dir: 'row' },
+        { top: '22%', left: '42%', dir: 'column-reverse' },
+        { top: '64%', left: '34%', dir: 'row' },
+        { top: '74%', left: '68%', dir: 'row' },
+        { top: '50%', left: '16%', dir: 'row-reverse' },
+        { top: '30%', left: '26%', dir: 'row' },
+        { top: '68%', left: '52%', dir: 'column' }
+      ];
+
+      const readyLeads = allLeads.filter(l => (l.qualification_state || 'OUTREACH_READY') === 'OUTREACH_READY');
+      const displayLeads = (readyLeads.length > 0 ? readyLeads : allLeads).slice(0, 7);
+
+      if (targetHud) {
+        targetHud.innerText = `TARGET LOCK: ${displayLeads.length} QUALIFIED CANDIDATES IN SECTOR`;
+      }
+
+      container.innerHTML = displayLeads.map((lead, idx) => {
+        const pos = positions[idx % positions.length];
+        const name = lead.company_name || lead.business_name || lead.name || 'Verified Lead';
+        const id = lead.lead_id || lead.id || `LEAD-${idx}`;
+        const extraStyle = pos.dir === 'column-reverse' ? 'flex-direction:column-reverse;' : (pos.dir === 'row-reverse' ? 'flex-direction:row-reverse;' : '');
+        const tagMargin = pos.dir === 'column-reverse' ? 'margin-bottom:6px;' : (pos.dir === 'row-reverse' ? 'margin-right:6px;' : 'margin-left:6px;');
+
+        return `
+          <div class="radar-blip-target" style="top:${pos.top}; left:${pos.left}; ${extraStyle}" data-name="${escapeHtml(name)}" data-id="${escapeHtml(id)}" onclick="openLeadDrawerById('${escapeHtml(id)}')">
+            <div class="blip-beacon-wrap">
+              <span class="blip-beacon"></span>
+            </div>
+            <span class="blip-tag" style="${tagMargin}">${escapeHtml(name)}</span>
+          </div>
+        `;
+      }).join('');
+
+      initRadarInteractions();
+    }
+
+
     // Navigation Router with Smooth Sliding Indicator
     function navigateTo(dest) {
       const validViews = ['home', 'discovery', 'leads', 'pipeline', 'system'];
@@ -4596,7 +4830,7 @@
 
     async function loadLeadsData() {
       try {
-        const res = await fetch('/api/leads');
+        const res = await apiFetch('/api/leads');
         const data = await res.json();
         allLeads = data.leads || [];
 
@@ -4625,7 +4859,7 @@
         let runContactable = allLeads.filter(l => l.contact_email || l.email || l.phone || l.instagram).length;
 
         try {
-          const statusRes = await fetch('/api/status');
+          const statusRes = await apiFetch('/api/status');
           if (statusRes.ok) {
             const st = await statusRes.json();
             const cs = st.current_stats || (st.results ? {
@@ -4676,6 +4910,7 @@
         renderHomeReadyLeads();
         renderLeadsWorkspace();
         renderPipelineCandidates();
+        renderHomeRadarBlips();
       } catch (err) {
         console.error('Failed to load leads:', err);
       }
@@ -4814,14 +5049,29 @@
     }
 
     function renderInspector(lead) {
-      if (!lead) return;
+      const emptyState = document.getElementById('inspectorEmptyState');
+      const detailContent = document.getElementById('inspectorDetailContent');
+      if (!lead) {
+        if (emptyState) emptyState.style.display = 'block';
+        if (detailContent) detailContent.style.display = 'none';
+        return;
+      }
+      if (emptyState) emptyState.style.display = 'none';
+      if (detailContent) detailContent.style.display = 'block';
+
       const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
-      document.getElementById('inspName').innerText = name;
-      document.getElementById('inspId').innerText = lead.lead_id || lead.id || 'LEAD-000000';
-      document.getElementById('inspReviews').innerText = `${lead.rating || 4.5} Stars / ${lead.review_count || 50} reviews`;
-      document.getElementById('inspPhone').innerText = lead.phone || 'Available in Places record';
-      document.getElementById('inspSocial').innerText = lead.instagram_url ? 'Instagram Verified (@' + (lead.instagram_url.split('/')[3] || 'profile') + ')' : 'Social Available';
-      document.getElementById('inspWhy').innerText = lead.qualification_reason || 'Absence of official website verified. Strong review history & active physical premises confirmed.';
+      const inspName = document.getElementById('inspName');
+      if (inspName) inspName.innerText = name;
+      const inspId = document.getElementById('inspId');
+      if (inspId) inspId.innerText = lead.lead_id || lead.id || 'LEAD-000000';
+      const inspReviews = document.getElementById('inspReviews');
+      if (inspReviews) inspReviews.innerText = `${lead.rating ? lead.rating + ' Stars' : 'Audited'} / ${lead.review_count || 0} reviews`;
+      const inspPhone = document.getElementById('inspPhone');
+      if (inspPhone) inspPhone.innerText = lead.phone || 'Available in Places record';
+      const inspSocial = document.getElementById('inspSocial');
+      if (inspSocial) inspSocial.innerText = lead.instagram_url ? 'Instagram Verified (@' + (lead.instagram_url.split('/')[3] || 'profile') + ')' : (lead.instagram ? 'Instagram Verified' : 'Physical Premises Verified');
+      const inspWhy = document.getElementById('inspWhy');
+      if (inspWhy) inspWhy.innerText = lead.qualification_reason || 'Absence of official website verified. Strong review history & active physical premises confirmed.';
     }
 
     function setLeadFilter(flt) {
@@ -4866,15 +5116,14 @@
     }
 
     function openLeadDrawerById(targetId) {
-      let lead = allLeads.find(l => l.lead_id === targetId || l.id === targetId);
-      if (!lead && typeof fallbackLeads !== 'undefined') {
-        lead = fallbackLeads.find(l => l.id === targetId || l.lead_id === targetId);
-      }
+      const lead = allLeads.find(l => l.lead_id === targetId || l.id === targetId);
       if (lead) {
         selectedLead = lead;
         renderLeadsWorkspace();
         openLeadDrawer(lead.lead_id || lead.id);
       } else if (allLeads.length > 0) {
+        selectedLead = allLeads[0];
+        renderLeadsWorkspace();
         openLeadDrawer(allLeads[0].lead_id || allLeads[0].id);
       }
     }
@@ -4884,10 +5133,16 @@
       document.querySelectorAll('.radar-blip-target').forEach(blip => {
         blip.addEventListener('pointerenter', () => {
           const name = blip.getAttribute('data-name');
-          if (targetHud) targetHud.innerText = `TARGET LOCK: ${name.toUpperCase()} · 100% NO-WEBSITE CONFIRMED`;
+          const id = blip.getAttribute('data-id');
+          if (targetHud) targetHud.innerText = `ACTIVE TARGET: ${name.toUpperCase()} [${id}] · 100% NO-WEBSITE CONFIRMED`;
         });
         blip.addEventListener('pointerleave', () => {
-          if (targetHud) targetHud.innerText = 'TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR';
+          const count = allLeads.length;
+          if (targetHud) {
+            targetHud.innerText = count > 0 
+              ? `TARGET LOCK: ${count} QUALIFIED CANDIDATES IN SECTOR`
+              : 'RADAR SCANNING: AWAITING DISCOVERY OR CONNECTED CRM';
+          }
         });
       });
     }
@@ -5074,7 +5329,7 @@
     // Production Readiness Loader
     async function loadReadinessData() {
       try {
-        const res = await fetch('/api/system/readiness');
+        const res = await apiFetch('/api/system/readiness');
         readinessData = await res.json();
         renderReadinessGroups();
       } catch (err) {
@@ -5108,7 +5363,7 @@
                     <strong style="color:var(--text-main);">${gate.name}</strong>
                     <div style="font-size:0.7rem; font-family:var(--font-mono); color:var(--text-muted);">${gate.gate_id}</div>
                   </div>
-                  <span style="color:var(--accent-yellow); font-weight:700; font-size:0.75rem;">PASS</span>
+                  <span style="color:${(gate.status === 'PASS' || gate.passed) ? 'var(--accent-yellow)' : '#FF4D4D'}; font-weight:700; font-size:0.75rem;">${escapeHtml(gate.status || ((gate.status === 'PASS' || gate.passed) ? 'PASS' : 'FAIL'))}</span>
                 </div>
               `).join('')}
             </div>
@@ -5134,7 +5389,7 @@
     // Health Telemetry Loader
     async function loadHealthData() {
       try {
-        const res = await fetch('/api/system/health');
+        const res = await apiFetch('/api/system/health');
         const data = await res.json();
         const statEl = document.getElementById('sysHealthStatus');
         if (statEl) statEl.innerText = data.canonical_health_status || 'OPERATIONAL';
@@ -5146,7 +5401,7 @@
     // Batch 8.7 Inspection Modal
     async function openBatch87Modal() {
       try {
-        const res = await fetch('/api/manual-outreach/batch-8-7');
+        const res = await apiFetch('/api/manual-outreach/batch-8-7');
         const data = await res.json();
         const tbody = document.getElementById('phase87BatchTableBody');
         if (tbody) {
@@ -5155,9 +5410,9 @@
             <tr style="border-bottom:var(--glass-border);">
               <td style="padding:0.75rem 1rem; font-weight:700; color:var(--text-main);">${escapeHtml(item.company_name || 'Enterprise')}</td>
               <td style="padding:0.75rem 1rem; color:var(--accent-yellow);">${escapeHtml(item.qualification_state || 'OUTREACH_READY')}</td>
-              <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">${item.lead_score || 85}</td>
-              <td style="padding:0.75rem 1rem; color:var(--text-muted);">No Website</td>
-              <td style="padding:0.75rem 1rem;">Instagram</td>
+              <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">${item.lead_score != null ? item.lead_score : '--'}</td>
+              <td style="padding:0.75rem 1rem; color:var(--text-muted);">${escapeHtml(item.website_status || 'No Website')}</td>
+              <td style="padding:0.75rem 1rem;">${item.contact_email ? 'Email' : (item.phone ? 'Phone' : (item.instagram ? 'Instagram' : 'Premises'))}</td>
             </tr>
           `).join('');
         }
@@ -5330,7 +5585,7 @@
       playOperatorClickSound();
       showToast('Fetching research log records...');
       try {
-        const res = await fetch('/api/research-log');
+        const res = await apiFetch('/api/research-log');
         const data = await res.json();
         const entries = data.entries || [];
         if (!entries.length) {
@@ -5363,7 +5618,7 @@
     async function exportSystemTelemetry() {
       playOperatorClickSound();
       try {
-        const res = await fetch('/api/system/readiness');
+        const res = await apiFetch('/api/system/readiness');
         const data = await res.json();
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
         const dlAnchor = document.createElement('a');
@@ -5384,7 +5639,7 @@
       btns.forEach(b => { if (b) b.disabled = true; });
       showToast('Creating point-in-time state backup with SHA-256 manifest...');
       try {
-        const res = await fetch('/api/system/backup', { method: 'POST' });
+        const res = await apiFetch('/api/system/backup', { method: 'POST' });
         const data = await res.json();
         if (data.status === 'ok') {
           const infoEl = document.getElementById('latestBackupInfo');
@@ -5409,7 +5664,7 @@
       if (btn) btn.disabled = true;
       showToast('Auditing cross-store records for contradictions...');
       try {
-        const res = await fetch('/api/system/reconcile', { method: 'POST' });
+        const res = await apiFetch('/api/system/reconcile', { method: 'POST' });
         const data = await res.json();
         const reconInfoEl = document.getElementById('latestReconInfo');
         if (reconInfoEl) {
@@ -5428,7 +5683,7 @@
       playOperatorClickSound();
       showToast('Testing connectivity to discovery & research providers...');
       try {
-        const res = await fetch('/api/discovery/status');
+        const res = await apiFetch('/api/discovery/status');
         const data = await res.json();
         const osmEl = document.getElementById('settingOsmBadge');
         const crawlEl = document.getElementById('settingCrawlBadge');
@@ -5471,7 +5726,7 @@
       playOperatorClickSound();
       showToast('Probing email domain DNS & authentication records...');
       try {
-        const res = await fetch('/api/email/sender-health');
+        const res = await apiFetch('/api/email/sender-health');
         const data = await res.json();
         const spfEl = document.getElementById('settingSpfBadge');
         const dkimEl = document.getElementById('settingDkimBadge');
@@ -5493,7 +5748,7 @@
       const container = document.getElementById('recentJobsList');
       if (!container) return;
       try {
-        const res = await fetch('/api/system/jobs');
+        const res = await apiFetch('/api/system/jobs');
         const data = await res.json();
         const jobs = (data.jobs || []).slice(0, 5);
         if (!jobs.length) {
@@ -5532,7 +5787,7 @@
     async function reverifySafetyInvariants() {
       playOperatorClickSound();
       try {
-        const res = await fetch('/api/system/readiness');
+        const res = await apiFetch('/api/system/readiness');
         const data = await res.json();
         const travelGate = data.gates ? data.gates.find(g => g.gate_id === 'OUTREACH_LOCK_STATE') : null;
         if (travelGate && travelGate.status === 'PASS') {
@@ -5620,7 +5875,7 @@
       let runData = state;
       if (!runData) {
         try {
-          const res = await fetch('/api/status');
+          const res = await apiFetch('/api/status');
           runData = await res.json();
         } catch (e) {
           console.error('Failed to fetch run status for HUD:', e);
@@ -5659,7 +5914,7 @@
 
       // If no run or run had 0 candidates, fallback to workspace lead store
       try {
-        const lRes = await fetch('/api/leads');
+        const lRes = await apiFetch('/api/leads');
         const lData = await lRes.json();
         const leads = lData.leads || [];
         const total = leads.length;
@@ -5687,7 +5942,7 @@
 
     async function syncDiscoveryStatusOnLoad() {
       try {
-        const res = await fetch('/api/status');
+        const res = await apiFetch('/api/status');
         const state = await res.json();
         if (!state) return;
 
@@ -5932,7 +6187,7 @@
       if (doneBar) doneBar.style.display = 'none';
 
       try {
-        const res = await fetch('/api/search', {
+        const res = await apiFetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -5980,7 +6235,7 @@
       const term = document.getElementById('pageDiscoveryTerminalLogs');
       if (term) term.innerHTML += `[CANCEL] Requesting safe cancellation of active pipeline run...\n`;
       try {
-        const res = await fetch('/api/search/cancel', { method: 'POST' });
+        const res = await apiFetch('/api/search/cancel', { method: 'POST' });
         const data = await res.json();
         if (res.ok) {
           if (term) term.innerHTML += `[CANCELLED] ${data.message}\n`;
@@ -6009,7 +6264,7 @@
       if (term) term.innerHTML = `[INIT] Dispatching boundary discovery task for ${city} (${industry})...\n`;
 
       try {
-        const res = await fetch('/api/search', {
+        const res = await apiFetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -6061,7 +6316,7 @@
 
       const pollInterval = setInterval(async () => {
         try {
-          const res = await fetch('/api/status');
+          const res = await apiFetch('/api/status');
           const state = await res.json();
 
           const logText = (state.progress_logs && state.progress_logs.length)
@@ -6868,6 +7123,7 @@
         'readiness': 'system',
         'settings': 'system'
       };
+      initBackendConfigInputs();
       navigateTo(legacyMap[h] || h);
       loadAllData();
       window.addEventListener('resize', updateNavIndicator);

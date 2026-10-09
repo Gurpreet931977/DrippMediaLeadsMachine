@@ -749,9 +749,21 @@ class GoogleSheetsStorageProvider:
     def fetch_research_log(self) -> List[Dict[str, Any]]:
         """
         Fetches all researched businesses from RESEARCH_LOG tab.
+        Uses expected_headers to handle trailing empty column headers safely.
         """
         self.ensure_research_columns()
-        return self.research_worksheet.get_all_records()
+        try:
+            return self.research_worksheet.get_all_records(expected_headers=RESEARCH_LOG_COLUMNS)
+        except Exception:
+            rows = self.research_worksheet.get_all_values()
+            if not rows or len(rows) < 2:
+                return []
+            headers = [h.strip() for h in rows[0] if h.strip()]
+            records = []
+            for row in rows[1:]:
+                rec = {headers[i]: row[i] for i in range(min(len(headers), len(row)))}
+                records.append(rec)
+            return records
 
     def update_lead_outreach(self, lead_id: str, fields: Dict[str, Any]) -> bool:
         """

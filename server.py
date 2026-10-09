@@ -1,8 +1,10 @@
 import os
 import json
 import asyncio
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, BackgroundTasks, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
@@ -20,6 +22,46 @@ load_dotenv()
 run_manager.recover_interrupted_runs()
 
 app = FastAPI(title="Dripp Media Lead Intelligence Suite")
+
+# Configure CORS for public Vercel frontend, local dev, and custom origins
+allowed_origins = [
+    "https://dripp-media-leads-machine.vercel.app",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+env_cors = os.getenv("CORS_ORIGINS", "").strip()
+if env_cors:
+    for o in env_cors.split(","):
+        if o.strip() and o.strip() not in allowed_origins:
+            allowed_origins.append(o.strip())
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def check_operator_authorization(request: Request) -> bool:
+    """
+    Validates Operator API Key if configured in server environment (OPERATOR_API_KEY).
+    If OPERATOR_API_KEY is not configured or blank, permits operation in local/dev mode.
+    """
+    expected = os.getenv("OPERATOR_API_KEY", "").strip()
+    if not expected:
+        return True
+    auth_hdr = request.headers.get("Authorization", "").strip()
+    if auth_hdr.startswith("Bearer ") and auth_hdr[7:].strip() == expected:
+        return True
+    if request.headers.get("X-Operator-Key", "").strip() == expected:
+        return True
+    if request.query_params.get("api_key", "").strip() == expected:
+        return True
+    return False
 
 # Global in-memory state for active run & real-time logs (mirrors run_manager)
 active_run_state = {
@@ -168,7 +210,12 @@ async def get_discovery_status():
     return engine.health_check()
 
 @app.post("/api/search")
-async def start_search(req: SearchRequest, background_tasks: BackgroundTasks):
+async def start_search(req: SearchRequest, background_tasks: BackgroundTasks, request: Request = None):
+    if request and not check_operator_authorization(request):
+        return JSONResponse(
+            {"status": "error", "message": "Unauthorized: Invalid or missing Operator API Key."},
+            status_code=401
+        )
     latest = run_manager.get_latest_run()
     if active_run_state.get("is_running") or (latest and latest.get("is_running")):
         return JSONResponse(
@@ -292,7 +339,12 @@ async def get_status():
     return active_run_state
 
 @app.post("/api/search/cancel")
-async def cancel_search():
+async def cancel_search(request: Request = None):
+    if request and not check_operator_authorization(request):
+        return JSONResponse(
+            {"status": "error", "message": "Unauthorized: Invalid or missing Operator API Key."},
+            status_code=401
+        )
     latest = run_manager.get_latest_run()
     if not latest or not latest.get("is_running"):
         return JSONResponse({"status": "error", "message": "No active lead generation task to cancel."}, status_code=400)
@@ -344,24 +396,79 @@ async def stream_logs(request: Request):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/api/leads")
-async def get_leads():
+async def get_leads(request: Request = None):
     """Fetches all qualified leads directly from the LEADS Google Sheet tab."""
     try:
         storage = GoogleSheetsStorageProvider()
         leads = storage.fetch_all_leads()
-        return {"leads": leads, "count": len(leads), "sheet_url": storage.sheet_url}
+        return {
+            "status": "ok",
+            "source": "GOOGLE_SHEETS",
+            "tab": "LEADS",
+            "spreadsheet_id": os.getenv("GOOGLE_SHEET_ID", "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"),
+            "leads": leads,
+            "count": len(leads),
+            "sheet_url": storage.sheet_url,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
     except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+        return JSONResponse({
+            "status": "error",
+            "source": "GOOGLE_SHEETS",
+            "message": str(e),
+            "leads": [],
+            "count": 0
+        }, status_code=500)
+
+@app.get("/api/review-queue")
+async def get_review_queue(request: Request = None):
+    """Fetches manual review candidates directly from the REVIEW_QUEUE Google Sheet tab."""
+    try:
+        storage = GoogleSheetsStorageProvider()
+        queue = storage.fetch_review_queue()
+        return {
+            "status": "ok",
+            "source": "GOOGLE_SHEETS",
+            "tab": "REVIEW_QUEUE",
+            "spreadsheet_id": os.getenv("GOOGLE_SHEET_ID", "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"),
+            "queue": queue,
+            "count": len(queue),
+            "sheet_url": storage.sheet_url,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "source": "GOOGLE_SHEETS",
+            "message": str(e),
+            "queue": [],
+            "count": 0
+        }, status_code=500)
 
 @app.get("/api/research-log")
-async def get_research_log():
-    """Fetches all entries from the RESEARCH_LOG tab."""
+async def get_research_log(request: Request = None):
+    """Fetches all entries directly from the RESEARCH_LOG Google Sheet tab."""
     try:
         storage = GoogleSheetsStorageProvider()
         entries = storage.fetch_research_log()
-        return {"entries": entries, "count": len(entries), "sheet_url": storage.sheet_url}
+        return {
+            "status": "ok",
+            "source": "GOOGLE_SHEETS",
+            "tab": "RESEARCH_LOG",
+            "spreadsheet_id": os.getenv("GOOGLE_SHEET_ID", "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"),
+            "entries": entries,
+            "count": len(entries),
+            "sheet_url": storage.sheet_url,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
     except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+        return JSONResponse({
+            "status": "error",
+            "source": "GOOGLE_SHEETS",
+            "message": str(e),
+            "entries": [],
+            "count": 0
+        }, status_code=500)
 
 
 # ==============================================================================
