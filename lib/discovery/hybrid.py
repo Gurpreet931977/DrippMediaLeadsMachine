@@ -107,7 +107,7 @@ class HybridDiscoveryEngine(DiscoveryProvider):
             },
             "boundary": {
                 "polygon_loaded": True,
-                "polygon_source": "OpenStreetMap Relation 162378 (City of Birmingham, West Midlands, UK)",
+                "polygon_source": "OpenStreetMap Relation 162378 (Manchester, England, UK)",
                 "candidates_inside": 0,
                 "candidates_outside": 0,
                 "diverted_to_adjacent_research": 0
@@ -122,16 +122,16 @@ class HybridDiscoveryEngine(DiscoveryProvider):
         crawl_h = self.crawler.health_check()
         apify_h = self.apify.health_check() if self.apify else {
             "provider": "Apify",
-            "status": "DISABLED",
+            "status": "EXHAUSTED / DISABLED",
             "enabled": False,
-            "reason": "Apify provider is disabled / exhausted"
+            "reason": "Apify provider is disabled / credits exhausted"
         }
 
-        # Update dynamic boundary state
-        b_feat = self.osm.boundary_validator.get_or_fetch_boundary("Birmingham", "United Kingdom")
+        # Update dynamic boundary state for Manchester, UK (#162378)
+        b_feat = self.osm.boundary_validator.get_or_fetch_boundary("Manchester", "United Kingdom")
         self.transparency_stats["boundary"] = {
             "polygon_loaded": bool(b_feat),
-            "polygon_source": b_feat.get("properties", {}).get("source", "OpenStreetMap Relation 162378") if b_feat else "None",
+            "polygon_source": b_feat.get("properties", {}).get("source", "OpenStreetMap Relation 162378 (Manchester, UK)") if b_feat else "None",
             "candidates_inside": self.transparency_stats["businesses_discovered_total"],
             "candidates_outside": len(self.osm.adjacent_research_candidates),
             "diverted_to_adjacent_research": len(self.osm.adjacent_research_candidates)
@@ -148,7 +148,14 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                 "SearXNG": web_h.get("engines", {}).get("searxng", "NOT_CONNECTED"),
                 "DuckDuckGo": web_h.get("engines", {}).get("duckduckgo", "FALLBACK"),
                 "Crawl4AI": crawl_h.get("status", "NOT_READY"),
-                "Apify": "ENABLED" if (self.apify_enabled and self.mode != DiscoveryMode.FREE_LOCAL) else "DISABLED"
+                "Apify": "EXHAUSTED / DISABLED" if not self.apify_enabled else "EXHAUSTED",
+                "GooglePlaces": "DISALLOWED (Architecture Constraint)"
+            },
+            "provider_notes": {
+                "OpenStreetMap": "Primary verified geographic provider. Zero API cost Overpass polygon harvest.",
+                "GooglePlaces": "Strictly disallowed by system constraints.",
+                "Apify": "Credits exhausted. Disabled in production configuration.",
+                "Tavily": "Web verification search engine subject to active quota."
             },
             "search_provider_stats": web_h.get("stats_by_provider", {}),
             "creator_discovery": self.transparency_stats["creator_discovery"],
@@ -370,7 +377,7 @@ class HybridDiscoveryEngine(DiscoveryProvider):
         Executes a discovery round with priority to free providers.
         Merges duplicates canonically and updates transparency stats.
         """
-        city = cities[0] if cities else "Birmingham"
+        city = cities[0] if cities else "Manchester"
         rounds = self.get_query_rounds(city, country, industry)
         round_idx = round_number - 1
         queries_used = rounds[round_idx] if round_idx < len(rounds) else [f"Discovery {industry} in {city}"]

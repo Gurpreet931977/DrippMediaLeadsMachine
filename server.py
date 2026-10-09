@@ -5,20 +5,28 @@ from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, BackgroundTasks, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from dotenv import load_dotenv
 
 from lib.pipeline import LeadGenerationPipeline
 from lib.sheets.google_sheets import GoogleSheetsStorageProvider
 from lib.discovery.hybrid import HybridDiscoveryEngine, DiscoveryMode
 
+from lib.system.pipeline_run_manager import run_manager, PipelineRunStatus
+
 load_dotenv()
+
+# Automatically recover any interrupted runs upon server startup
+run_manager.recover_interrupted_runs()
 
 app = FastAPI(title="Dripp Media Lead Intelligence Suite")
 
-# Global in-memory state for active run & real-time logs
+# Global in-memory state for active run & real-time logs (mirrors run_manager)
 active_run_state = {
+    "run_id": None,
+    "status": "IDLE",
     "is_running": False,
+    "dry_run": False,
     "progress_logs": [],
     "discovery_transparency": {
         "businesses_discovered_total": 0,
@@ -55,16 +63,20 @@ active_run_state = {
 }
 
 class SearchRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     country: str = "United Kingdom"
     cities: List[str] = ["Manchester"]
+    city: Optional[str] = None
     industry: str = "Restaurants"
     qualified_leads_needed: int = Field(default=10, alias="limit")
-    batch_size: int = 10
+    batch_size: int = Field(default=10, ge=1, le=25)
     max_research_multiplier: int = 5
-    discovery_mode: Optional[str] = "HYBRID"
+    discovery_mode: Optional[str] = "FREE_LOCAL"
     apify_enabled: Optional[bool] = False
+    dry_run: Optional[bool] = False
 
 def run_pipeline_task(
+    run_id: str,
     country: str,
     cities: List[str],
     industry: str,
@@ -72,11 +84,18 @@ def run_pipeline_task(
     batch_size: int = 10,
     max_research_multiplier: int = 5,
     discovery_mode: str = "HYBRID",
-    apify_enabled: bool = False
+    apify_enabled: bool = False,
+    dry_run: bool = False
 ):
     global active_run_state
+    run_manager.start_run(run_id)
+    active_run_state["run_id"] = run_id
+    active_run_state["status"] = PipelineRunStatus.RUNNING.value
     active_run_state["is_running"] = True
-    active_run_state["progress_logs"] = []
+    active_run_state["dry_run"] = dry_run
+    active_run_state["progress_logs"] = [
+        f"[START] Pipeline {run_id} running in {'SAFE DRY-RUN (Preflight)' if dry_run else 'LIVE CRM INGESTION'} mode..."
+    ]
     active_run_state["last_error"] = None
     active_run_state["discovery_transparency"] = {
         "businesses_discovered_total": 0,
@@ -114,10 +133,12 @@ def run_pipeline_task(
         active_run_state["progress_logs"].append(msg)
         if len(active_run_state["progress_logs"]) > 300:
             active_run_state["progress_logs"].pop(0)
+        run_manager.append_log(run_id, msg, data.get("stats") if data else None)
 
     try:
         discovery_engine = HybridDiscoveryEngine(mode=discovery_mode, apify_enabled=apify_enabled)
-        pipeline = LeadGenerationPipeline(discovery_provider=discovery_engine)
+        # In dry_run mode, shadow_mode=True bypasses Google Sheets writes completely
+        pipeline = LeadGenerationPipeline(discovery_provider=discovery_engine, shadow_mode=dry_run)
         result = pipeline.run(
             country=country,
             cities=cities,
@@ -130,9 +151,13 @@ def run_pipeline_task(
         stats = result.get("stats", {})
         active_run_state["current_stats"] = stats
         active_run_state["discovery_transparency"] = result.get("discovery_transparency", {})
+        active_run_state["status"] = PipelineRunStatus.COMPLETED.value
+        run_manager.finish_run(run_id, result)
     except Exception as e:
         active_run_state["last_error"] = str(e)
+        active_run_state["status"] = PipelineRunStatus.FAILED.value
         active_run_state["progress_logs"].append(f"FATAL ERROR: {str(e)}")
+        run_manager.fail_run(run_id, str(e))
     finally:
         active_run_state["is_running"] = False
 
@@ -144,26 +169,148 @@ async def get_discovery_status():
 
 @app.post("/api/search")
 async def start_search(req: SearchRequest, background_tasks: BackgroundTasks):
-    if active_run_state["is_running"]:
-        return JSONResponse({"status": "error", "message": "A lead generation task is already in progress."}, status_code=409)
+    latest = run_manager.get_latest_run()
+    if active_run_state.get("is_running") or (latest and latest.get("is_running")):
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "A lead generation task is already in progress.",
+                "active_run_id": active_run_state.get("run_id") or (latest.get("run_id") if latest else None)
+            },
+            status_code=409
+        )
 
-    leads_needed = req.qualified_leads_needed or 10
+    # 1. Market & Geographic Boundary Validation (Phase 12.0 Section 4)
+    raw_cities = [req.city] if (req.city and req.city.strip()) else (req.cities or [])
+    clean_cities = [c.strip().title() for c in raw_cities if c and c.strip()]
+    req.cities = clean_cities
+    if not clean_cities or any(c.lower() != "manchester" for c in clean_cities):
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "Unsupported market. Only Manchester, UK (#162378) is authorized for autonomous acquisition in Phase 12.0. Secondary markets (Leeds, Birmingham, London) are locked for future expansion."
+            },
+            status_code=400
+        )
+
+    clean_country = (req.country or "").strip().lower()
+    if clean_country not in ["united kingdom", "uk", "great britain", "england"]:
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "Unsupported jurisdiction. Operating boundary is restricted to United Kingdom (OSM #162378)."
+            },
+            status_code=400
+        )
+
+    # 2. Provider Mode Validation (Phase 12.0 Section 2)
+    mode = (req.discovery_mode or "FREE_LOCAL").strip().upper()
+    if "PLACES" in mode or "GOOGLE_PLACES" in mode:
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "Google Places API is strictly disallowed by Phase 12.0 architecture constraints."
+            },
+            status_code=400
+        )
+    if mode == "APIFY":
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "Apify discovery engine is currently unavailable: Apify credits are exhausted. Select OpenStreetMap (FREE_LOCAL) or HYBRID."
+            },
+            status_code=400
+        )
+    if mode not in ["FREE_LOCAL", "HYBRID", "OSM"]:
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": f"Unsupported discovery mode '{req.discovery_mode}'. Permitted modes: FREE_LOCAL, HYBRID, OSM."
+            },
+            status_code=400
+        )
+    if mode == "OSM":
+        mode = "FREE_LOCAL"
+
+    leads_needed = min(max(1, req.qualified_leads_needed or 10), 50)
+    bounded_batch = min(max(1, req.batch_size), 25)
+    multiplier = min(max(1, req.max_research_multiplier), 10)
+
+    # Enforce zero credit consumption on exhausted providers
+    enforced_apify = False
+
+    run_record = run_manager.create_run(
+        country="United Kingdom",
+        cities=["Manchester"],
+        industry=req.industry or "Restaurants",
+        qualified_leads_needed=leads_needed,
+        batch_size=bounded_batch,
+        max_research_multiplier=multiplier,
+        discovery_mode=mode,
+        apify_enabled=enforced_apify,
+        dry_run=bool(req.dry_run)
+    )
+
+    run_id = run_record["run_id"]
+    active_run_state["run_id"] = run_id
+    active_run_state["is_running"] = True
+    active_run_state["status"] = PipelineRunStatus.QUEUED.value
+
     background_tasks.add_task(
         run_pipeline_task,
-        country=req.country,
-        cities=req.cities,
-        industry=req.industry,
+        run_id=run_id,
+        country="United Kingdom",
+        cities=["Manchester"],
+        industry=req.industry or "Restaurants",
         qualified_leads_needed=leads_needed,
-        batch_size=req.batch_size,
-        max_research_multiplier=req.max_research_multiplier,
-        discovery_mode=req.discovery_mode or "HYBRID",
-        apify_enabled=bool(req.apify_enabled)
+        batch_size=bounded_batch,
+        max_research_multiplier=multiplier,
+        discovery_mode=mode,
+        apify_enabled=enforced_apify,
+        dry_run=bool(req.dry_run)
     )
-    return {"status": "started", "message": f"Lead engine started in {req.discovery_mode or 'HYBRID'} mode for {leads_needed} qualified leads."}
+    return {
+        "status": "started",
+        "run_id": run_id,
+        "lifecycle": PipelineRunStatus.QUEUED.value,
+        "dry_run": bool(req.dry_run),
+        "batch_size": bounded_batch,
+        "message": f"Lead engine started in {mode} mode for {leads_needed} qualified leads in Manchester, UK ({'DRY-RUN' if req.dry_run else 'LIVE'})."
+    }
 
 @app.get("/api/status")
 async def get_status():
+    latest = run_manager.get_latest_run()
+    if latest:
+        resp = dict(latest)
+        resp["is_running"] = active_run_state.get("is_running", latest.get("is_running", False))
+        if active_run_state.get("progress_logs"):
+            resp["progress_logs"] = active_run_state["progress_logs"]
+        if active_run_state.get("current_stats"):
+            resp["current_stats"] = active_run_state["current_stats"]
+        return resp
     return active_run_state
+
+@app.post("/api/search/cancel")
+async def cancel_search():
+    latest = run_manager.get_latest_run()
+    if not latest or not latest.get("is_running"):
+        return JSONResponse({"status": "error", "message": "No active lead generation task to cancel."}, status_code=400)
+    cancelled_rec = run_manager.cancel_run(latest["run_id"])
+    active_run_state["is_running"] = False
+    active_run_state["status"] = PipelineRunStatus.CANCELLED.value
+    return {"status": "ok", "message": f"Run {latest['run_id']} marked CANCELLED.", "run": cancelled_rec}
+
+@app.get("/api/search/runs")
+async def list_search_runs(limit: int = 50):
+    return {"runs": run_manager.list_runs(limit=limit)}
+
+@app.get("/api/search/runs/{run_id}")
+async def get_search_run(run_id: str):
+    rec = run_manager.get_run(run_id)
+    if not rec:
+        return JSONResponse({"status": "error", "message": f"Run {run_id} not found"}, status_code=404)
+    return rec
 
 @app.get("/api/stream")
 async def stream_logs(request: Request):

@@ -2389,9 +2389,9 @@
               <div class="home-hero-sub-breakdown">
                 <span><strong id="homeQualifiedVal" style="color:var(--text-main);">7</strong> Qualified</span>
                 <span>&bull;</span>
-                <span><strong>31</strong> Researched</span>
+                <span><strong id="homeResearchedVal">7</strong> Researched</span>
                 <span>&bull;</span>
-                <span><strong id="homeReadyCount">142</strong> Discovered</span>
+                <span><strong id="homeReadyCount">7</strong> Discovered</span>
               </div>
             </div>
 
@@ -2401,7 +2401,7 @@
                 <span>Launch Discovery Engine</span>
               </button>
               <button class="btn-pill btn-pill-secondary" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
-                <span>View ready leads (07)</span>
+                <span>View ready leads (<span id="homeViewReadyBtnCount">07</span>)</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
               <button class="btn-pill btn-pill-secondary" onclick="navigateTo('system')">
@@ -2513,14 +2513,14 @@
           <span class="guide-step-num">01</span>
           <div>
             <div class="guide-step-title">Autonomous Discovery</div>
-            <div class="guide-step-desc">142 Manchester hospitality venues indexed via OSM and Google Places multi-signal.</div>
+            <div class="guide-step-desc">Territory venues indexed via OpenStreetMap Overpass and web verification.</div>
           </div>
         </div>
         <div class="home-guide-step">
           <span class="guide-step-num">02</span>
           <div>
             <div class="guide-step-title">Rule B Qualification</div>
-            <div class="guide-step-desc">Strictly verified: 0 official website domain + rating &ge; 4.0 Stars + active physical premises.</div>
+            <div class="guide-step-desc">Strictly verified: 0 official website domain + 8 frozen canonical criteria + active operational signals.</div>
           </div>
         </div>
         <div class="home-guide-step">
@@ -2545,22 +2545,22 @@
         <div class="pipeline-stage-nodes-row">
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('ALL')">
             <div class="p-stage-header">STAGE 01</div>
-            <div class="p-stage-val" id="plDiscoveredVal">142</div>
+            <div class="p-stage-val" id="plDiscoveredVal">7</div>
             <div class="p-stage-title">Discovered</div>
           </div>
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('RESEARCHING')">
             <div class="p-stage-header">STAGE 02</div>
-            <div class="p-stage-val" id="plResearchedVal">31</div>
+            <div class="p-stage-val" id="plResearchedVal">7</div>
             <div class="p-stage-title">Research</div>
           </div>
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('QUALIFIED')">
             <div class="p-stage-header">STAGE 03</div>
-            <div class="p-stage-val" id="plQualifiedVal">12</div>
+            <div class="p-stage-val" id="plQualifiedVal">7</div>
             <div class="p-stage-title">Qualified</div>
           </div>
           <div class="pipeline-stage-node" onclick="navigateTo('leads'); setLeadFilter('CONTACTABLE')">
             <div class="p-stage-header">STAGE 04</div>
-            <div class="p-stage-val">9</div>
+            <div class="p-stage-val" id="plContactableVal">7</div>
             <div class="p-stage-title">Contactable</div>
           </div>
           <div class="pipeline-stage-node active-ready" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
@@ -2646,27 +2646,27 @@
         </div>
       </div>
 
-      <!-- Real-time HUD KPI Metrics Grid -->
+      <!-- Real-time HUD KPI Metrics Grid (Backend Driven) -->
       <div class="discovery-kpi-bar">
         <div class="discovery-kpi-card">
           <div class="discovery-kpi-label">Target Territory</div>
           <div class="discovery-kpi-num" id="hudTerritoryName" style="color:var(--accent-yellow);">Manchester</div>
-          <div class="discovery-kpi-sub">OSM Polygon #162378 &bull; UK</div>
+          <div class="discovery-kpi-sub" id="hudTerritorySub">OSM Polygon #162378 &bull; UK</div>
         </div>
         <div class="discovery-kpi-card">
           <div class="discovery-kpi-label">Raw Candidates</div>
-          <div class="discovery-kpi-num" id="hudRawDiscovered">142</div>
-          <div class="discovery-kpi-sub">Total Overpass &amp; Places nodes</div>
+          <div class="discovery-kpi-num" id="hudRawDiscovered">--</div>
+          <div class="discovery-kpi-sub" id="hudRawSub">Awaiting run dispatch</div>
         </div>
         <div class="discovery-kpi-card">
           <div class="discovery-kpi-label">No-Website Rate</div>
-          <div class="discovery-kpi-num" id="hudNoWebRate">21.8%</div>
-          <div class="discovery-kpi-sub">31 confirmed absent websites</div>
+          <div class="discovery-kpi-num" id="hudNoWebRate">--</div>
+          <div class="discovery-kpi-sub" id="hudNoWebSub">Confirmed absent websites</div>
         </div>
         <div class="discovery-kpi-card">
           <div class="discovery-kpi-label">Rule B Qualified</div>
-          <div class="discovery-kpi-num" id="hudQualifiedNum" style="color:var(--accent-yellow);">07</div>
-          <div class="discovery-kpi-sub">&gt;= 4.0 Stars &bull; Ready to Review</div>
+          <div class="discovery-kpi-num" id="hudQualifiedNum" style="color:var(--accent-yellow);">--</div>
+          <div class="discovery-kpi-sub" id="hudQualifiedSub">Verified under Frozen Rule B</div>
         </div>
         <div class="discovery-kpi-card">
           <div class="discovery-kpi-label">Safety State</div>
@@ -2709,39 +2709,43 @@
                     <span>Manchester</span>
                   </div>
                   <div class="discovery-city-tile-sub">OSM #162378 &bull; North West</div>
+                  <span style="font-size:0.6rem; font-weight:800; color:var(--accent-yellow); background:rgba(255,229,0,0.1); padding:2px 6px; border-radius:3px; margin-top:4px; display:inline-block;">ACTIVE MARKET</span>
                 </div>
                 <span class="discovery-city-tile-indicator"></span>
               </button>
 
-              <button type="button" class="discovery-city-tile discovery-preset-chip" onclick="setDiscoveryCityPreset('Leeds', 'Restaurants', this)">
+              <button type="button" class="discovery-city-tile discovery-preset-chip" style="opacity:0.42; cursor:not-allowed;" onclick="setDiscoveryCityPreset('Leeds', 'Restaurants', this)" title="Leeds is locked in Phase 12.0">
                 <div>
                   <div class="discovery-city-tile-name">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                     <span>Leeds</span>
                   </div>
                   <div class="discovery-city-tile-sub">OSM #162379 &bull; Yorkshire</div>
+                  <span style="font-size:0.6rem; font-weight:800; color:var(--text-dim); background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:3px; margin-top:4px; display:inline-block;">LOCKED (PHASE 12.0)</span>
                 </div>
                 <span class="discovery-city-tile-indicator"></span>
               </button>
 
-              <button type="button" class="discovery-city-tile discovery-preset-chip" onclick="setDiscoveryCityPreset('Birmingham', 'Restaurants', this)">
+              <button type="button" class="discovery-city-tile discovery-preset-chip" style="opacity:0.42; cursor:not-allowed;" onclick="setDiscoveryCityPreset('Birmingham', 'Restaurants', this)" title="Birmingham is locked in Phase 12.0">
                 <div>
                   <div class="discovery-city-tile-name">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                     <span>Birmingham</span>
                   </div>
                   <div class="discovery-city-tile-sub">OSM #162378 &bull; Midlands</div>
+                  <span style="font-size:0.6rem; font-weight:800; color:var(--text-dim); background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:3px; margin-top:4px; display:inline-block;">LOCKED (PHASE 12.0)</span>
                 </div>
                 <span class="discovery-city-tile-indicator"></span>
               </button>
 
-              <button type="button" class="discovery-city-tile discovery-preset-chip" onclick="setDiscoveryCityPreset('London', 'Restaurants', this)">
+              <button type="button" class="discovery-city-tile discovery-preset-chip" style="opacity:0.42; cursor:not-allowed;" onclick="setDiscoveryCityPreset('London', 'Restaurants', this)" title="London is locked in Phase 12.0">
                 <div>
                   <div class="discovery-city-tile-name">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                     <span>London</span>
                   </div>
                   <div class="discovery-city-tile-sub">OSM #65606 &bull; Capital Metro</div>
+                  <span style="font-size:0.6rem; font-weight:800; color:var(--text-dim); background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:3px; margin-top:4px; display:inline-block;">LOCKED (PHASE 12.0)</span>
                 </div>
                 <span class="discovery-city-tile-indicator"></span>
               </button>
@@ -2750,7 +2754,7 @@
             <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:0.75rem; margin-top:0.75rem;">
               <div>
                 <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.35rem; display:block;">Active City / Municipality</label>
-                <input type="text" id="pageDiscCityInput" value="Manchester" class="setting-select-field" style="width:100%; font-size:0.85rem;" placeholder="Or type custom city">
+                <input type="text" id="pageDiscCityInput" value="Manchester" class="setting-select-field" style="width:100%; font-size:0.85rem;" readonly title="Only Manchester, UK is authorized in Phase 12.0">
               </div>
               <div>
                 <label style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.35rem; display:block;">Jurisdiction</label>
@@ -2855,17 +2859,17 @@
             </select>
           </div>
 
-          <!-- Step 04: Quality Guarantee Card -->
+          <!-- Step 04: Quality Guarantee Card (Frozen Rule B Authority) -->
           <div class="discovery-quality-shield-box">
             <div class="discovery-shield-icon-wrap">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
             </div>
             <div>
               <div class="discovery-quality-title">
-                <span>Frozen Rule B Quality Filter &bull; Zero Website Verified</span>
+                <span>Frozen Rule B Quality Gate &bull; 8 Canonical Qualification Criteria</span>
               </div>
               <div class="discovery-quality-sub">
-                Automatic multi-engine crawler ensures every ingested candidate has verified zero official website, a Google rating of &ge; 4.0 stars, and &ge; 10 organic customer reviews.
+                Rating (&ge; 4.0) and review counts (&ge; 10) alone do not determine qualification. Authoritative Frozen Rule B requires: (1) review volume, (2) minimum rating, (3) accepted evidence source, (4) evidence recency (&le; 180d), (5) dual operational signals, (6) identity &amp; OSM polygon #162378 boundary match, (7) zero review conflict, and (8) absence of closure flags. Score determines review priority, not qualification.
               </div>
             </div>
           </div>
@@ -2879,9 +2883,9 @@
             <div>
               <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Discovery Engine Mode</label>
               <select id="pageDiscModeInput" class="setting-select-field" style="width:100%;">
-                <option value="HYBRID" selected>Hybrid (OSM + Places + Apify)</option>
-                <option value="OSM">OpenStreetMap Overpass Only</option>
-                <option value="APIFY">Apify Actors Only</option>
+                <option value="FREE_LOCAL" selected>OpenStreetMap + Web Crawler (Recommended &bull; Free)</option>
+                <option value="HYBRID">Hybrid (OSM + Foursquare + Web Search &bull; No Apify)</option>
+                <option value="APIFY" disabled style="color:var(--text-dim); background:#111;">Apify Actors (Disabled &bull; Credits Exhausted)</option>
               </select>
             </div>
             <div>
@@ -2903,9 +2907,8 @@
             </div>
             <div>
               <label style="display:block; font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.35rem;">Apify Cloud Enrichment</label>
-              <select id="pageDiscApifyToggle" class="setting-select-field" style="width:100%;">
-                <option value="false" selected>Disabled (Zero Cloud Cost)</option>
-                <option value="true">Enabled (Actor Scraping)</option>
+              <select id="pageDiscApifyToggle" class="setting-select-field" style="width:100%;" disabled>
+                <option value="false" selected>Disabled (Credits Exhausted &bull; Zero External Calls)</option>
               </select>
             </div>
             <div style="grid-column: span 2; display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:rgba(255,255,255,0.025); border:1px solid rgba(255,229,0,0.25); border-radius:var(--radius-sm); margin-top:0.25rem;">
@@ -3130,14 +3133,14 @@
           </button>
         </div>
 
-        <div class="discovery-providers-grid">
+        <div class="discovery-providers-grid" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
           <div class="discovery-provider-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-              <strong style="color:var(--text-main); font-size:0.85rem;">OpenStreetMap</strong>
+              <strong style="color:var(--text-main); font-size:0.85rem;">OpenStreetMap Overpass</strong>
               <span id="pageOsmBadge" class="status-capsule" style="font-size:0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">ACTIVE</span>
             </div>
             <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
-              Overpass QL polygon boundary queries with zero API cost. Relational geometry caching active.
+              Primary verified discovery provider. Overpass QL polygon boundary queries (#162378) with zero API cost.
             </p>
           </div>
 
@@ -3147,17 +3150,27 @@
               <span id="pageWebBadge" class="status-capsule" style="font-size:0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">CONNECTED</span>
             </div>
             <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
-              Multi-engine web crawler &amp; domain resolution verifies authentic absence of business websites.
+              Tavily &amp; DuckDuckGo multi-engine search and crawler verifying authentic absence of official domains.
             </p>
           </div>
 
           <div class="discovery-provider-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
               <strong style="color:var(--text-main); font-size:0.85rem;">Apify Cloud Actors</strong>
-              <span id="pageApifyBadge" class="status-capsule" style="font-size:0.65rem; color:var(--text-muted);">STANDBY</span>
+              <span id="pageApifyBadge" class="status-capsule" style="font-size:0.65rem; color:var(--status-critical); border-color:rgba(255,75,75,0.4);">EXHAUSTED</span>
             </div>
             <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
-              Google Maps scraper actors for deep geographic sweeps and creator review cross-referencing.
+              Credits exhausted. Actor scraping disabled in production configuration to prevent failures.
+            </p>
+          </div>
+
+          <div class="discovery-provider-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <strong style="color:var(--text-main); font-size:0.85rem;">Google Places API</strong>
+              <span class="status-capsule" style="font-size:0.65rem; color:var(--text-dim); border-color:rgba(255,255,255,0.15);">DISALLOWED</span>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+              Strictly disallowed per Phase 12.0 architecture constraints. Free-first provider routing enforced.
             </p>
           </div>
 
@@ -3167,7 +3180,7 @@
               <span class="status-capsule" style="font-size:0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">AUTHENTICATED</span>
             </div>
             <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
-              Single source of truth. Automatic bi-directional reconciliation with atomic schema locks.
+              Single source of truth. Safe dry-run mode bypasses mutations; live mode reconciles atomically.
             </p>
           </div>
         </div>
@@ -3315,31 +3328,31 @@
       <div class="pipeline-stage-nodes-row" style="margin-bottom:2rem;">
         <div class="pipeline-stage-node" id="pipeTab-0" onclick="switchPipelineStage(0)">
           <div class="p-stage-header">STAGE 01</div>
-          <div class="p-stage-val">142</div>
+          <div class="p-stage-val" id="pipeTabVal-0">7</div>
           <div class="p-stage-title">Discovered</div>
           <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">OSM Boundary Query</div>
         </div>
         <div class="pipeline-stage-node" id="pipeTab-1" onclick="switchPipelineStage(1)">
           <div class="p-stage-header">STAGE 02</div>
-          <div class="p-stage-val">31</div>
+          <div class="p-stage-val" id="pipeTabVal-1">7</div>
           <div class="p-stage-title">Research</div>
-          <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Tavily Domain Check</div>
+          <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Domain &amp; Presence Check</div>
         </div>
         <div class="pipeline-stage-node" id="pipeTab-2" onclick="switchPipelineStage(2)">
           <div class="p-stage-header">STAGE 03</div>
-          <div class="p-stage-val">12</div>
+          <div class="p-stage-val" id="pipeTabVal-2">7</div>
           <div class="p-stage-title">Qualified</div>
-          <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Rule B &ge; 4.0 Stars</div>
+          <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Rule B 8 Frozen Criteria</div>
         </div>
         <div class="pipeline-stage-node" id="pipeTab-3" onclick="switchPipelineStage(3)">
           <div class="p-stage-header">STAGE 04</div>
-          <div class="p-stage-val">9</div>
+          <div class="p-stage-val" id="pipeTabVal-3">7</div>
           <div class="p-stage-title">Contactable</div>
           <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Phone / Social Active</div>
         </div>
         <div class="pipeline-stage-node active-ready" id="pipeTab-4" onclick="switchPipelineStage(4)">
           <div class="p-stage-header" style="color:var(--accent-yellow);">STAGE 05</div>
-          <div class="p-stage-val" style="color:var(--accent-yellow);">7</div>
+          <div class="p-stage-val" style="color:var(--accent-yellow);" id="pipeTabVal-4">7</div>
           <div class="p-stage-title" style="color:var(--accent-yellow);">Ready to Review</div>
           <div style="font-size:0.7rem; color:var(--accent-yellow); margin-top:4px;">Operator Staged</div>
         </div>
@@ -4381,9 +4394,9 @@
         <div>
           <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.4rem;">Discovery Engine Mode</label>
           <select id="discModeInput" class="setting-select-field">
-            <option value="HYBRID" selected>Hybrid (OSM + Places + Apify)</option>
-            <option value="OSM">OpenStreetMap Overpass Only</option>
-            <option value="APIFY">Apify Actors Only</option>
+            <option value="FREE_LOCAL" selected>OpenStreetMap + Web Crawler (Recommended &bull; Free)</option>
+            <option value="HYBRID">Hybrid (OSM + Foursquare + Web Search &bull; No Apify)</option>
+            <option value="APIFY" disabled style="color:var(--text-dim); background:#111;">Apify Actors (Disabled &bull; Credits Exhausted)</option>
           </select>
         </div>
       </div>
@@ -4497,7 +4510,7 @@
         <div class="guide-tagline" id="guideStepTag">COMMAND OVERVIEW</div>
         <h3 class="guide-headline" id="guideStepTitle">Your High-Ticket Lead Engine</h3>
         <p class="guide-description" id="guideStepDesc">
-          Welcome to the main command deck. The system automatically discovered 142 hospitality venues across Manchester and filtered them down to the top 7 high-value businesses that lack an official website, making them ideal targets for your web services.
+          Welcome to the main command deck. The system discovers hospitality venues across Manchester and filters them through 8 frozen Rule B criteria down to high-value businesses that lack an official website, making them prime targets for your web services.
         </p>
       </div>
 
@@ -4602,14 +4615,62 @@
         if (homeQual) homeQual.innerText = count;
         const homeOut = document.getElementById('homeOutreachVal');
         if (homeOut) homeOut.innerText = readyLeads;
+        const homeBtnCount = document.getElementById('homeViewReadyBtnCount');
+        if (homeBtnCount) homeBtnCount.innerText = readyLeads < 10 ? `0${readyLeads}` : readyLeads;
+
+        // Dynamic Pipeline Counts derived from active run or persistent CRM
+        let runDiscovered = count;
+        let runResearched = count;
+        let runQualified = count;
+        let runContactable = allLeads.filter(l => l.contact_email || l.email || l.phone || l.instagram).length;
+
+        try {
+          const statusRes = await fetch('/api/status');
+          if (statusRes.ok) {
+            const st = await statusRes.json();
+            const cs = st.current_stats || (st.results ? {
+              raw_discovered: st.results.candidates_discovered,
+              businesses_researched: st.results.candidates_researched,
+              qualified_leads: st.results.qualified_leads
+            } : null);
+            if (cs && (cs.raw_discovered > 0 || cs.businesses_researched > 0 || cs.qualified_leads > 0)) {
+              runDiscovered = cs.raw_discovered || count;
+              runResearched = cs.businesses_researched || count;
+              runQualified = cs.qualified_leads || count;
+            }
+          }
+        } catch (e) {
+          console.warn('Could not fetch pipeline run status:', e);
+        }
+
         const plDis = document.getElementById('plDiscoveredVal');
-        if (plDis) plDis.innerText = 142;
+        if (plDis) plDis.innerText = runDiscovered;
         const plRes = document.getElementById('plResearchedVal');
-        if (plRes) plRes.innerText = 31;
+        if (plRes) plRes.innerText = runResearched;
         const plQual = document.getElementById('plQualifiedVal');
-        if (plQual) plQual.innerText = 12;
+        if (plQual) plQual.innerText = runQualified;
+        const plContact = document.getElementById('plContactableVal');
+        if (plContact) plContact.innerText = runContactable;
         const plRdy = document.getElementById('plReadyVal');
         if (plRdy) plRdy.innerText = readyLeads;
+
+        // Update Hero bar Discovered and Researched
+        const homeReadyCount = document.getElementById('homeReadyCount');
+        if (homeReadyCount) homeReadyCount.innerText = runDiscovered;
+        const homeResearchedVal = document.getElementById('homeResearchedVal');
+        if (homeResearchedVal) homeResearchedVal.innerText = runResearched;
+
+        // Update Conversion Pipeline tabs if present
+        const pt0 = document.getElementById('pipeTabVal-0');
+        if (pt0) pt0.innerText = runDiscovered;
+        const pt1 = document.getElementById('pipeTabVal-1');
+        if (pt1) pt1.innerText = runResearched;
+        const pt2 = document.getElementById('pipeTabVal-2');
+        if (pt2) pt2.innerText = runQualified;
+        const pt3 = document.getElementById('pipeTabVal-3');
+        if (pt3) pt3.innerText = runContactable;
+        const pt4 = document.getElementById('pipeTabVal-4');
+        if (pt4) pt4.innerText = readyLeads;
 
         // Render sections
         renderHomeReadyLeads();
@@ -5380,15 +5441,27 @@
         const pageOsm = document.getElementById('pageOsmBadge');
         const pageWeb = document.getElementById('pageWebBadge');
         const pageApify = document.getElementById('pageApifyBadge');
-        if (pageOsm && data.providers?.OpenStreetMap) pageOsm.innerText = data.providers.OpenStreetMap;
-        if (pageWeb && (data.providers?.WebSearch || data.providers?.Crawl4AI)) pageWeb.innerText = data.providers?.WebSearch || data.providers?.Crawl4AI;
-        if (pageApify && data.providers?.Apify) pageApify.innerText = data.providers.Apify;
+        if (pageOsm) {
+          pageOsm.innerText = data.providers?.OpenStreetMap === 'CONNECTED' ? 'ACTIVE' : (data.providers?.OpenStreetMap || 'ACTIVE');
+          pageOsm.style.color = 'var(--accent-yellow)';
+          pageOsm.style.borderColor = 'var(--accent-yellow)';
+        }
+        if (pageWeb) {
+          pageWeb.innerText = 'CONNECTED';
+          pageWeb.style.color = 'var(--accent-yellow)';
+          pageWeb.style.borderColor = 'var(--accent-yellow)';
+        }
+        if (pageApify) {
+          pageApify.innerText = 'EXHAUSTED';
+          pageApify.style.color = 'var(--status-critical)';
+          pageApify.style.borderColor = 'rgba(255,75,75,0.4)';
+        }
 
         const pageCapsule = document.getElementById('pageEngineStatusCapsule');
         if (pageCapsule) {
-          pageCapsule.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg><span>${escapeHtml(data.discovery_mode || 'HYBRID')} Ready</span>`;
+          pageCapsule.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg><span>${escapeHtml(data.discovery_mode || 'FREE_LOCAL')} Ready</span>`;
         }
-        showToast(`Discovery provider status updated: ${data.discovery_mode || 'HYBRID'} active`);
+        showToast(`Discovery provider status updated: ${data.discovery_mode || 'FREE_LOCAL'} active`);
       } catch (e) {
         showToast('Provider check failed: ' + e.message);
       }
@@ -5473,34 +5546,30 @@
     }
 
     // ========================================================================
-    // DEDICATED DISCOVERY ENGINE CONTROLLER
+    // DEDICATED DISCOVERY ENGINE CONTROLLER (PHASE 12.0)
     // ========================================================================
     function setDiscoveryCityPreset(city, defaultIndustry, btnEl) {
       playOperatorClickSound();
+      if (city !== 'Manchester') {
+        showToast(`Market locked: ${city} is not authorized in Phase 12.0. Only Manchester, UK (#162378) is active.`);
+        return;
+      }
       const cityInp = document.getElementById('pageDiscCityInput');
-      if (cityInp) cityInp.value = city;
+      if (cityInp) cityInp.value = 'Manchester';
       
       const hudTerritory = document.getElementById('hudTerritoryName');
-      if (hudTerritory) hudTerritory.innerText = city;
+      if (hudTerritory) hudTerritory.innerText = 'Manchester';
+      const hudTerritorySub = document.getElementById('hudTerritorySub');
+      if (hudTerritorySub) hudTerritorySub.innerHTML = 'OSM Polygon #162378 &bull; UK';
 
       document.querySelectorAll('#territoryPresetsRow .discovery-preset-chip').forEach(c => c.classList.remove('active'));
       if (btnEl) btnEl.classList.add('active');
 
       const relText = document.getElementById('pageBoundaryRelationText');
       if (relText) {
-        if (city === 'Manchester') {
-          relText.innerHTML = 'OSM Relation #162378 &bull; Bounds: [53.38, 53.55, -2.33, -2.14] &bull; Section 24 Rule 1 &amp; 2 Active';
-        } else if (city === 'Leeds') {
-          relText.innerHTML = 'OSM Relation #162379 &bull; Bounds: [53.74, 53.86, -1.65, -1.45] &bull; Section 24 Active';
-        } else if (city === 'Birmingham') {
-          relText.innerHTML = 'OSM Relation #162378 &bull; Bounds: [52.38, 52.60, -2.03, -1.75] &bull; Section 24 Active';
-        } else if (city === 'London') {
-          relText.innerHTML = 'OSM Relation #65606 &bull; Greater London Boundary &bull; Section 24 Active';
-        } else {
-          relText.innerHTML = `Territory Target: ${escapeHtml(city)} &bull; United Kingdom &bull; Boundary Enforced`;
-        }
+        relText.innerHTML = 'OSM Relation #162378 &bull; Bounds: [53.38, 53.55, -2.33, -2.14] &bull; Section 24 Rule 1 &amp; 2 Active';
       }
-      showToast(`Territory switched: ${city}`);
+      showToast('Territory armed: Manchester, UK (#162378)');
     }
 
     function setDiscoveryNichePreset(niche, btnEl) {
@@ -5535,16 +5604,84 @@
       }
     }
 
-    function updateDiscoveryPageHUD() {
-      const readyNum = document.getElementById('homeHeroReadyNum');
-      const hudQual = document.getElementById('hudQualifiedNum');
-      if (hudQual && readyNum) {
-        hudQual.innerText = readyNum.innerText;
-      }
-      const rawCount = document.getElementById('homeReadyCount');
+    async function updateDiscoveryPageHUD(state) {
+      const hudTerritory = document.getElementById('hudTerritoryName');
+      if (hudTerritory) hudTerritory.innerText = 'Manchester';
+      const hudTerritorySub = document.getElementById('hudTerritorySub');
+      if (hudTerritorySub) hudTerritorySub.innerHTML = 'OSM Polygon #162378 &bull; UK';
+
       const hudRaw = document.getElementById('hudRawDiscovered');
-      if (hudRaw && rawCount) {
-        hudRaw.innerText = rawCount.innerText;
+      const hudRawSub = document.getElementById('hudRawSub');
+      const hudNoWeb = document.getElementById('hudNoWebRate');
+      const hudNoWebSub = document.getElementById('hudNoWebSub');
+      const hudQual = document.getElementById('hudQualifiedNum');
+      const hudQualSub = document.getElementById('hudQualifiedSub');
+
+      let runData = state;
+      if (!runData) {
+        try {
+          const res = await fetch('/api/status');
+          runData = await res.json();
+        } catch (e) {
+          console.error('Failed to fetch run status for HUD:', e);
+        }
+      }
+
+      if (runData && (runData.results || runData.current_stats)) {
+        const r = runData.results || {};
+        const cs = runData.current_stats || {};
+        const raw = r.candidates_discovered ?? (cs.raw_discovered || 0);
+        const researched = r.candidates_researched ?? (cs.businesses_researched || 0);
+        const noWeb = cs.no_website_confirmed || 0;
+        const qualified = r.qualified_leads ?? (cs.qualified_leads || 0);
+
+        if (raw > 0 || researched > 0 || qualified > 0) {
+          if (hudRaw) hudRaw.innerText = raw;
+          if (hudRawSub) hudRawSub.innerHTML = `Discovered in run ${escapeHtml(runData.run_id || '')}`;
+
+          if (researched > 0 && noWeb > 0) {
+            const rate = ((noWeb / researched) * 100).toFixed(1);
+            if (hudNoWeb) hudNoWeb.innerText = `${rate}%`;
+            if (hudNoWebSub) hudNoWebSub.innerHTML = `${noWeb} confirmed absent websites`;
+          } else if (qualified > 0) {
+            if (hudNoWeb) hudNoWeb.innerText = '100%';
+            if (hudNoWebSub) hudNoWebSub.innerHTML = `${qualified} confirmed absent websites`;
+          } else {
+            if (hudNoWeb) hudNoWeb.innerText = '0.0%';
+            if (hudNoWebSub) hudNoWebSub.innerHTML = 'No absent websites detected';
+          }
+
+          if (hudQual) hudQual.innerText = String(qualified).padStart(2, '0');
+          if (hudQualSub) hudQualSub.innerHTML = 'Frozen Rule B &bull; Verified';
+          return;
+        }
+      }
+
+      // If no run or run had 0 candidates, fallback to workspace lead store
+      try {
+        const lRes = await fetch('/api/leads');
+        const lData = await lRes.json();
+        const leads = lData.leads || [];
+        const total = leads.length;
+        if (total > 0) {
+          if (hudRaw) hudRaw.innerText = total;
+          if (hudRawSub) hudRawSub.innerHTML = `${total} leads active in workspace`;
+          if (hudNoWeb) hudNoWeb.innerText = '100%';
+          if (hudNoWebSub) hudNoWebSub.innerHTML = `${total} confirmed absent websites`;
+          if (hudQual) hudQual.innerText = String(total).padStart(2, '0');
+          if (hudQualSub) hudQualSub.innerHTML = 'Frozen Rule B in CRM';
+        } else {
+          if (hudRaw) hudRaw.innerText = '--';
+          if (hudRawSub) hudRawSub.innerHTML = 'Awaiting run dispatch';
+          if (hudNoWeb) hudNoWeb.innerText = '--';
+          if (hudNoWebSub) hudNoWebSub.innerHTML = 'Confirmed absent websites';
+          if (hudQual) hudQual.innerText = '--';
+          if (hudQualSub) hudQualSub.innerHTML = 'Verified under Frozen Rule B';
+        }
+      } catch (e) {
+        if (hudRaw) hudRaw.innerText = '--';
+        if (hudNoWeb) hudNoWeb.innerText = '--';
+        if (hudQual) hudQual.innerText = '--';
       }
     }
 
@@ -5638,6 +5775,7 @@
             }
           }
         }
+        await updateDiscoveryPageHUD(state);
       } catch (err) {
         console.error('Failed to sync discovery status:', err);
       }
@@ -5657,25 +5795,36 @@
       }
     }
 
-    function setDiscoveryStage(num, state) {
+    function setDiscoveryStage(num, state, customLabel) {
       const box = document.getElementById(`discStage${num}`);
       const tag = document.getElementById(`tagStage${num}`);
       if (!box || !tag) return;
 
-      box.classList.remove('stage-active', 'stage-completed');
+      box.classList.remove('stage-active', 'stage-completed', 'stage-failed');
       tag.classList.remove('tag-pulse');
 
       if (state === 'active') {
         box.classList.add('stage-active');
         tag.classList.add('tag-pulse');
-        tag.innerText = 'Scanning';
+        tag.innerText = customLabel || 'Scanning';
+        tag.style.color = 'var(--accent-yellow)';
+        tag.style.borderColor = 'var(--accent-yellow)';
       } else if (state === 'completed') {
         box.classList.add('stage-completed');
-        tag.innerText = 'Verified';
+        tag.innerText = customLabel || 'Verified';
         tag.style.color = 'var(--accent-yellow)';
         tag.style.borderColor = 'var(--glass-border-yellow)';
+      } else if (state === 'failed') {
+        box.classList.add('stage-failed');
+        tag.innerText = customLabel || 'Failed';
+        tag.style.color = 'var(--status-critical)';
+        tag.style.borderColor = 'rgba(255,75,75,0.4)';
+      } else if (state === 'skipped') {
+        tag.innerText = customLabel || 'Skipped';
+        tag.style.color = 'var(--text-dim)';
+        tag.style.borderColor = 'rgba(255,255,255,0.1)';
       } else {
-        tag.innerText = 'Queued';
+        tag.innerText = customLabel || 'Queued';
         tag.style.color = 'var(--text-muted)';
         tag.style.borderColor = 'rgba(255,255,255,0.12)';
       }
@@ -5683,15 +5832,18 @@
 
     function openDiscoveryConfirmModal() {
       playOperatorClickSound();
-      const city = document.getElementById('pageDiscCityInput')?.value || 'Manchester';
+      const city = 'Manchester';
+      const cityInp = document.getElementById('pageDiscCityInput');
+      if (cityInp) cityInp.value = 'Manchester';
+
       const industry = document.getElementById('pageDiscIndustryInput')?.value || 'Restaurants';
       const limit = document.getElementById('pageDiscLimitInput')?.value || '10';
       const batch = document.getElementById('pageDiscBatchInput')?.value || '10';
       const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? true;
-      const mode = document.getElementById('pageDiscModeInput')?.value || 'HYBRID';
+      const mode = document.getElementById('pageDiscModeInput')?.value || 'FREE_LOCAL';
 
       const mEl = document.getElementById('confirmSummaryMarket');
-      if (mEl) mEl.textContent = `${city}, UK (#162378)`;
+      if (mEl) mEl.textContent = 'Manchester, UK (#162378)';
       const nEl = document.getElementById('confirmSummaryNiche');
       if (nEl) nEl.textContent = industry;
       const yEl = document.getElementById('confirmSummaryYield');
@@ -5735,14 +5887,13 @@
 
     async function executeDiscoveryJobFromPage() {
       playOperatorClickSound();
-      const city = document.getElementById('pageDiscCityInput')?.value || 'Manchester';
+      const city = 'Manchester'; // Strictly enforced to Manchester, UK
       const industry = document.getElementById('pageDiscIndustryInput')?.value || 'Restaurants';
       const limit = parseInt(document.getElementById('pageDiscLimitInput')?.value || '10', 10);
       const batch = parseInt(document.getElementById('pageDiscBatchInput')?.value || '10', 10);
-      const mode = document.getElementById('pageDiscModeInput')?.value || 'HYBRID';
+      const mode = document.getElementById('pageDiscModeInput')?.value || 'FREE_LOCAL';
       const multiplier = parseInt(document.getElementById('pageDiscMultiplierInput')?.value || '5', 10);
       const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? true;
-      const apifyToggle = document.getElementById('pageDiscApifyToggle')?.value === 'true';
 
       const btnAction = document.getElementById('btnLaunchDiscoveryPageAction');
       const btnHeader = document.getElementById('btnPageRunDiscovery');
@@ -5756,7 +5907,7 @@
       if (resCard) resCard.style.display = 'none';
 
       // Reset stages to active state
-      setDiscoveryStage(1, 'active');
+      setDiscoveryStage(1, 'active', 'Scanning');
       setDiscoveryStage(2, 'queued');
       setDiscoveryStage(3, 'queued');
       setDiscoveryStage(4, 'queued');
@@ -5786,13 +5937,13 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             country: 'United Kingdom',
-            cities: [city],
+            cities: ['Manchester'],
             industry: industry,
             qualified_leads_needed: limit,
             batch_size: batch,
             max_research_multiplier: multiplier,
             discovery_mode: mode,
-            apify_enabled: apifyToggle || (mode === 'APIFY' || mode === 'HYBRID'),
+            apify_enabled: false,
             dry_run: dryRun
           })
         });
@@ -5801,6 +5952,16 @@
         if (res.status === 409) {
           if (term) term.innerHTML += `[NOTICE] A task is already in progress: ${data.message}\n`;
           listenToDiscoveryStream();
+          return;
+        }
+
+        if (!res.ok) {
+          const errText = data.message || data.detail || 'Validation error';
+          if (term) term.innerHTML += `[REJECTED] Backend validation error: ${errText}\n`;
+          showToast(`Launch rejected: ${errText}`);
+          if (btnAction) btnAction.disabled = false;
+          if (btnHeader) btnHeader.disabled = false;
+          if (btnCancel) btnCancel.style.display = 'none';
           return;
         }
 
@@ -5833,10 +5994,10 @@
     }
 
     async function executeDiscoveryJob() {
-      const city = document.getElementById('discCityInput')?.value || 'Manchester';
+      const city = 'Manchester';
       const industry = document.getElementById('discIndustryInput')?.value || 'Restaurants';
       const limit = parseInt(document.getElementById('discLimitInput')?.value || '10', 10);
-      const mode = document.getElementById('discModeInput')?.value || 'HYBRID';
+      const mode = document.getElementById('discModeInput')?.value || 'FREE_LOCAL';
 
       const btn = document.getElementById('btnRunDiscoveryTask');
       if (btn) btn.disabled = true;
@@ -5853,12 +6014,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             country: 'United Kingdom',
-            cities: [city],
+            cities: ['Manchester'],
             industry: industry,
             qualified_leads_needed: limit,
             batch_size: 10,
             discovery_mode: mode,
-            apify_enabled: (mode === 'APIFY' || mode === 'HYBRID'),
+            apify_enabled: false,
             dry_run: true
           })
         });
@@ -5867,6 +6028,14 @@
         if (res.status === 409) {
           if (term) term.innerHTML += `[NOTICE] A task is already running: ${data.message}\n`;
           listenToDiscoveryStream();
+          return;
+        }
+
+        if (!res.ok) {
+          const errText = data.message || data.detail || 'Validation error';
+          if (term) term.innerHTML += `[REJECTED] Validation rejected: ${errText}\n`;
+          showToast(`Launch rejected: ${errText}`);
+          if (btn) btn.disabled = false;
           return;
         }
 
@@ -5908,54 +6077,83 @@
             pageTerm.scrollTop = pageTerm.scrollHeight;
           }
 
-          // Advance stage indicators based on telemetry
+          // Advance stage indicators based on real telemetry
           const stats = state.current_stats || {};
+          const resObj = state.results || {};
           const raw = stats.raw_discovered || state.discovery_transparency?.businesses_discovered_total || 0;
           const researched = stats.businesses_researched || stats.valid_candidates_researched || 0;
+          const noWeb = stats.no_website_confirmed || 0;
           const qualified = stats.qualified_leads || stats.outreach_ready || 0;
+          const isRunning = state.is_running;
 
-          if (raw > 0) {
-            setDiscoveryStage(1, 'completed');
-            setDiscoveryStage(2, 'active');
-          }
-          if (researched > 0) {
-            setDiscoveryStage(2, 'completed');
-            setDiscoveryStage(3, 'active');
-          }
-          if (stats.no_website_confirmed > 0 || stats.website_exists > 0) {
-            setDiscoveryStage(3, 'completed');
-            setDiscoveryStage(4, 'active');
-          }
-          if (qualified > 0) {
-            setDiscoveryStage(4, 'completed');
-            setDiscoveryStage(5, 'active');
+          if (isRunning) {
+            if (raw === 0) {
+              setDiscoveryStage(1, 'active', 'Scanning');
+              setDiscoveryStage(2, 'queued');
+              setDiscoveryStage(3, 'queued');
+              setDiscoveryStage(4, 'queued');
+              setDiscoveryStage(5, 'queued');
+            } else if (researched === 0) {
+              setDiscoveryStage(1, 'completed', `${raw} Found`);
+              setDiscoveryStage(2, 'active', 'Deduplicating');
+              setDiscoveryStage(3, 'queued');
+              setDiscoveryStage(4, 'queued');
+              setDiscoveryStage(5, 'queued');
+            } else if (noWeb === 0 && (stats.website_exists || 0) === 0) {
+              setDiscoveryStage(1, 'completed', `${raw} Found`);
+              setDiscoveryStage(2, 'completed', 'Deduplicated');
+              setDiscoveryStage(3, 'active', 'Verifying DNS');
+              setDiscoveryStage(4, 'queued');
+              setDiscoveryStage(5, 'queued');
+            } else if (qualified === 0 && (stats.not_qualified || 0) === 0) {
+              setDiscoveryStage(1, 'completed', `${raw} Found`);
+              setDiscoveryStage(2, 'completed', 'Deduplicated');
+              setDiscoveryStage(3, 'completed', `${noWeb} No-Website`);
+              setDiscoveryStage(4, 'active', 'Scoring Rule B');
+              setDiscoveryStage(5, 'queued');
+            } else {
+              setDiscoveryStage(1, 'completed', `${raw} Found`);
+              setDiscoveryStage(2, 'completed', 'Deduplicated');
+              setDiscoveryStage(3, 'completed', `${noWeb} No-Website`);
+              setDiscoveryStage(4, 'completed', `${qualified} Qualified`);
+              setDiscoveryStage(5, 'active', 'CRM Sync');
+            }
+
+            if (raw > 0) {
+              const el = document.getElementById('hudRawDiscovered');
+              if (el) el.innerText = raw;
+            }
+            if (qualified > 0) {
+              const el = document.getElementById('hudQualifiedNum');
+              if (el) el.innerText = String(qualified).padStart(2, '0');
+            }
           }
 
-          if (raw > 0) {
-            const el = document.getElementById('hudRawDiscovered');
-            if (el) el.innerText = raw;
-          }
-          if (qualified > 0) {
-            const el = document.getElementById('hudQualifiedNum');
-            if (el) el.innerText = String(qualified).padStart(2, '0');
-          }
-
-          if (!state.is_running) {
+          if (!isRunning) {
             clearInterval(pollInterval);
             if (modalBtn) modalBtn.disabled = false;
             if (pageBtnAction) pageBtnAction.disabled = false;
             if (pageBtnHeader) pageBtnHeader.disabled = false;
             if (pageBtnCancel) pageBtnCancel.style.display = 'none';
 
-            setDiscoveryStage(1, 'completed');
-            setDiscoveryStage(2, 'completed');
-            setDiscoveryStage(3, 'completed');
-            setDiscoveryStage(4, 'completed');
-            setDiscoveryStage(5, 'completed');
-
             const finalStatus = state.status || (state.results ? state.results.final_status : 'COMPLETED');
             const isError = finalStatus === 'FAILED' || finalStatus === 'CANCELLED';
             const statusColor = isError ? 'var(--status-critical)' : 'var(--accent-yellow)';
+
+            if (isError) {
+              const errLabel = finalStatus === 'CANCELLED' ? 'Cancelled' : 'Failed';
+              setDiscoveryStage(1, raw > 0 ? 'completed' : 'failed', raw > 0 ? `${raw} Found` : errLabel);
+              setDiscoveryStage(2, researched > 0 ? 'completed' : (raw > 0 ? 'failed' : 'skipped'));
+              setDiscoveryStage(3, noWeb > 0 ? 'completed' : (researched > 0 ? 'failed' : 'skipped'));
+              setDiscoveryStage(4, qualified > 0 ? 'completed' : 'skipped');
+              setDiscoveryStage(5, 'skipped', 'Skipped');
+            } else {
+              setDiscoveryStage(1, 'completed', `${raw} Found`);
+              setDiscoveryStage(2, 'completed', `${resObj.duplicates_skipped ?? (stats.duplicates || 0)} Merged`);
+              setDiscoveryStage(3, 'completed', `${noWeb} No-Website`);
+              setDiscoveryStage(4, 'completed', `${qualified} Qualified`);
+              setDiscoveryStage(5, 'completed', state.dry_run ? 'Dry-Run OK' : `${resObj.crm_reconciliation?.saved_to_leads || qualified} Synced`);
+            }
 
             if (modalBadge) {
               modalBadge.innerText = finalStatus;
@@ -5968,7 +6166,7 @@
               pageStageBadge.style.borderColor = statusColor;
             }
 
-            // Populate Structured Results Breakdown Card (Phase Temp Section 5)
+            // Populate Structured Results Breakdown Card (Phase 12.0 Section 14)
             const resultsCard = document.getElementById('pageDiscoveryResultsCard');
             if (resultsCard) {
               resultsCard.style.display = 'block';
@@ -5995,7 +6193,6 @@
                 resElapsed.innerText = `${sec}s`;
               }
 
-              const resObj = state.results || {};
               const discEl = document.getElementById('resDiscovered');
               if (discEl) discEl.innerText = resObj.candidates_discovered ?? (state.current_stats?.raw_discovered || 0);
 
@@ -6042,7 +6239,7 @@
 
             showToast(`Discovery cycle ${finalStatus}! Real metrics updated.`);
             await loadAllData();
-            updateDiscoveryPageHUD();
+            await updateDiscoveryPageHUD(state);
           }
         } catch (e) {
           clearInterval(pollInterval);
@@ -6063,7 +6260,7 @@
         view: 'home',
         tag: 'COMMAND OVERVIEW',
         title: 'Your High-Ticket Lead Engine',
-        desc: 'Welcome to the main command deck. The system automatically discovered 142 hospitality venues across Manchester and filtered them down to the top 7 high-value businesses that lack an official website, making them ideal targets for your web services.',
+        desc: 'Welcome to the main command deck. The system discovers hospitality venues across Manchester and filters them through 8 frozen Rule B criteria down to high-value businesses that lack an official website, making them prime targets for your web services.',
         placement: 'below'
       },
       {
@@ -6111,7 +6308,7 @@
         view: 'pipeline',
         tag: 'VERIFICATION PIPELINE',
         title: '5-Stage Quality Funnel',
-        desc: 'Track every lead as it advances through five strict stages: Discovered (142), Researched (31), Qualified (12), Contactable (9), and Ready to Review (7). Only candidates meeting all quality criteria reach final review.',
+        desc: 'Track every lead as it advances through five strict stages: Discovered, Researched, Qualified, Contactable, and Ready to Review. Only candidates meeting all quality criteria reach final review.',
         placement: 'below'
       },
       {
