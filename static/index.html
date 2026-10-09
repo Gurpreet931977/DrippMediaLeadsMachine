@@ -400,6 +400,10 @@
     }
 
     /* Interactive Feature Tour Guide Component */
+    body.guide-scroll-locked {
+      overflow: hidden !important;
+      touch-action: none;
+    }
     .guide-backdrop {
       position: fixed;
       inset: 0;
@@ -408,7 +412,7 @@
       opacity: 0;
       display: none;
       pointer-events: none;
-      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .guide-backdrop.active {
       display: block;
@@ -425,12 +429,13 @@
     }
     .guide-cutout-rect,
     .guide-border-rect {
-      transition: x 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  y 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  width 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  height 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  rx 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  ry 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: x 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  y 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  width 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  height 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  rx 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  ry 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: x, y, width, height;
     }
     .guide-popover-card {
       position: fixed;
@@ -442,14 +447,15 @@
       -webkit-backdrop-filter: var(--glass-blur-lg);
       border: 1px solid rgba(255, 229, 0, 0.35);
       border-radius: var(--radius-md);
-      padding: 1.4rem;
+      padding: 1.35rem;
       box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 229, 0, 0.18);
-      transition: top 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  left 0.32s cubic-bezier(0.16, 1, 0.3, 1),
-                  opacity 0.2s ease;
+      transition: top 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.15s ease-out;
+      will-change: top, left, opacity;
       display: none;
       flex-direction: column;
-      gap: 1.1rem;
+      gap: 1rem;
     }
     .guide-card-header {
       display: flex;
@@ -2657,7 +2663,7 @@
       <div class="guide-card-header">
         <div class="guide-step-badge">
           <span class="guide-pulse-dot"></span>
-          <span id="guideStepCounter">STEP 01 OF 06</span>
+          <span id="guideStepCounter">STEP 01 OF 07</span>
         </div>
         <button class="guide-close-btn" onclick="closeFeatureGuide()" title="Close tour (Esc)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2665,10 +2671,10 @@
       </div>
 
       <div class="guide-card-body">
-        <div class="guide-tagline" id="guideStepTag">THE COCKPIT</div>
-        <h3 class="guide-headline" id="guideStepTitle">The engine is cookin, no cap</h3>
+        <div class="guide-tagline" id="guideStepTag">COMMAND OVERVIEW</div>
+        <h3 class="guide-headline" id="guideStepTitle">Your High-Ticket Lead Engine</h3>
         <p class="guide-description" id="guideStepDesc">
-          Welcome to the main command deck. 142 spots got scouted across Manchester, but only 7 verified venues passed our strict Rule B filter. Zero spam, pure high-ticket targets ready for operator review.
+          Welcome to the main command deck. The system automatically discovered 142 hospitality venues across Manchester and filtered them down to the top 7 high-value businesses that lack an official website, making them ideal targets for your web services.
         </p>
       </div>
 
@@ -3293,65 +3299,129 @@
     }
 
     // ========================================================================
-    // INTERACTIVE FEATURE TOUR GUIDE CONTROLLER (CONVERSATIONAL & GEN-Z)
+    // INTERACTIVE FEATURE TOUR GUIDE CONTROLLER (CONVERSATIONAL & ACCESSIBLE)
     // ========================================================================
     const featureGuideSteps = [
       {
         target: '.home-hero-card',
         view: 'home',
-        tag: 'THE COCKPIT',
-        title: 'The engine is cookin, no cap',
-        desc: 'Welcome to the main command deck. 142 spots got scouted across Manchester, but only 7 verified venues passed our strict Rule B filter. Zero spam, pure high-ticket targets ready for operator review.',
-        placement: 'bottom'
+        tag: 'COMMAND OVERVIEW',
+        title: 'Your High-Ticket Lead Engine',
+        desc: 'Welcome to the main command deck. The system automatically discovered 142 hospitality venues across Manchester and filtered them down to the top 7 high-value businesses that lack an official website, making them ideal targets for your web services.',
+        placement: 'below'
       },
       {
         target: '.home-radar-hud',
         view: 'home',
-        tag: 'CYBER RADAR',
-        title: 'Real-time radar goes dummy hard',
-        desc: 'Hover the blips to target-lock venues across Northern Quarter and Ancoats. Hit the Pulse button for an electromagnetic shockwave scan, or click any venue to pop its evidence dossier directly.',
+        tag: 'TERRITORY RADAR',
+        title: 'Visual Venue Map',
+        desc: 'Explore verified venue locations visually across key Manchester districts like Northern Quarter and Ancoats. Hover over any yellow marker to see quick business details, or click Run Pulse Scan to refresh nearby location signals.',
         placement: 'left'
-      },
-      {
-        target: '.home-pipeline-strip',
-        view: 'home',
-        tag: 'THE PIPELINE',
-        title: 'How the secret sauce gets made',
-        desc: 'We do not do vibes-based outreach. Leads journey through 5 hard gates: Discovered (142) -> Researched (31) -> Rule B Qualified (12) -> Contactable (9) -> Operator Staged (7). Clean math only.',
-        placement: 'top'
       },
       {
         target: '.nav-floating-pill',
         view: 'home',
-        tag: 'SPEEDRUN NAV',
-        title: 'Move at terminal velocity',
-        desc: 'Hop between Home, Leads, Pipeline, and System in milliseconds. The animated yellow slider tracks active spaces in real time. Pro operator hack: press keys 1, 2, 3, or 4 on your keyboard to switch views without touching your mouse.',
-        placement: 'bottom'
+        tag: 'QUICK NAVIGATION',
+        title: 'Effortless Space Switching',
+        desc: 'Use the navigation pill at the top to switch between Home, Leads, Pipeline, and System. The smooth yellow slider highlights your active space. You can also use keys 1, 2, 3, and 4 on your keyboard for instant switching.',
+        placement: 'below'
       },
       {
         target: '#travelModeTrigger',
         view: 'home',
-        tag: 'SHIELD ACTIVE',
-        title: 'Locked in. Zero accident zone.',
-        desc: 'Travel Mode is strictly running. Commercial sends and automated cron emails are completely frozen so you can review and prep dossiers with zero risk of misfiring. Total peace of mind.',
-        placement: 'bottom'
+        tag: 'SAFETY SHIELD',
+        title: 'Protected Travel Mode',
+        desc: 'Travel Mode protects your operations by freezing all outbound emails and automated outreach. This lets you inspect leads and review evidence dossiers safely with zero risk of sending messages by mistake.',
+        placement: 'below'
       },
       {
-        target: '.lead-workspace-split',
+        target: '#leadsStreamContainer',
         view: 'leads',
-        tag: 'DEEP DOSSIERS',
-        title: 'Deep dive like an absolute boss',
-        desc: 'Filter by qualification status, search instantly, and use keyboard J / K to cycle leads or Enter to open the 6-point narrative evidence dossier. You are now officially certified to operate the machine. Let us cook!',
-        placement: 'top'
+        tag: 'LEADS DIRECTORY',
+        title: 'Lead Discovery and Evidence Dossiers',
+        desc: 'Browse vetted businesses on the left and inspect their complete evidence dossier on the right, including star ratings, verified reviews, and contact channels. Search or filter venues anytime using the top search bar.',
+        placement: 'right'
+      },
+      {
+        target: '#view-pipeline .pipeline-stage-nodes-row',
+        view: 'pipeline',
+        tag: 'VERIFICATION PIPELINE',
+        title: '5-Stage Quality Funnel',
+        desc: 'Track every lead as it advances through five strict stages: Discovered (142), Researched (31), Qualified (12), Contactable (9), and Ready to Review (7). Only candidates meeting all quality criteria reach final review.',
+        placement: 'below'
+      },
+      {
+        target: '#sysPane-readiness .glass-card',
+        view: 'system',
+        tag: 'SYSTEM HEALTH',
+        title: 'Automated Readiness and Telemetry',
+        desc: 'Inspect system performance, 20 automated production gates, data freshness across six dimensions, and external research services. Complete visibility ensures your platform operates reliably at all times.',
+        placement: 'below'
       }
     ];
 
     let currentGuideStepIdx = 0;
     let isGuideActive = false;
 
+    function clampGuideVal(val, min, max) {
+      return Math.max(min, Math.min(val, max));
+    }
+
+    function computeNonOverlappingPosition(target, cardW, cardH, vw, vh, preferred) {
+      const margin = 16;
+      const headerOffset = 72;
+      const candidates = [];
+
+      // Candidate 1: Below target
+      if (vh - target.bottom >= cardH + margin) {
+        const top = target.bottom + margin;
+        const left = clampGuideVal(target.left + (target.right - target.left - cardW) / 2, margin, vw - cardW - margin);
+        candidates.push({ dir: 'below', top, left, space: vh - target.bottom });
+      }
+
+      // Candidate 2: Above target
+      if (target.top - headerOffset >= cardH + margin) {
+        const top = target.top - cardH - margin;
+        const left = clampGuideVal(target.left + (target.right - target.left - cardW) / 2, margin, vw - cardW - margin);
+        candidates.push({ dir: 'above', top, left, space: target.top - headerOffset });
+      }
+
+      // Candidate 3: To the right of target
+      if (vw - target.right >= cardW + margin) {
+        const left = target.right + margin;
+        const top = clampGuideVal(target.top, headerOffset + margin, vh - cardH - margin);
+        candidates.push({ dir: 'right', top, left, space: vw - target.right });
+      }
+
+      // Candidate 4: To the left of target
+      if (target.left >= cardW + margin) {
+        const left = target.left - cardW - margin;
+        const top = clampGuideVal(target.top, headerOffset + margin, vh - cardH - margin);
+        candidates.push({ dir: 'left', top, left, space: target.left });
+      }
+
+      // If preferred placement has valid room without overlap, choose it
+      const match = candidates.find(c => c.dir === preferred);
+      if (match) {
+        return { top: match.top, left: match.left };
+      }
+
+      // Otherwise choose candidate with maximum separation
+      if (candidates.length > 0) {
+        candidates.sort((a, b) => b.space - a.space);
+        return { top: candidates[0].top, left: candidates[0].left };
+      }
+
+      // Fallback for massive containers
+      const top = clampGuideVal(vh - cardH - margin, headerOffset + margin, vh - cardH - margin);
+      const left = clampGuideVal((vw - cardW) / 2, margin, vw - cardW - margin);
+      return { top, left };
+    }
+
     function startFeatureGuide() {
       currentGuideStepIdx = 0;
       isGuideActive = true;
+      document.body.classList.add('guide-scroll-locked');
       const backdrop = document.getElementById('featureGuideBackdrop');
       if (backdrop) {
         backdrop.style.display = 'block';
@@ -3368,8 +3438,10 @@
 
       const activeContainer = document.querySelector('.view-container.active');
       const activeViewId = activeContainer ? activeContainer.id.replace('view-', '') : 'home';
-      if (activeViewId !== step.view) {
+      const viewChanged = (activeViewId !== step.view);
+      if (viewChanged) {
         navigateTo(step.view);
+        window.scrollTo(0, 0);
       }
 
       const counter = document.getElementById('guideStepCounter');
@@ -3400,9 +3472,16 @@
         ).join('');
       }
 
-      setTimeout(() => {
-        positionGuideElements(step);
-      }, 150);
+      // Smooth & fast transition without lag
+      if (viewChanged) {
+        setTimeout(() => {
+          positionGuideElements(step);
+        }, 50);
+      } else {
+        requestAnimationFrame(() => {
+          positionGuideElements(step);
+        });
+      }
     }
 
     function positionGuideElements(step) {
@@ -3424,44 +3503,54 @@
         return;
       }
 
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Check if element is already comfortably visible
+      const preRect = el.getBoundingClientRect();
+      const isComfortable = (preRect.top >= 70 && preRect.bottom <= window.innerHeight);
+      if (!isComfortable) {
+        el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+      }
 
-      setTimeout(() => {
-        const rect = el.getBoundingClientRect();
-        const pad = 10;
-        const x = Math.max(4, rect.left - pad);
-        const y = Math.max(4, rect.top - pad);
-        const w = rect.width + pad * 2;
-        const h = rect.height + pad * 2;
-        const r = 16;
+      const rect = el.getBoundingClientRect();
+      const pad = 8;
+      const x = Math.max(4, rect.left - pad);
+      const y = Math.max(4, rect.top - pad);
+      const w = rect.width + pad * 2;
+      const h = rect.height + pad * 2;
+      const r = 14;
 
-        hole.setAttribute('x', x);
-        hole.setAttribute('y', y);
-        hole.setAttribute('width', w);
-        hole.setAttribute('height', h);
-        hole.setAttribute('rx', r);
-        hole.setAttribute('ry', r);
+      hole.setAttribute('x', x);
+      hole.setAttribute('y', y);
+      hole.setAttribute('width', w);
+      hole.setAttribute('height', h);
+      hole.setAttribute('rx', r);
+      hole.setAttribute('ry', r);
 
-        border.setAttribute('x', x);
-        border.setAttribute('y', y);
-        border.setAttribute('width', w);
-        border.setAttribute('height', h);
-        border.setAttribute('rx', r);
-        border.setAttribute('ry', r);
+      border.setAttribute('x', x);
+      border.setAttribute('y', y);
+      border.setAttribute('width', w);
+      border.setAttribute('height', h);
+      border.setAttribute('rx', r);
+      border.setAttribute('ry', r);
 
-        card.style.display = 'flex';
-        card.style.left = '50%';
-        card.style.transform = 'translateX(-50%)';
+      card.style.display = 'flex';
+      const cardWidth = Math.min(420, window.innerWidth - 32);
+      const cardHeight = card.offsetHeight || 220;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
 
-        // Smart dynamic dock: top if target is low, bottom if target is high
-        if (rect.bottom > window.innerHeight - 240) {
-          card.style.top = '84px';
-          card.style.bottom = 'auto';
-        } else {
-          card.style.bottom = '24px';
-          card.style.top = 'auto';
-        }
-      }, 100);
+      const targetBox = {
+        left: x,
+        top: y,
+        right: x + w,
+        bottom: y + h
+      };
+
+      const pos = computeNonOverlappingPosition(targetBox, cardWidth, cardHeight, vw, vh, step.placement);
+      card.style.bottom = 'auto';
+      card.style.right = 'auto';
+      card.style.top = Math.round(pos.top) + 'px';
+      card.style.left = Math.round(pos.left) + 'px';
+      card.style.transform = 'none';
     }
 
     function nextGuideStep() {
@@ -3484,12 +3573,13 @@
 
     function closeFeatureGuide() {
       isGuideActive = false;
+      document.body.classList.remove('guide-scroll-locked');
       const backdrop = document.getElementById('featureGuideBackdrop');
       if (backdrop) {
         backdrop.classList.remove('active');
         setTimeout(() => {
           if (!isGuideActive) backdrop.style.display = 'none';
-        }, 280);
+        }, 240);
       }
       const hole = document.getElementById('guideHoleCutout');
       if (hole) { hole.setAttribute('width', '0'); hole.setAttribute('height', '0'); }
@@ -3500,7 +3590,7 @@
     }
 
     window.addEventListener('resize', () => {
-      if (isGuideActive) {
+      if (isGuideActive && featureGuideSteps[currentGuideStepIdx]) {
         positionGuideElements(featureGuideSteps[currentGuideStepIdx]);
       }
     });
