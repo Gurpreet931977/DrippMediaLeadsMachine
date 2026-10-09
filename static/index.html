@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dripp International Leads — Lead Operating System</title>
+  <title>Dripp International Leads | Lead Operating System</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/static/logos/favicon-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="/static/logos/favicon.png">
   <link rel="apple-touch-icon" sizes="128x128" href="/static/logos/dripp-logo-badge-128.png">
@@ -13,7 +13,7 @@
   
   <style>
     /* ==========================================================================
-       DRIPP MEDIA — LEAD OPERATING SYSTEM
+       DRIPP MEDIA | LEAD OPERATING SYSTEM
        Apple Liquid Glass Material System | True Black, White & Brand Yellow
        Strictly No Bluish Greys | Zero Emojis | Lucide SVG Only
        ========================================================================== */
@@ -42,19 +42,19 @@
       --glass-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.85);
       --glass-shadow-floating: 0 24px 60px -15px rgba(0, 0, 0, 0.90), 0 0 0 1px rgba(255, 255, 255, 0.08);
 
-      /* Typography — White and Neutral Greys (No Bluish Greys) */
+      /* Typography: White and Neutral Greys (No Bluish Greys) */
       --text-main: #FFFFFF;
       --text-muted: #A0A0A0;
       --text-dim: #606060;
       --text-subtle: #3E3E3E;
 
-      /* Brand Accent — Brand Yellow, White, Black */
+      /* Brand Accent: Brand Yellow, White, Black */
       --accent-yellow: #FFE500;
       --accent-yellow-hover: #FFF04D;
       --accent-yellow-subtle: rgba(255, 229, 0, 0.10);
       --accent-yellow-glow: rgba(255, 229, 0, 0.25);
 
-      /* Functional Signals — Strictly Brand Yellow, White, and Black */
+      /* Functional Signals: Strictly Brand Yellow, White, and Black */
       --signal-emerald: #FFE500;
       --signal-emerald-subtle: rgba(255, 229, 0, 0.12);
       --signal-amber: #FFE500;
@@ -226,7 +226,7 @@
       width: 0;
       background: var(--accent-yellow);
       border-radius: var(--radius-pill);
-      box-shadow: 0 2px 14px rgba(255, 229, 0, 0.35);
+      box-shadow: none;
       pointer-events: none;
       z-index: 1;
       opacity: 0;
@@ -392,7 +392,7 @@
       background: var(--accent-yellow);
       color: #000000;
       border-color: var(--accent-yellow);
-      box-shadow: 0 0 14px rgba(255, 229, 0, 0.35);
+      box-shadow: none;
       transform: translateY(-1px);
     }
     .nav-guide-btn:hover svg {
@@ -448,7 +448,7 @@
       border: 1px solid rgba(255, 229, 0, 0.35);
       border-radius: var(--radius-md);
       padding: 1.35rem;
-      box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 229, 0, 0.18);
+      box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95);
       transition: top 0.22s cubic-bezier(0.16, 1, 0.3, 1),
                   left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
                   opacity 0.15s ease-out;
@@ -475,14 +475,6 @@
       font-family: var(--font-mono);
       color: var(--accent-yellow);
       letter-spacing: 0.06em;
-    }
-    .guide-pulse-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent-yellow);
-      box-shadow: 0 0 8px var(--accent-yellow);
-      animation: navPulse 1.8s infinite alternate;
     }
     .guide-close-btn {
       background: transparent;
@@ -536,18 +528,18 @@
       gap: 0.35rem;
     }
     .guide-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
+      width: 10px;
+      height: 3px;
+      border-radius: 1px;
       background: rgba(255, 255, 255, 0.2);
       transition: all var(--transition-fast);
       cursor: pointer;
     }
     .guide-dot.active {
-      width: 18px;
-      border-radius: var(--radius-pill);
+      width: 20px;
+      border-radius: 1px;
       background: var(--accent-yellow);
-      box-shadow: 0 0 8px rgba(255, 229, 0, 0.5);
+      box-shadow: none;
     }
     .guide-action-btns {
       display: flex;
@@ -599,11 +591,11 @@
       align-items: center;
       gap: 0.45rem;
       transition: all var(--transition-fast);
-      box-shadow: 0 0 14px rgba(255, 229, 0, 0.3);
+      box-shadow: none;
     }
     .guide-btn-next:hover {
       transform: translateY(-1px);
-      box-shadow: 0 0 20px rgba(255, 229, 0, 0.5);
+      box-shadow: none;
     }
 
     /* Settings Dashboard & Form Controls */
@@ -627,7 +619,7 @@
     }
     .setting-select-field:focus {
       border-color: var(--accent-yellow);
-      box-shadow: 0 0 10px rgba(255, 229, 0, 0.2);
+      box-shadow: none;
     }
     .setting-select-field option {
       background: #0A0A0A;
@@ -713,7 +705,7 @@
       font-weight: 600;
       padding: 0.75rem 1.25rem;
       border-radius: var(--radius-pill);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 229, 0, 0.15);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
       transform: translateY(20px);
       opacity: 0;
       pointer-events: none;
@@ -797,7 +789,7 @@
     }
     .btn-pill-primary:hover {
       background: var(--accent-yellow-hover);
-      box-shadow: 0 0 20px var(--accent-yellow-glow);
+      box-shadow: none;
     }
     .btn-pill-secondary {
       background: rgba(255, 255, 255, 0.04);
@@ -811,7 +803,7 @@
     }
 
     /* ==========================================================================
-       HOME VIEW — COMMAND CENTER STYLING & RADAR HUD
+       HOME VIEW: COMMAND CENTER STYLING & RADAR HUD
        ========================================================================== */
     .home-command-grid {
       display: grid;
@@ -921,19 +913,6 @@
       padding-bottom: 0.85rem;
       margin-bottom: 1rem;
     }
-    .radar-live-blip {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent-yellow);
-      box-shadow: 0 0 8px var(--accent-yellow);
-      animation: radarBeaconPulse 1.8s infinite;
-      display: inline-block;
-    }
-    @keyframes radarBeaconPulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.4); opacity: 0.6; }
-    }
     .radar-title {
       font-size: 0.68rem;
       font-weight: 800;
@@ -959,7 +938,7 @@
       background: var(--accent-yellow);
       color: #000000;
       border-color: var(--accent-yellow);
-      box-shadow: 0 0 12px rgba(255, 229, 0, 0.4);
+      box-shadow: none;
     }
     .radar-ping-btn:hover svg { stroke: #000000; }
     .radar-display-area {
@@ -1088,8 +1067,8 @@
       width: 0;
       height: 0;
       border-radius: 50%;
-      border: 1.5px solid var(--accent-yellow);
-      box-shadow: 0 0 15px rgba(255, 229, 0, 0.6);
+      border: 1px solid rgba(255, 229, 0, 0.65);
+      box-shadow: none;
       transform: translate(-50%, -50%);
       pointer-events: none;
       opacity: 0;
@@ -1117,33 +1096,27 @@
 
     .blip-beacon-wrap {
       position: relative;
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .blip-beacon {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+      width: 6px;
+      height: 6px;
       background: var(--accent-yellow);
-      box-shadow: 0 0 10px var(--accent-yellow), 0 0 18px rgba(255, 229, 0, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.9);
+      transform: rotate(45deg);
+      box-shadow: none;
       position: relative;
       z-index: 2;
+      transition: transform 0.15s ease;
     }
-    .blip-pulse-ring {
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 1px solid rgba(255, 229, 0, 0.5);
-      animation: blipBeaconPulse 2s infinite ease-out;
-      pointer-events: none;
-    }
-    @keyframes blipBeaconPulse {
-      0% { transform: scale(0.6); opacity: 1; }
-      100% { transform: scale(1.8); opacity: 0; }
+    .radar-blip-target:hover .blip-beacon {
+      transform: rotate(45deg) scale(1.35);
+      background: #FFFFFF;
+      border-color: var(--accent-yellow);
     }
 
     .blip-tag {
@@ -1168,7 +1141,7 @@
       background: var(--accent-yellow);
       border-color: var(--accent-yellow);
       font-weight: 800;
-      box-shadow: 0 0 16px rgba(255, 229, 0, 0.6);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.8);
     }
 
     .radar-hud-footer {
@@ -1197,19 +1170,11 @@
       background: rgba(255, 229, 0, 0.06);
       border: 1px solid rgba(255, 229, 0, 0.25);
       border-radius: var(--radius-pill);
-      padding: 0.2rem 0.65rem;
+      padding: 0.25rem 0.65rem;
       display: flex;
       align-items: center;
       gap: 0.4rem;
       transition: all var(--transition-fast);
-    }
-    .radar-lock-pulse {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--accent-yellow);
-      box-shadow: 0 0 6px var(--accent-yellow);
-      animation: navPulse 1.8s infinite alternate;
     }
 
     /* 3-Step Lead Machine Workflow Guide Strip */
@@ -1339,7 +1304,7 @@
     }
 
     /* ==========================================================================
-       LEADS VIEW — SPLIT WORKSPACE EXPERIENCE (LINEAR / APPLE STYLE)
+       LEADS VIEW: SPLIT WORKSPACE EXPERIENCE (LINEAR / APPLE STYLE)
        ========================================================================== */
     .lead-workspace-split {
       display: grid;
@@ -1833,7 +1798,7 @@
   <main class="app-viewport">
 
     <!-- ========================================================================
-         VIEW 1: HOME — COMMAND CENTER
+         VIEW 1: HOME: COMMAND CENTER
          ======================================================================== -->
     <section id="view-home" class="view-container active">
       
@@ -1873,7 +1838,7 @@
         <div class="home-radar-hud">
           <div class="radar-header">
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <span class="radar-live-blip"></span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-yellow); flex-shrink:0;"><circle cx="12" cy="12" r="9"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>
               <span class="radar-title">MANCHESTER LIVE RADAR &bull; MULTI-SIGNAL SCAN</span>
             </div>
             <button class="radar-ping-btn" onclick="triggerRadarPing()" title="Trigger radar pulse scan">
@@ -1916,10 +1881,9 @@
             <!-- Expanding Ping Shockwave -->
             <div class="radar-ping-wave" id="radarPingWave"></div>
 
-            <!-- Target Blips (Carefully non-overlapping positions) -->
+            <!-- Target Blips (Precision coordinate diamond pips without halos) -->
             <div class="radar-blip-target" style="top:36%; left:65%;" data-name="Mala" data-id="lead-mcr-001" onclick="openLeadDrawerById('lead-mcr-001')">
               <div class="blip-beacon-wrap">
-                <span class="blip-pulse-ring"></span>
                 <span class="blip-beacon"></span>
               </div>
               <span class="blip-tag" style="margin-left:6px;">Mala</span>
@@ -1927,7 +1891,6 @@
 
             <div class="radar-blip-target" style="top:22%; left:42%; flex-direction:column-reverse;" data-name="Mary D's" data-id="lead-mcr-003" onclick="openLeadDrawerById('lead-mcr-003')">
               <div class="blip-beacon-wrap">
-                <span class="blip-pulse-ring"></span>
                 <span class="blip-beacon"></span>
               </div>
               <span class="blip-tag" style="margin-bottom:6px;">Mary D's</span>
@@ -1935,7 +1898,6 @@
 
             <div class="radar-blip-target" style="top:64%; left:34%;" data-name="Dog & Partridge" data-id="lead-mcr-002" onclick="openLeadDrawerById('lead-mcr-002')">
               <div class="blip-beacon-wrap">
-                <span class="blip-pulse-ring"></span>
                 <span class="blip-beacon"></span>
               </div>
               <span class="blip-tag" style="margin-left:6px;">Dog &amp; Partridge</span>
@@ -1943,7 +1905,6 @@
 
             <div class="radar-blip-target" style="top:74%; left:68%;" data-name="The Marble Arch" data-id="lead-mcr-004" onclick="openLeadDrawerById('lead-mcr-004')">
               <div class="blip-beacon-wrap">
-                <span class="blip-pulse-ring"></span>
                 <span class="blip-beacon"></span>
               </div>
               <span class="blip-tag" style="margin-left:6px;">Marble Arch</span>
@@ -1951,7 +1912,6 @@
 
             <div class="radar-blip-target" style="top:50%; left:16%; flex-direction:row-reverse;" data-name="Cask" data-id="lead-mcr-005" onclick="openLeadDrawerById('lead-mcr-005')">
               <div class="blip-beacon-wrap">
-                <span class="blip-pulse-ring"></span>
                 <span class="blip-beacon"></span>
               </div>
               <span class="blip-tag" style="margin-right:6px;">Cask</span>
@@ -1963,7 +1923,7 @@
               <span>COORDINATES: 53.4808° N, 2.2426° W</span>
             </div>
             <div class="radar-target-pill" id="radarActiveTarget">
-              <span class="radar-lock-pulse"></span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-yellow); flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M5 12h2m10 0h2M12 5v2m0 10v2"/></svg>
               <span id="radarActiveTargetText">TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR</span>
             </div>
           </div>
@@ -2070,7 +2030,7 @@
     </section>
 
     <!-- ========================================================================
-         VIEW 2: LEADS — OPERATING WORKSPACE (SPLIT LAYOUT)
+         VIEW 2: LEADS: OPERATING WORKSPACE (SPLIT LAYOUT)
          ======================================================================== -->
     <section id="view-leads" class="view-container">
       <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
@@ -2194,7 +2154,7 @@
     </section>
 
     <!-- ========================================================================
-         VIEW 3: PIPELINE — OPERATIONAL STAGES
+         VIEW 3: PIPELINE: OPERATIONAL STAGES
          ======================================================================== -->
     <section id="view-pipeline" class="view-container">
       <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
@@ -3129,7 +3089,7 @@
     <div class="glass-card" style="width:780px; max-width:95vw; max-height:88vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:var(--glass-border); padding-bottom:1rem; margin-bottom:1rem;">
         <div>
-          <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">Phase 8.7 &mdash; Controlled Outreach Cohort</h3>
+          <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">Phase 8.7: Controlled Outreach Cohort</h3>
           <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
             Operator review batch verified against Rule B. Commercial send remains locked.
           </div>
@@ -3227,7 +3187,7 @@
       <div id="discoveryProgressArea" style="display:none; margin-bottom:1.25rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
           <div style="display:flex; align-items:center; gap:0.45rem;">
-            <span class="guide-pulse-dot"></span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-yellow)" stroke-width="2.5"><polyline points="4 17 10 12 4 7"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
             <span style="font-size:0.75rem; font-weight:700; font-family:var(--font-mono); color:var(--accent-yellow);">DISCOVERY EXECUTION TELEMETRY</span>
           </div>
           <span id="discoveryStatusBadge" class="status-capsule" style="font-size:0.68rem;">Executing Task</span>
@@ -3310,14 +3270,13 @@
       </defs>
       <!-- Dark backdrop dimmed with mask -->
       <rect x="0" y="0" width="100%" height="100%" fill="rgba(5, 5, 5, 0.78)" mask="url(#guideCutoutMask)" />
-      <!-- Glowing brand yellow border ring -->
-      <rect id="guideHoleBorder" class="guide-border-rect" x="0" y="0" width="0" height="0" rx="14" ry="14" fill="none" stroke="#FFE500" stroke-width="2" style="filter: drop-shadow(0 0 10px rgba(255, 229, 0, 0.65));" />
+      <!-- Crisp brand yellow border ring -->
+      <rect id="guideHoleBorder" class="guide-border-rect" x="0" y="0" width="0" height="0" rx="14" ry="14" fill="none" stroke="#FFE500" stroke-width="1.5" />
     </svg>
     <div id="guideSpotlightFrame" style="display:none;"></div>
     <div id="guidePopoverCard" class="guide-popover-card" onclick="event.stopPropagation()">
       <div class="guide-card-header">
         <div class="guide-step-badge">
-          <span class="guide-pulse-dot"></span>
           <span id="guideStepCounter">STEP 01 OF 07</span>
         </div>
         <button class="guide-close-btn" onclick="closeFeatureGuide()" title="Close tour (Esc)">
