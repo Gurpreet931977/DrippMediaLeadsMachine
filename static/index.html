@@ -2045,41 +2045,312 @@
       line-height: 1.45;
     }
 
-    /* Launch Glow Action Button */
-    .discovery-launch-hero-btn {
+    /* ==========================================================================
+       APPLE INTELLIGENCE / SIRI AURORA LAUNCH BUTTON SYSTEM
+       Fluid Chromatic Edge Beam • VisionOS Glass Core • Liquid Shockwave Waves
+       ========================================================================== */
+    @property --siri-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    @keyframes siriAngleSpin {
+      0% { --siri-angle: 0deg; }
+      100% { --siri-angle: 360deg; }
+    }
+
+    @keyframes siriPulseAura {
+      0%, 100% {
+        opacity: 0.45;
+        transform: scale(0.98);
+        filter: blur(16px);
+      }
+      50% {
+        opacity: 0.9;
+        transform: scale(1.03);
+        filter: blur(24px);
+      }
+    }
+
+    @keyframes siriShockwaveExpand {
+      0% {
+        transform: translate(-50%, -50%) scale(0.08);
+        opacity: 0.95;
+      }
+      50% {
+        opacity: 0.65;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(2.8);
+        opacity: 0;
+      }
+    }
+
+    @keyframes siriWaveformBounce {
+      0%, 100% { transform: scaleY(0.35); opacity: 0.45; }
+      50% { transform: scaleY(1); opacity: 1; }
+    }
+
+    @keyframes siriDeckBorderWave {
+      0% {
+        box-shadow: 0 0 0 1px rgba(255, 229, 0, 0.45), 0 0 35px -5px rgba(0, 223, 216, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 0 2px rgba(255, 46, 147, 0.65), 0 0 75px -5px rgba(255, 229, 0, 0.55), 0 0 110px -15px rgba(121, 40, 202, 0.45);
+      }
+      100% {
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 60px -12px rgba(0, 0, 0, 0.65);
+      }
+    }
+
+    .siri-launch-wrapper {
+      position: relative;
       width: 100%;
-      background: var(--accent-yellow);
+      margin: 0.4rem 0 0;
+      perspective: 1000px;
+    }
+
+    /* Ambient Apple Intelligence Glow beneath button */
+    .siri-aurora-glow {
+      position: absolute;
+      inset: -4px;
+      border-radius: var(--radius-pill);
+      background: conic-gradient(
+        from var(--siri-angle),
+        rgba(255, 229, 0, 0.8) 0%,
+        rgba(255, 46, 147, 0.75) 25%,
+        rgba(121, 40, 202, 0.75) 50%,
+        rgba(0, 223, 216, 0.8) 75%,
+        rgba(255, 229, 0, 0.8) 100%
+      );
+      filter: blur(16px);
+      opacity: 0.35;
+      pointer-events: none;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+      animation: siriAngleSpin 7s linear infinite, siriPulseAura 4.5s ease-in-out infinite;
+      z-index: 1;
+    }
+
+    .siri-launch-wrapper:hover .siri-aurora-glow {
+      opacity: 0.95;
+      filter: blur(22px);
+      animation: siriAngleSpin 2.2s linear infinite, siriPulseAura 1.8s ease-in-out infinite;
+    }
+
+    /* Primary Hero Button */
+    .discovery-launch-hero-btn {
+      position: relative;
+      width: 100%;
+      z-index: 2;
+      background: linear-gradient(180deg, #FFE81A 0%, #FFD600 52%, #E5BE00 100%);
       color: #000000;
-      border: none;
+      border: 1px solid rgba(255, 255, 255, 0.65);
       border-radius: var(--radius-pill);
       padding: 1.15rem 1.75rem;
       font-family: var(--font-sans);
       font-size: 0.95rem;
       font-weight: 900;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.75rem;
-      box-shadow: none;
-      transition: all var(--transition-fast);
-      position: relative;
       overflow: hidden;
+      box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.95),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.22),
+        0 10px 30px -5px rgba(255, 229, 0, 0.45);
+      transition: 
+        transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.35s ease,
+        filter 0.3s ease;
+      transform: translateZ(0);
+      will-change: transform, box-shadow;
     }
+
+    .discovery-launch-hero-btn::before {
+      content: '';
+      position: absolute;
+      inset: -1.5px;
+      border-radius: var(--radius-pill);
+      padding: 1.5px;
+      background: conic-gradient(
+        from var(--siri-angle),
+        #FFE500 0%,
+        #FF2E93 25%,
+        #7928CA 50%,
+        #00DFD8 75%,
+        #FFE500 100%
+      );
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.6;
+      animation: siriAngleSpin 5s linear infinite;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
     .discovery-launch-hero-btn:hover {
-      background: var(--accent-yellow-hover);
-      transform: translateY(-2px);
-      box-shadow: none;
+      transform: translateY(-2px) scale(1.008);
+      box-shadow: 
+        inset 0 1px 1.5px rgba(255, 255, 255, 1),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.15),
+        0 14px 44px -4px rgba(255, 229, 0, 0.65),
+        0 0 24px 2px rgba(0, 223, 216, 0.35);
+      filter: brightness(1.04);
     }
-    .discovery-launch-hero-btn:active {
-      transform: translateY(0);
+
+    .discovery-launch-hero-btn:hover::before {
+      opacity: 1;
+      animation: siriAngleSpin 1.8s linear infinite;
     }
+
+    /* Active State: Spring Compression */
+    .discovery-launch-hero-btn:active,
+    .discovery-launch-hero-btn.siri-pressed {
+      transform: scale(0.96) translateZ(0) !important;
+      box-shadow: 
+        inset 0 2px 6px rgba(0, 0, 0, 0.35),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.5),
+        0 4px 16px rgba(255, 229, 0, 0.35) !important;
+      transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
     .discovery-launch-hero-btn:disabled {
       opacity: 0.55;
       cursor: not-allowed;
       transform: none;
       box-shadow: none;
+    }
+
+    /* Specular glass reflection bar */
+    .siri-inner-specular {
+      position: absolute;
+      top: 0;
+      left: 8%;
+      right: 8%;
+      height: 48%;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 100%);
+      border-radius: var(--radius-pill);
+      pointer-events: none;
+      opacity: 0.85;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Miniature Siri Neural Audio Waveform */
+    .siri-soundwave-track {
+      display: inline-flex;
+      align-items: center;
+      gap: 2.5px;
+      height: 16px;
+      padding: 0 2px;
+      pointer-events: none;
+    }
+
+    .siri-soundwave-track .siri-bar {
+      width: 2.5px;
+      height: 13px;
+      border-radius: 2px;
+      background: #000000;
+      opacity: 0.75;
+      transform-origin: center;
+      transition: all 0.2s ease;
+    }
+
+    .siri-launch-wrapper:hover .siri-bar {
+      animation: siriWaveformBounce 0.65s ease-in-out infinite alternate;
+    }
+    .siri-launch-wrapper:hover .siri-bar.b1 { animation-delay: 0.0s; height: 8px; }
+    .siri-launch-wrapper:hover .siri-bar.b2 { animation-delay: 0.15s; height: 14px; }
+    .siri-launch-wrapper:hover .siri-bar.b3 { animation-delay: 0.08s; height: 12px; }
+    .siri-launch-wrapper:hover .siri-bar.b4 { animation-delay: 0.22s; height: 15px; }
+    .siri-launch-wrapper:hover .siri-bar.b5 { animation-delay: 0.12s; height: 9px; }
+
+    .siri-launch-icon {
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .discovery-launch-hero-btn:hover .siri-launch-icon {
+      transform: scale(1.15) translateX(1px);
+    }
+
+    /* Expanding Shockwave Ripple Rings Container */
+    .siri-shockwave-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 10;
+    }
+
+    .siri-ripple-ring {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0.08);
+      animation: siriShockwaveExpand 0.75s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    }
+
+    .siri-ripple-ring.ring-1 {
+      border: 2px solid rgba(255, 229, 0, 0.95);
+      background: radial-gradient(circle, rgba(255, 229, 0, 0.25) 0%, transparent 70%);
+      box-shadow: 0 0 25px rgba(255, 229, 0, 0.6);
+    }
+    .siri-ripple-ring.ring-2 {
+      border: 2px solid rgba(0, 223, 216, 0.85);
+      box-shadow: 0 0 35px rgba(0, 223, 216, 0.5);
+      animation-delay: 0.05s;
+    }
+    .siri-ripple-ring.ring-3 {
+      border: 2px solid rgba(255, 46, 147, 0.75);
+      box-shadow: 0 0 45px rgba(255, 46, 147, 0.4);
+      animation-delay: 0.1s;
+    }
+
+    /* Screen/Card Edge Glow Triggered on Ignition */
+    .siri-card-ignited {
+      animation: siriDeckBorderWave 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+
+    /* Apple Intelligence Full Viewport Edge Glow */
+    .siri-viewport-aura {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 99998;
+      opacity: 0;
+      box-shadow: 
+        inset 0 0 45px 12px rgba(255, 229, 0, 0.45),
+        inset 0 0 90px 24px rgba(255, 46, 147, 0.35),
+        inset 0 0 140px 40px rgba(0, 223, 216, 0.35);
+      transition: opacity 0.25s ease;
+    }
+
+    .siri-viewport-aura.active {
+      animation: siriViewportPulse 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes siriViewportPulse {
+      0% {
+        opacity: 0;
+        box-shadow: 
+          inset 0 0 20px 4px rgba(255, 229, 0, 0.6),
+          inset 0 0 45px 10px rgba(0, 223, 216, 0.5);
+      }
+      30% {
+        opacity: 1;
+        box-shadow: 
+          inset 0 0 70px 20px rgba(255, 229, 0, 0.8),
+          inset 0 0 120px 38px rgba(255, 46, 147, 0.65),
+          inset 0 0 190px 60px rgba(0, 223, 216, 0.55);
+      }
+      100% {
+        opacity: 0;
+        box-shadow: 
+          inset 0 0 15px 2px rgba(121, 40, 202, 0);
+      }
     }
 
     /* Accordion for Advanced Controls */
@@ -2603,7 +2874,7 @@
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/></svg>
               <span>Hybrid Scanner Ready</span>
             </span>
-            <button id="btnPageRunDiscovery" class="btn-pill btn-pill-primary" onclick="openDiscoveryConfirmModal()">
+            <button id="btnPageRunDiscovery" class="btn-pill btn-pill-primary" onclick="handleSiriLaunchClick(event)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               <span>Run Lead Discovery</span>
             </button>
@@ -2896,11 +3167,23 @@
             </div>
           </div>
 
-          <!-- Primary Trigger Button (Opens Confirmation Summary) -->
-          <button id="btnLaunchDiscoveryPageAction" class="discovery-launch-hero-btn" onclick="openDiscoveryConfirmModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <span>LAUNCH AUTONOMOUS DISCOVERY TASK</span>
-          </button>
+          <!-- Primary Trigger Button (Apple Intelligence Siri Launch Architecture) -->
+          <div class="siri-launch-wrapper" id="siriLaunchWrapper">
+            <div class="siri-aurora-glow" id="siriAuroraGlow"></div>
+            <button id="btnLaunchDiscoveryPageAction" class="discovery-launch-hero-btn" onclick="handleSiriLaunchClick(event)">
+              <div class="siri-inner-specular"></div>
+              <div class="siri-soundwave-track">
+                <span class="siri-bar b1"></span>
+                <span class="siri-bar b2"></span>
+                <span class="siri-bar b3"></span>
+                <span class="siri-bar b4"></span>
+                <span class="siri-bar b5"></span>
+              </div>
+              <svg class="siri-launch-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span class="siri-launch-label">LAUNCH AUTONOMOUS DISCOVERY TASK</span>
+            </button>
+            <div class="siri-shockwave-container" id="siriShockwaveContainer"></div>
+          </div>
           <div style="text-align:center; margin-top:0.7rem; font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono);">
             Protected Environment &bull; Commercial Actions Locked &bull; Zero External Dispatches
           </div>
@@ -4313,6 +4596,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Apple Intelligence Siri Full Viewport Edge Glow Container -->
+  <div id="siriViewportAura" class="siri-viewport-aura"></div>
 
   <!-- ========================================================================
        LEAD DISCOVERY CONFIRMATION SUMMARY MODAL (PHASE TEMP)
@@ -6122,6 +6408,141 @@
       }
     }
 
+    // ========================================================================
+    // APPLE INTELLIGENCE / SIRI AUDIO CHIME & SHOCKWAVE IGNITION SYSTEM
+    // ========================================================================
+    function playAppleSiriChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const now = ctx.currentTime;
+
+        // Tone 1: Apple C5 (523.25Hz) glissando up to C6 (1046.50Hz)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(523.25, now);
+        osc1.frequency.exponentialRampToValueAtTime(1046.50, now + 0.16);
+        gain1.gain.setValueAtTime(0.001, now);
+        gain1.gain.linearRampToValueAtTime(0.26, now + 0.02);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.44);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.46);
+
+        // Tone 2: Harmonious Fifth G5 (783.99Hz) glissando up to G6 (1567.98Hz)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(783.99, now + 0.03);
+        osc2.frequency.exponentialRampToValueAtTime(1567.98, now + 0.20);
+        gain2.gain.setValueAtTime(0.001, now + 0.03);
+        gain2.gain.linearRampToValueAtTime(0.20, now + 0.05);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.50);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.03);
+        osc2.stop(now + 0.52);
+
+        // Tone 3: High crystal sparkle bell overtone C7 (2093Hz)
+        const osc3 = ctx.createOscillator();
+        const gain3 = ctx.createGain();
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(2093.00, now + 0.07);
+        gain3.gain.setValueAtTime(0.001, now + 0.07);
+        gain3.gain.linearRampToValueAtTime(0.12, now + 0.08);
+        gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+        osc3.connect(gain3);
+        gain3.connect(ctx.destination);
+        osc3.start(now + 0.07);
+        osc3.stop(now + 0.38);
+      } catch (e) {
+        // Audio optional / graceful fallback
+      }
+    }
+
+    function triggerSiriShockwave(x, y, containerId = 'siriShockwaveContainer') {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      container.innerHTML = '';
+      const ringClasses = ['ring-1', 'ring-2', 'ring-3'];
+      ringClasses.forEach(cls => {
+        const ring = document.createElement('div');
+        ring.className = `siri-ripple-ring ${cls}`;
+        ring.style.left = `${x}px`;
+        ring.style.top = `${y}px`;
+        const size = Math.max(container.offsetWidth || 300, container.offsetHeight || 60) * 1.8;
+        ring.style.width = `${size}px`;
+        ring.style.height = `${size}px`;
+        container.appendChild(ring);
+      });
+
+      setTimeout(() => {
+        if (container) container.innerHTML = '';
+      }, 850);
+    }
+
+    let siriActivating = false;
+    function handleSiriLaunchClick(event) {
+      if (siriActivating) return;
+      siriActivating = true;
+
+      const btn = event.currentTarget || document.getElementById('btnLaunchDiscoveryPageAction');
+      const rect = btn.getBoundingClientRect();
+      const x = (event.clientX && event.clientX > 0) ? (event.clientX - rect.left) : (rect.width / 2);
+      const y = (event.clientY && event.clientY > 0) ? (event.clientY - rect.top) : (rect.height / 2);
+
+      // 0. Trigger Apple Intelligence screen edge aura
+      const aura = document.getElementById('siriViewportAura');
+      if (aura) {
+        aura.classList.remove('active');
+        void aura.offsetWidth; // Force reflow
+        aura.classList.add('active');
+        setTimeout(() => aura.classList.remove('active'), 1300);
+      }
+
+      // 1. Play Apple Siri Audio Chime
+      playAppleSiriChime();
+
+      // 2. Add pressed spring compression class
+      btn.classList.add('siri-pressed');
+      setTimeout(() => btn.classList.remove('siri-pressed'), 240);
+
+      // 3. Erupt multi-ring liquid chromatic shockwave
+      triggerSiriShockwave(x, y, 'siriShockwaveContainer');
+
+      // 4. Ignite parent card perimeter wave
+      const parentCard = btn.closest('.discovery-panel-card') || btn.parentElement;
+      if (parentCard) {
+        parentCard.classList.remove('siri-card-ignited');
+        void parentCard.offsetWidth; // Force reflow
+        parentCard.classList.add('siri-card-ignited');
+      }
+
+      // 5. Morph button label temporarily with high-tech ignition text
+      const label = btn.querySelector('.siri-launch-label');
+      const originalText = label ? label.textContent : '';
+      if (label) {
+        label.textContent = 'IGNITING AUTONOMOUS ENGINE...';
+        label.style.letterSpacing = '0.08em';
+      }
+
+      // 6. Snappy Apple timing: slide up confirmation modal
+      setTimeout(() => {
+        if (label) {
+          label.textContent = originalText;
+          label.style.letterSpacing = '0.04em';
+        }
+        siriActivating = false;
+        openDiscoveryConfirmModal();
+      }, 380);
+    }
+
     function openDiscoveryConfirmModal() {
       playOperatorClickSound();
       const city = 'Manchester';
@@ -6163,8 +6584,24 @@
     }
 
     async function executeConfirmedDiscovery() {
-      closeDiscoveryConfirmModal();
-      await executeDiscoveryJobFromPage();
+      const confirmBtn = document.getElementById('btnConfirmAndLaunchDiscovery');
+      if (confirmBtn) confirmBtn.classList.add('siri-pressed');
+      
+      const aura = document.getElementById('siriViewportAura');
+      if (aura) {
+        aura.classList.remove('active');
+        void aura.offsetWidth;
+        aura.classList.add('active');
+        setTimeout(() => aura.classList.remove('active'), 1300);
+      }
+
+      playAppleSiriChime();
+      
+      setTimeout(async () => {
+        if (confirmBtn) confirmBtn.classList.remove('siri-pressed');
+        closeDiscoveryConfirmModal();
+        await executeDiscoveryJobFromPage();
+      }, 180);
     }
 
     function openDiscoveryModal() {
