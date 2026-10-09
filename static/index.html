@@ -2046,8 +2046,8 @@
     }
 
     /* ==========================================================================
-       APPLE INTELLIGENCE / SIRI AURORA LAUNCH BUTTON SYSTEM
-       Fluid Chromatic Edge Beam • VisionOS Glass Core • Liquid Shockwave Waves
+       APPLE INTELLIGENCE LUXURY LAUNCH SYSTEM (BRAND SOLAR SPECTRUM)
+       Solar Amber Aurora • VisionOS Specular Core • Neural Orb Engine
        ========================================================================== */
     @property --siri-angle {
       syntax: '<angle>';
@@ -2062,13 +2062,13 @@
 
     @keyframes siriPulseAura {
       0%, 100% {
-        opacity: 0.45;
+        opacity: 0.35;
         transform: scale(0.98);
-        filter: blur(16px);
+        filter: blur(18px);
       }
       50% {
-        opacity: 0.9;
-        transform: scale(1.03);
+        opacity: 0.72;
+        transform: scale(1.02);
         filter: blur(24px);
       }
     }
@@ -2079,25 +2079,20 @@
         opacity: 0.95;
       }
       50% {
-        opacity: 0.65;
+        opacity: 0.6;
       }
       100% {
-        transform: translate(-50%, -50%) scale(2.8);
+        transform: translate(-50%, -50%) scale(2.6);
         opacity: 0;
       }
     }
 
-    @keyframes siriWaveformBounce {
-      0%, 100% { transform: scaleY(0.35); opacity: 0.45; }
-      50% { transform: scaleY(1); opacity: 1; }
-    }
-
     @keyframes siriDeckBorderWave {
       0% {
-        box-shadow: 0 0 0 1px rgba(255, 229, 0, 0.45), 0 0 35px -5px rgba(0, 223, 216, 0.4);
+        box-shadow: 0 0 0 1px rgba(255, 229, 0, 0.45), 0 0 35px -5px rgba(255, 184, 0, 0.4);
       }
       50% {
-        box-shadow: 0 0 0 2px rgba(255, 46, 147, 0.65), 0 0 75px -5px rgba(255, 229, 0, 0.55), 0 0 110px -15px rgba(121, 40, 202, 0.45);
+        box-shadow: 0 0 0 1.5px rgba(255, 229, 0, 0.75), 0 0 65px -5px rgba(255, 229, 0, 0.5), 0 0 95px -12px rgba(255, 160, 0, 0.35);
       }
       100% {
         box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 60px -12px rgba(0, 0, 0, 0.65);
@@ -2111,31 +2106,31 @@
       perspective: 1000px;
     }
 
-    /* Ambient Apple Intelligence Glow beneath button */
+    /* Ambient Apple Solar Aurora Glow beneath button */
     .siri-aurora-glow {
       position: absolute;
       inset: -4px;
       border-radius: var(--radius-pill);
       background: conic-gradient(
         from var(--siri-angle),
-        rgba(255, 229, 0, 0.8) 0%,
-        rgba(255, 46, 147, 0.75) 25%,
-        rgba(121, 40, 202, 0.75) 50%,
-        rgba(0, 223, 216, 0.8) 75%,
-        rgba(255, 229, 0, 0.8) 100%
+        rgba(255, 229, 0, 0.75) 0%,
+        rgba(255, 174, 0, 0.6) 25%,
+        rgba(255, 244, 143, 0.8) 50%,
+        rgba(255, 160, 0, 0.6) 75%,
+        rgba(255, 229, 0, 0.75) 100%
       );
-      filter: blur(16px);
-      opacity: 0.35;
+      filter: blur(18px);
+      opacity: 0.32;
       pointer-events: none;
       transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
-      animation: siriAngleSpin 7s linear infinite, siriPulseAura 4.5s ease-in-out infinite;
+      animation: siriAngleSpin 8s linear infinite, siriPulseAura 4.5s ease-in-out infinite;
       z-index: 1;
     }
 
     .siri-launch-wrapper:hover .siri-aurora-glow {
-      opacity: 0.95;
-      filter: blur(22px);
-      animation: siriAngleSpin 2.2s linear infinite, siriPulseAura 1.8s ease-in-out infinite;
+      opacity: 0.78;
+      filter: blur(24px);
+      animation: siriAngleSpin 2.8s linear infinite, siriPulseAura 2.2s ease-in-out infinite;
     }
 
     /* Primary Hero Button */
@@ -2143,25 +2138,25 @@
       position: relative;
       width: 100%;
       z-index: 2;
-      background: linear-gradient(180deg, #FFE81A 0%, #FFD600 52%, #E5BE00 100%);
-      color: #000000;
-      border: 1px solid rgba(255, 255, 255, 0.65);
+      background: linear-gradient(180deg, #FFF266 0%, #FFE500 48%, #E6B800 100%);
+      color: #050505;
+      border: 1px solid rgba(255, 255, 255, 0.7);
       border-radius: var(--radius-pill);
       padding: 1.15rem 1.75rem;
       font-family: var(--font-sans);
       font-size: 0.95rem;
-      font-weight: 900;
+      font-weight: 800;
       letter-spacing: 0.04em;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.75rem;
+      gap: 0.85rem;
       overflow: hidden;
       box-shadow: 
         inset 0 1px 1px rgba(255, 255, 255, 0.95),
         inset 0 -2px 4px rgba(0, 0, 0, 0.22),
-        0 10px 30px -5px rgba(255, 229, 0, 0.45);
+        0 10px 28px -6px rgba(255, 229, 0, 0.45);
       transition: 
         transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275),
         box-shadow 0.35s ease,
@@ -2179,33 +2174,33 @@
       background: conic-gradient(
         from var(--siri-angle),
         #FFE500 0%,
-        #FF2E93 25%,
-        #7928CA 50%,
-        #00DFD8 75%,
+        #FFFFFF 20%,
+        #FFA800 45%,
+        #FFF599 70%,
         #FFE500 100%
       );
       -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
-      opacity: 0.6;
-      animation: siriAngleSpin 5s linear infinite;
+      opacity: 0.55;
+      animation: siriAngleSpin 5.5s linear infinite;
       pointer-events: none;
       transition: opacity 0.3s ease;
     }
 
     .discovery-launch-hero-btn:hover {
-      transform: translateY(-2px) scale(1.008);
+      transform: translateY(-2px) scale(1.006);
       box-shadow: 
         inset 0 1px 1.5px rgba(255, 255, 255, 1),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.15),
-        0 14px 44px -4px rgba(255, 229, 0, 0.65),
-        0 0 24px 2px rgba(0, 223, 216, 0.35);
-      filter: brightness(1.04);
+        inset 0 -2px 4px rgba(0, 0, 0, 0.16),
+        0 14px 40px -4px rgba(255, 229, 0, 0.55),
+        0 0 22px 2px rgba(255, 184, 0, 0.35);
+      filter: brightness(1.03);
     }
 
     .discovery-launch-hero-btn:hover::before {
-      opacity: 1;
-      animation: siriAngleSpin 1.8s linear infinite;
+      opacity: 0.95;
+      animation: siriAngleSpin 2.4s linear infinite;
     }
 
     /* Active State: Spring Compression */
@@ -2240,40 +2235,83 @@
       transition: opacity 0.3s ease;
     }
 
-    /* Miniature Siri Neural Audio Waveform */
-    .siri-soundwave-track {
+    /* ==========================================================================
+       BESPOKE APPLE NEURAL ORB ANIMATED ICON
+       Zero Clutter • Dual Precision Orbital Gyros • Breathing Flare Core
+       ========================================================================== */
+    .apple-neural-orb {
+      position: relative;
+      width: 18px;
+      height: 18px;
       display: inline-flex;
       align-items: center;
-      gap: 2.5px;
-      height: 16px;
-      padding: 0 2px;
-      pointer-events: none;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
-    .siri-soundwave-track .siri-bar {
-      width: 2.5px;
-      height: 13px;
-      border-radius: 2px;
-      background: #000000;
-      opacity: 0.75;
-      transform-origin: center;
-      transition: all 0.2s ease;
+    .apple-neural-orb svg {
+      width: 18px;
+      height: 18px;
+      overflow: visible;
+      display: block;
     }
 
-    .siri-launch-wrapper:hover .siri-bar {
-      animation: siriWaveformBounce 0.65s ease-in-out infinite alternate;
+    .orb-orbital-ring {
+      transform-origin: 12px 12px;
+      animation: orbOrbitClockwise 7s linear infinite;
+      opacity: 0.85;
     }
-    .siri-launch-wrapper:hover .siri-bar.b1 { animation-delay: 0.0s; height: 8px; }
-    .siri-launch-wrapper:hover .siri-bar.b2 { animation-delay: 0.15s; height: 14px; }
-    .siri-launch-wrapper:hover .siri-bar.b3 { animation-delay: 0.08s; height: 12px; }
-    .siri-launch-wrapper:hover .siri-bar.b4 { animation-delay: 0.22s; height: 15px; }
-    .siri-launch-wrapper:hover .siri-bar.b5 { animation-delay: 0.12s; height: 9px; }
 
-    .siri-launch-icon {
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .orb-inner-ring {
+      transform-origin: 12px 12px;
+      animation: orbOrbitCounter 4.2s linear infinite;
+      opacity: 0.95;
     }
-    .discovery-launch-hero-btn:hover .siri-launch-icon {
-      transform: scale(1.15) translateX(1px);
+
+    .orb-core-flare {
+      transform-origin: 12px 12px;
+      animation: orbCoreBreathe 2.4s ease-in-out infinite;
+    }
+
+    @keyframes orbOrbitClockwise {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes orbOrbitCounter {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(-360deg); }
+    }
+
+    @keyframes orbCoreBreathe {
+      0%, 100% {
+        transform: scale(0.85);
+        opacity: 0.8;
+      }
+      50% {
+        transform: scale(1.22);
+        opacity: 1;
+      }
+    }
+
+    .discovery-launch-hero-btn:hover .orb-orbital-ring {
+      animation-duration: 2.4s;
+      opacity: 1;
+    }
+
+    .discovery-launch-hero-btn:hover .orb-inner-ring {
+      animation-duration: 1.5s;
+      opacity: 1;
+    }
+
+    .discovery-launch-hero-btn:hover .orb-core-flare {
+      animation-duration: 1.2s;
+      transform: scale(1.35);
+    }
+
+    .discovery-launch-hero-btn:active .orb-core-flare,
+    .discovery-launch-hero-btn.siri-pressed .orb-core-flare {
+      transform: scale(1.55);
     }
 
     /* Expanding Shockwave Ripple Rings Container */
@@ -2294,18 +2332,18 @@
     }
 
     .siri-ripple-ring.ring-1 {
-      border: 2px solid rgba(255, 229, 0, 0.95);
-      background: radial-gradient(circle, rgba(255, 229, 0, 0.25) 0%, transparent 70%);
-      box-shadow: 0 0 25px rgba(255, 229, 0, 0.6);
+      border: 1.5px solid rgba(255, 229, 0, 0.95);
+      background: radial-gradient(circle, rgba(255, 229, 0, 0.22) 0%, transparent 68%);
+      box-shadow: 0 0 24px rgba(255, 229, 0, 0.55);
     }
     .siri-ripple-ring.ring-2 {
-      border: 2px solid rgba(0, 223, 216, 0.85);
-      box-shadow: 0 0 35px rgba(0, 223, 216, 0.5);
+      border: 1.5px solid rgba(255, 184, 0, 0.8);
+      box-shadow: 0 0 30px rgba(255, 184, 0, 0.45);
       animation-delay: 0.05s;
     }
     .siri-ripple-ring.ring-3 {
-      border: 2px solid rgba(255, 46, 147, 0.75);
-      box-shadow: 0 0 45px rgba(255, 46, 147, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 0 35px rgba(255, 229, 0, 0.3);
       animation-delay: 0.1s;
     }
 
@@ -2314,7 +2352,7 @@
       animation: siriDeckBorderWave 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
     }
 
-    /* Apple Intelligence Full Viewport Edge Glow */
+    /* Apple Intelligence Solar Viewport Edge Glow */
     .siri-viewport-aura {
       position: fixed;
       inset: 0;
@@ -2322,9 +2360,9 @@
       z-index: 99998;
       opacity: 0;
       box-shadow: 
-        inset 0 0 45px 12px rgba(255, 229, 0, 0.45),
-        inset 0 0 90px 24px rgba(255, 46, 147, 0.35),
-        inset 0 0 140px 40px rgba(0, 223, 216, 0.35);
+        inset 0 0 50px 14px rgba(255, 229, 0, 0.4),
+        inset 0 0 95px 28px rgba(255, 184, 0, 0.25),
+        inset 0 0 140px 45px rgba(255, 244, 143, 0.15);
       transition: opacity 0.25s ease;
     }
 
@@ -2336,20 +2374,20 @@
       0% {
         opacity: 0;
         box-shadow: 
-          inset 0 0 20px 4px rgba(255, 229, 0, 0.6),
-          inset 0 0 45px 10px rgba(0, 223, 216, 0.5);
+          inset 0 0 24px 6px rgba(255, 229, 0, 0.55),
+          inset 0 0 45px 12px rgba(255, 184, 0, 0.35);
       }
       30% {
         opacity: 1;
         box-shadow: 
-          inset 0 0 70px 20px rgba(255, 229, 0, 0.8),
-          inset 0 0 120px 38px rgba(255, 46, 147, 0.65),
-          inset 0 0 190px 60px rgba(0, 223, 216, 0.55);
+          inset 0 0 65px 18px rgba(255, 229, 0, 0.65),
+          inset 0 0 110px 32px rgba(255, 184, 0, 0.45),
+          inset 0 0 160px 48px rgba(255, 244, 143, 0.25);
       }
       100% {
         opacity: 0;
         box-shadow: 
-          inset 0 0 15px 2px rgba(121, 40, 202, 0);
+          inset 0 0 15px 2px rgba(255, 229, 0, 0);
       }
     }
 
@@ -2875,7 +2913,13 @@
               <span>Hybrid Scanner Ready</span>
             </span>
             <button id="btnPageRunDiscovery" class="btn-pill btn-pill-primary" onclick="handleSiriLaunchClick(event)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <div class="apple-neural-orb" style="width:13px; height:13px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <circle class="orb-orbital-ring" cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.8" stroke-dasharray="14 6 8 4" stroke-linecap="round"/>
+                  <circle class="orb-inner-ring" cx="12" cy="12" r="5.5" stroke="currentColor" stroke-width="1.6" stroke-dasharray="7 5" stroke-linecap="round"/>
+                  <circle class="orb-core-flare" cx="12" cy="12" r="2.2" fill="currentColor"/>
+                </svg>
+              </div>
               <span>Run Lead Discovery</span>
             </button>
             <button class="btn-pill btn-pill-secondary" onclick="checkDiscoveryProvidersHealth()">
@@ -3167,19 +3211,18 @@
             </div>
           </div>
 
-          <!-- Primary Trigger Button (Apple Intelligence Siri Launch Architecture) -->
+          <!-- Primary Trigger Button (Apple Intelligence Solar Launch Architecture) -->
           <div class="siri-launch-wrapper" id="siriLaunchWrapper">
             <div class="siri-aurora-glow" id="siriAuroraGlow"></div>
             <button id="btnLaunchDiscoveryPageAction" class="discovery-launch-hero-btn" onclick="handleSiriLaunchClick(event)">
               <div class="siri-inner-specular"></div>
-              <div class="siri-soundwave-track">
-                <span class="siri-bar b1"></span>
-                <span class="siri-bar b2"></span>
-                <span class="siri-bar b3"></span>
-                <span class="siri-bar b4"></span>
-                <span class="siri-bar b5"></span>
+              <div class="apple-neural-orb">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle class="orb-orbital-ring" cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="14 6 8 4" stroke-linecap="round"/>
+                  <circle class="orb-inner-ring" cx="12" cy="12" r="5.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="7 5" stroke-linecap="round"/>
+                  <circle class="orb-core-flare" cx="12" cy="12" r="2.2" fill="currentColor"/>
+                </svg>
               </div>
-              <svg class="siri-launch-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               <span class="siri-launch-label">LAUNCH AUTONOMOUS DISCOVERY TASK</span>
             </button>
             <div class="siri-shockwave-container" id="siriShockwaveContainer"></div>
@@ -4652,7 +4695,13 @@
       <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
         <button class="btn-pill btn-pill-secondary" onclick="closeDiscoveryConfirmModal()">Cancel / Adjust</button>
         <button id="btnConfirmAndLaunchDiscovery" class="btn-pill btn-pill-primary" style="font-weight:800;" onclick="executeConfirmedDiscovery()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <div class="apple-neural-orb" style="width:14px; height:14px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <circle class="orb-orbital-ring" cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.8" stroke-dasharray="14 6 8 4" stroke-linecap="round"/>
+              <circle class="orb-inner-ring" cx="12" cy="12" r="5.5" stroke="currentColor" stroke-width="1.6" stroke-dasharray="7 5" stroke-linecap="round"/>
+              <circle class="orb-core-flare" cx="12" cy="12" r="2.2" fill="currentColor"/>
+            </svg>
+          </div>
           <span>Confirm &amp; Launch Mission</span>
         </button>
       </div>
