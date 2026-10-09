@@ -1,0 +1,12 @@
+# Vercel Deployment Ignore
+server.js
+server.py
+*.py
+.venv
+tests/
+test_*.py
+scratch/
+scripts/
+docs/
+.env*
+*.log

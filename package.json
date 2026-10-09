@@ -2,8 +2,8 @@
   "name": "dripp-international-leads",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
   "scripts": {
+    "build": "echo 'Static build ready'",
     "start": "node server.js",
     "dev": "node server.js"
   },
