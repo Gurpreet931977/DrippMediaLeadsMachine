@@ -26,19 +26,28 @@ DEFAULT_HEADERS = [
 ]
 
 def get_sheet_client():
-    # 1. Direct JSON secret (string payload)
-    sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY")
+    """
+    Initializes and returns an authorized gspread client using:
+    1. GOOGLE_SERVICE_ACCOUNT_JSON (raw JSON string in environment)
+    2. GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    3. GOOGLE_APPLICATION_CREDENTIALS (file path)
+    4. Local default file fallback (if present on disk in local development)
+    """
+    # 1. Direct JSON secret (string payload or dict)
+    sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip() or os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY", "").strip()
     if sa_json:
         try:
             sa_data = json.loads(sa_json) if isinstance(sa_json, str) else sa_json
-            creds = Credentials.from_service_account_info(sa_data, scopes=SCOPES)
-            return gspread.authorize(creds)
+            if isinstance(sa_data, dict) and "client_email" in sa_data and "private_key" in sa_data:
+                creds = Credentials.from_service_account_info(sa_data, scopes=SCOPES)
+                return gspread.authorize(creds)
         except Exception as e:
-            pass
+            # If explicit JSON was provided but failed to parse/authorize, raise clear error
+            raise ValueError(f"Failed to initialize Google credentials from GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
 
     # 2. Individual fields (email + private key)
-    sa_email = os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL")
-    sa_pkey = os.getenv("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")
+    sa_email = os.getenv("GOOGLE_SERVICE_ACCOUNT_EMAIL", "").strip()
+    sa_pkey = os.getenv("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY", "").strip()
     if sa_email and sa_pkey:
         try:
             pkey_formatted = sa_pkey.replace("\\n", "\n")
@@ -50,17 +59,29 @@ def get_sheet_client():
             }
             creds = Credentials.from_service_account_info(sa_data, scopes=SCOPES)
             return gspread.authorize(creds)
-        except Exception:
-            pass
+        except Exception as e:
+            raise ValueError(f"Failed to initialize Google credentials from individual environment fields: {e}")
 
     # 3. Credentials file path
-    creds_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "poised-eye-509816-a4-5444ff3f8520.json")
-    if not os.path.isabs(creds_file):
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        creds_file = os.path.join(base_dir, creds_file)
-        
-    creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
-    return gspread.authorize(creds)
+    creds_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    if creds_file:
+        if not os.path.isabs(creds_file):
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            creds_file = os.path.join(base_dir, creds_file)
+        if os.path.exists(creds_file):
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
+            return gspread.authorize(creds)
+
+    # 4. Local dev default file fallback
+    default_dev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poised-eye-509816-a4-5444ff3f8520.json")
+    if os.path.exists(default_dev_file):
+        creds = Credentials.from_service_account_file(default_dev_file, scopes=SCOPES)
+        return gspread.authorize(creds)
+
+    raise FileNotFoundError(
+        "No Google Service Account credentials found. "
+        "Set GOOGLE_SERVICE_ACCOUNT_JSON in environment or GOOGLE_APPLICATION_CREDENTIALS."
+    )
 
 def get_worksheet(sheet_url=None, worksheet_name="Sheet1"):
     url = sheet_url or os.getenv("GOOGLE_SHEET_URL")

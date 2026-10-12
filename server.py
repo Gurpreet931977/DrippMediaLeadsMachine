@@ -4,8 +4,12 @@ import asyncio
 import uuid
 import secrets
 import logging
+import time
+import re
+import hmac
+import hashlib
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -65,7 +69,7 @@ def validate_session_token(token: str) -> bool:
         return False
     return True
 
-# Configure CORS and CSRF allowed origins
+# Configure CORS and CSRF allowed origins (Lockdown: exact production domain + explicitly approved origins only)
 allowed_origins = [
     "https://dripp-media-leads-machine.vercel.app",
     "http://localhost:8000",
@@ -73,11 +77,14 @@ allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-env_cors = os.getenv("CORS_ORIGINS", "").strip()
+env_cors = os.getenv("CORS_ORIGINS", "").strip() or os.getenv("ALLOWED_ORIGINS", "").strip()
 if env_cors:
     for o in env_cors.split(","):
-        if o.strip() and o.strip() not in allowed_origins:
-            allowed_origins.append(o.strip())
+        o_clean = o.strip()
+        if o_clean and o_clean not in allowed_origins:
+            allowed_origins.append(o_clean)
+
+allowed_origin_regex = os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or None
 
 def is_allowed_origin(origin: str) -> bool:
     if not origin:
@@ -86,9 +93,39 @@ def is_allowed_origin(origin: str) -> bool:
     for ao in allowed_origins:
         if clean_origin == ao.rstrip("/"):
             return True
-    if clean_origin.startswith("https://") and clean_origin.endswith(".vercel.app"):
-        return True
+    if allowed_origin_regex:
+        try:
+            if re.match(allowed_origin_regex, clean_origin):
+                return True
+        except Exception:
+            pass
     return False
+
+# Operator login rate limiting: sliding window (max 5 failed attempts per 5 minutes per IP)
+login_failed_attempts: Dict[str, List[float]] = {}
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+FAILED_LOGIN_WINDOW_SECONDS = 300  # 5 minutes
+
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for") or request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def is_login_rate_limited(ip: str) -> bool:
+    now = time.time()
+    attempts = [ts for ts in login_failed_attempts.get(ip, []) if now - ts < FAILED_LOGIN_WINDOW_SECONDS]
+    login_failed_attempts[ip] = attempts
+    return len(attempts) >= MAX_FAILED_LOGIN_ATTEMPTS
+
+def record_failed_login(ip: str) -> None:
+    now = time.time()
+    attempts = [ts for ts in login_failed_attempts.get(ip, []) if now - ts < FAILED_LOGIN_WINDOW_SECONDS]
+    attempts.append(now)
+    login_failed_attempts[ip] = attempts
+
+def clear_failed_logins(ip: str) -> None:
+    login_failed_attempts.pop(ip, None)
 
 def get_authenticated_operator(request: Request) -> Dict[str, Any]:
     """
@@ -230,14 +267,19 @@ async def operator_security_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
+cors_config: Dict[str, Any] = {
+    "allow_origins": allowed_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+    "allow_private_network": True,
+}
+if allowed_origin_regex:
+    cors_config["allow_origin_regex"] = allowed_origin_regex
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=r"^https://.*\.vercel\.app$",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_private_network=True,
+    **cors_config
 )
 
 # Global in-memory state for active run & real-time logs (mirrors run_manager)
@@ -580,17 +622,28 @@ async def operator_login_endpoint(req: OperatorLoginRequest, request: Request):
     """
     Exchanges the master Operator Key for a secure short-lived session token (2 hour TTL)
     and sets an HttpOnly Secure cookie for server-managed session persistence.
+    Protected with sliding-window rate limiting: max 5 failed attempts per 5 minutes per IP.
     """
+    client_ip = get_client_ip(request)
+    if is_login_rate_limited(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. IP temporarily locked for 5 minutes."
+        )
+
     expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
     provided = req.operator_key.strip()
     
     if not provided:
+        record_failed_login(client_ip)
         raise HTTPException(status_code=401, detail="Operator key required")
 
     if expected:
         if not secrets.compare_digest(provided, expected):
+            record_failed_login(client_ip)
             raise HTTPException(status_code=401, detail="Invalid operator key")
             
+    clear_failed_logins(client_ip)
     session_info = create_operator_session()
     response = JSONResponse({
         "status": "ok",
@@ -665,8 +718,10 @@ async def get_crm_status_endpoint():
     Distinguishes CRM connectivity from general backend server health.
     """
     spreadsheet_id = os.getenv("GOOGLE_SHEET_ID", "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc")
+    sa_json_configured = bool(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip() or os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY", "").strip())
     creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
-    creds_configured = bool(creds_path and os.path.exists(creds_path))
+    creds_file_exists = bool(creds_path and os.path.exists(creds_path))
+    creds_configured = sa_json_configured or creds_file_exists
     
     try:
         storage = GoogleSheetsStorageProvider()
@@ -2755,13 +2810,97 @@ async def emergency_stop_email_endpoint(request: Request):
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
+def verify_inbound_webhook_auth(request: Request, body_bytes: bytes) -> Tuple[bool, Optional[str]]:
+    """
+    Validates webhook cryptographic signature, shared secret, and timestamp replay defense.
+    Returns: (is_authenticated, error_reason)
+    """
+    secret = os.getenv("INBOUND_WEBHOOK_SECRET", "").strip() or os.getenv("EMAIL_WEBHOOK_SECRET", "").strip()
+    if not secret:
+        return False, "disabled"
+
+    # 1. Timestamp replay defense (window: 300 seconds)
+    ts_hdr = (
+        request.headers.get("x-webhook-timestamp")
+        or request.headers.get("X-Webhook-Timestamp")
+        or request.headers.get("x-timestamp")
+        or request.headers.get("X-Timestamp")
+    )
+    if ts_hdr:
+        try:
+            ts_val = float(ts_hdr.strip())
+            if abs(time.time() - ts_val) > 300:
+                return False, "Timestamp replay detected: request expired or timestamp drifted beyond 300s window"
+        except (ValueError, TypeError):
+            return False, "Invalid timestamp header format"
+
+    # 2. Check HMAC-SHA256 signature
+    sig_hdr = (
+        request.headers.get("x-webhook-signature")
+        or request.headers.get("X-Webhook-Signature")
+        or request.headers.get("x-signature-256")
+        or request.headers.get("X-Signature-256")
+        or request.headers.get("x-hub-signature-256")
+        or request.headers.get("X-Hub-Signature-256")
+        or ""
+    ).strip()
+    if sig_hdr:
+        expected_hmac = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest()
+        provided_sig = sig_hdr.lower()
+        if provided_sig.startswith("sha256="):
+            provided_sig = provided_sig[7:].strip()
+        if secrets.compare_digest(provided_sig, expected_hmac.lower()):
+            return True, None
+
+    # 3. Check shared secret header (X-Webhook-Secret)
+    shared_secret_hdr = (request.headers.get("x-webhook-secret") or request.headers.get("X-Webhook-Secret") or "").strip()
+    if shared_secret_hdr and secrets.compare_digest(shared_secret_hdr, secret):
+        return True, None
+
+    # 4. Check Bearer token in Authorization header
+    auth_hdr = request.headers.get("authorization") or request.headers.get("Authorization") or ""
+    if auth_hdr.strip().startswith("Bearer "):
+        bearer_token = auth_hdr.strip()[7:].strip()
+        if secrets.compare_digest(bearer_token, secret):
+            return True, None
+
+    return False, "Invalid or missing webhook signature or secret"
+
+
 @app.post("/api/email/inbound/reply-webhook")
+@app.post("/api/webhook/inbound-reply")
 async def inbound_email_reply_endpoint(request: Request):
     """
     Inbound webhook receiver: logs EMAIL_REPLY_RECEIVED and routes to OPERATOR_REVIEW.
+    Cryptographically authenticated via HMAC-SHA256 or shared secret with replay protection.
+    If INBOUND_WEBHOOK_SECRET is unconfigured, endpoint returns HTTP 503 (Disabled).
     """
     try:
-        body = await request.json()
+        body_bytes = await request.body()
+        is_auth, auth_err = verify_inbound_webhook_auth(request, body_bytes)
+        if not is_auth:
+            if auth_err == "disabled":
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "status": "disabled",
+                        "message": "Inbound webhook disabled: authentication secret not configured.",
+                        "detail": "Set INBOUND_WEBHOOK_SECRET in environment to safely enable inbound webhooks."
+                    }
+                )
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "status": "unauthorized",
+                    "message": auth_err or "Invalid or missing webhook signature/secret."
+                }
+            )
+
+        try:
+            body = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+        except Exception:
+            return JSONResponse({"status": "error", "message": "Malformed JSON payload"}, status_code=400)
+
         lead_id = body.get("lead_id")
         if not lead_id:
             return JSONResponse({"status": "error", "message": "Missing 'lead_id'"}, status_code=400)
