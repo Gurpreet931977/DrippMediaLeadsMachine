@@ -93,14 +93,17 @@ def get_sheet_client():
 
 def get_worksheet(sheet_url=None, worksheet_name="Sheet1"):
     url = sheet_url or os.getenv("GOOGLE_SHEET_URL")
-    sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID")
+    sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
     gc = get_sheet_client()
-    if url:
+    if sheet_id:
+        try:
+            spreadsheet = gc.open_by_key(sheet_id)
+        except Exception:
+            spreadsheet = gc.open_by_url(url or f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit")
+    elif url:
         spreadsheet = gc.open_by_url(url)
-    elif sheet_id:
-        spreadsheet = gc.open_by_key(sheet_id)
     else:
-        raise ValueError("Neither GOOGLE_SHEET_URL nor GOOGLE_SHEET_ID / SPREADSHEET_ID is set.")
+        spreadsheet = gc.open_by_key("1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc")
     try:
         return spreadsheet.worksheet(worksheet_name)
     except gspread.WorksheetNotFound:

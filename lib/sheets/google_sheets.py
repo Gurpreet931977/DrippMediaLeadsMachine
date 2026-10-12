@@ -220,7 +220,9 @@ class GoogleSheetsStorageProvider:
     Implements normalization, deduplication, row updating, and text-safe phone formatting.
     """
     def __init__(self, sheet_url: Optional[str] = None):
-        self.sheet_url = sheet_url or os.getenv("GOOGLE_SHEET_URL")
+        sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
+        default_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
+        self.sheet_url = sheet_url or os.getenv("GOOGLE_SHEET_URL") or default_url
         self._gc = None
         self._spreadsheet = None
         self._leads_ws = None
@@ -252,10 +254,17 @@ class GoogleSheetsStorageProvider:
     @property
     def spreadsheet(self):
         if not self._spreadsheet:
+            sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
             if not self.sheet_url:
-                raise ValueError("GOOGLE_SHEET_URL is not set.")
+                self.sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
             try:
-                self._spreadsheet = self.gc.open_by_url(self.sheet_url)
+                if sheet_id:
+                    try:
+                        self._spreadsheet = self.gc.open_by_key(sheet_id)
+                    except Exception:
+                        self._spreadsheet = self.gc.open_by_url(self.sheet_url)
+                else:
+                    self._spreadsheet = self.gc.open_by_url(self.sheet_url)
                 try:
                     from lib.monitoring.detectors import GoogleSheetsMonitor
                     GoogleSheetsMonitor().record_success()

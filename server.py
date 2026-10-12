@@ -746,7 +746,8 @@ async def get_crm_status_endpoint():
     sa_json_configured = bool(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip() or os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY", "").strip())
     creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
     creds_file_exists = bool(creds_path and os.path.exists(creds_path))
-    creds_configured = sa_json_configured or creds_file_exists
+    in_gcp = bool(os.getenv("K_SERVICE") or os.getenv("GOOGLE_CLOUD_PROJECT"))
+    creds_configured = sa_json_configured or creds_file_exists or in_gcp
     
     try:
         storage = GoogleSheetsStorageProvider()
