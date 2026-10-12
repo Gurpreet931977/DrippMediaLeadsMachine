@@ -57,27 +57,34 @@ In Phase 12.2.3, two alternative architectures were evaluated: Render Free ($0/m
 
 | Quota Dimension | Request-Based (Recommended) | Instance-Based (Always Allocated) | Free Tier Eligibility |
 |:---|:---|:---|:---:|
+### 2.1 Cloud Run Service: Request-Based vs Instance-Based Quotas & Unit Pricing
+
+| Quota Dimension | Request-Based (Recommended) | Instance-Based (Always Allocated) | Free Tier Eligibility |
+|:---|:---|:---|:---:|
 | **CPU Allocation** | CPU allocated only during request processing | CPU allocated 100% of instance life | **Request-based only** |
 | **Idle Behavior** | Scales to 0 instances after requests cease | Holds minimum instances active (`--min-instances 1+`) | Scale-to-zero required |
 | **Monthly Free Requests** | **2,000,000 requests** / month | Shares 2M request quota | Tier 1 regions |
 | **Monthly Free vCPU-seconds**| **360,000 vCPU-seconds** / month (~100 hrs of 1 vCPU) | Consumed continuously; exhausts 100 hrs in 4.1 days | Tier 1 regions |
 | **Monthly Free Memory** | **180,000 GiB-seconds** / month (~50 hrs of 1 GiB) | Consumed continuously; exhausts in 2.1 days | Tier 1 regions |
+| **Unit Cost Beyond Free Tier** | vCPU: **$0.00002400 / vCPU-sec** ($0.0864/hr)<br>Memory: **$0.00000250 / GiB-sec** ($0.009/hr)<br>Requests: **$0.40 / million requests** | Continuous per-instance billing at same rates | Tier 1 regions (`us-central1`) |
 | **Cold Start** | 1 to 3 seconds | Sub-millisecond (always warm) | — |
 
 > **OPERATING DIRECTIVE:** The Cloud Run Service must be deployed with `--min-instances 0` and `--cpu-throttling` (request-based compute) to ensure 100% qualification for the free compute allowance during idle periods.
 
 ### 2.2 Cloud Run Jobs Quotas & Limits
 
-- **Task Execution Timeout:** Cloud Run Jobs allow execution up to **24 hours (86,400 seconds)** per task (compared to 60 minutes max for Cloud Run Service, and 100 seconds max for Render HTTP proxy).
-- **Billing Model:** CPU is allocated for the active duration of the job run. Compute time shares the monthly 360,000 vCPU-seconds and 180,000 GiB-seconds pool.
-- **Concurrent Task Limit:** Default 100 concurrent tasks per region. Dripp Media enforces a single-instance lease in Firestore, guaranteeing concurrency = 1.
+- **Task Execution Timeout:**
+  - Default: **10 minutes (600 seconds)**.
+  - Maximum Configurable Timeout: Up to **24 hours (86,400 seconds)** per task (compared to 60 minutes max for Cloud Run Service, and 100 seconds max for Render HTTP proxy).
+- **Billing Model:** Charged for CPU and memory allocated during active task execution at Tier 1 rates ($0.00002400/vCPU-s, $0.00000250/GiB-s), sharing the monthly 360,000 vCPU-s and 180,000 GiB-s free pool.
+- **Concurrent Task Limit:** Default 100 concurrent tasks per region. Dripp Media enforces a single-instance lease in Firestore (`holder_id`), guaranteeing active concurrency = 1.
 
-### 2.3 Cloud Firestore (Native Mode) Quotas
+### 2.3 Cloud Firestore (Native Mode) Quotas & Unit Pricing
 
-- **Stored Data:** **1 GiB** stored data free per billing account.
-- **Daily Document Reads:** **50,000 reads** per day free.
-- **Daily Document Writes:** **20,000 writes** per day free.
-- **Daily Document Deletes:** **20,000 deletes** per day free.
+- **Stored Data:** **1 GiB** stored data free per billing account ($0.18 / GiB / month thereafter).
+- **Daily Document Reads:** **50,000 reads** per day free ($0.06 per 100,000 reads thereafter).
+- **Daily Document Writes:** **20,000 writes** per day free ($0.18 per 100,000 writes thereafter).
+- **Daily Document Deletes:** **20,000 deletes** per day free ($0.02 per 100,000 deletes thereafter).
 - **Network Transfer:** 10 GiB/month outbound data transfer free within Google Cloud.
 
 ### 2.4 Ancillary Dependencies & Potential Cost Exposure
@@ -89,32 +96,31 @@ In Phase 12.2.3, two alternative architectures were evaluated: Render Free ($0/m
 | **Network Egress** | **1 GB** worldwide egress / month free | **$0.12 / GB** (Tier 1) | Response payloads are JSON API only (< 10 MB/month total). |
 | **Cloud Logging** | First **50 GiB** log ingestion free / month | **$0.50 / GiB** | Set log level to `INFO` in production; suppress debug payloads. |
 
-### 2.5 Hard Spending Cap Reality & Billing Alert Clarification
+### 2.5 Hard Spending Cap Reality & Possibility of Overage
 
 > [!WARNING]
-> **Free-tier allowances are NOT a guaranteed $0 bill.**  
-> Google Cloud Billing Budgets and alerts **DO NOT** impose a hard spending cap or stop running services when a threshold is crossed. Budgets are purely asynchronous alert mechanisms that send emails or trigger Pub/Sub topics.  
-> If an unexpected traffic surge, infinite loop, or DDoS attack occurs, Google Cloud will continue processing requests and automatically bill the linked credit card.
-
-**Required Production Spending Cap Architecture:**
-To implement a true hard cap of $0.00 (or minimal safety threshold), an automated detacher must be linked:
-`Cloud Billing Budget ($1.00 threshold) -> Pub/Sub Topic -> Cloud Function -> Projects.billingInfo.update(billingAccount="")`.
-This will programmatically detach billing and halt billable operations if the threshold is reached.
+> **Free-tier allowances are NOT a guaranteed $0 bill. GCP does NOT offer a native hard spending cap.**  
+> Google Cloud Billing Budgets and alerts **DO NOT** stop running services or cap billing when a threshold is crossed. Budgets are purely asynchronous alert mechanisms that send emails or trigger Pub/Sub topics.  
+> If an unexpected traffic surge, infinite retry loop, or denial-of-service event occurs, Google Cloud will continue processing requests and automatically charge the linked credit card.  
+> Even with an automated programmatic detacher (`Cloud Budget -> Pub/Sub -> Cloud Function -> update_project_billing_info(name, billing_account_name="")`), project resource teardown takes several minutes, during which small overage charges can still accrue. **Overage risk is non-zero.**
 
 ### 2.6 Correction of Render Free Assumptions
 
 Render Free Web Services do not require a credit card and suspend when bandwidth limits are reached, but they do NOT provide a contractual SLA. Render Free instances sleep after 15 minutes of inactivity, introduce 30–50 second cold starts, terminate HTTP requests at 100 seconds, and free plan terms remain subject to provider modification. Render is retained strictly as an alternative reference architecture. Google Cloud is the selected target.
 
-### 2.7 Firestore Database Location Identifiers: `nam5` vs `us-central1`
+### 2.7 Firestore Database Location Identifiers: Regional `us-central1` Preferred over `nam5`
 
 > [!IMPORTANT]
 > **`nam5` and `us-central1` are NOT interchangeable names.**
 > - **`nam5`** is a **Multi-Region location identifier** (United States multi-region, replicating across multiple data centers including Iowa and South Carolina).
 > - **`us-central1`** is a **Regional location identifier** (Iowa single data center).
 >
-> When creating the Firestore database in the GCP console or via CLI (`gcloud firestore databases create`), the location must be chosen deliberately:
-> - For free tier: Both `nam5` and `us-central1` qualify for the 1 GiB free storage and 50k reads/20k writes per day.
-> - For lowest latency and zero inter-zone network charges, the Cloud Run Service region and Firestore location should be aligned (e.g. Cloud Run in `us-central1` with regional Firestore in `us-central1`, or Cloud Run in `us-central1` with multi-region `nam5`).
+> **DEPLOYMENT RECOMMENDATION: Co-located Regional `us-central1`**
+> - Both qualify for the Firestore 1 GiB free tier and 50k reads/20k writes per day.
+> - **Co-locating both Cloud Run and Firestore in regional `us-central1` is strictly preferred**:
+>   1. **Lowest Latency:** Intra-datacenter round-trips (< 5ms) for transactional lease acquisition and checkpoint persistence.
+>   2. **Zero Cross-Region Egress Fees:** Eliminates multi-region egress costs that can accrue between regional compute and multi-region storage.
+>   3. **Tier 1 Free Quota Eligibility:** Qualifies for the maximum Tier 1 compute and request allowances.
 
 ---
 

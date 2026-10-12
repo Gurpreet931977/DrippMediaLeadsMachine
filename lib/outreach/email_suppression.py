@@ -142,6 +142,23 @@ class EmailSuppressionManager:
             if stype == SuppressionType.LEAD_SUPPRESSION and clean_lead and target == clean_lead.lower():
                 return True, f"Lead '{clean_lead}' is suppressed: {s.get('reason', 'Lead-level suppression')}"
 
+        # Check canonical Cloud Firestore suppression store if available
+        try:
+            from lib.system.firestore_state_store import firestore_store
+            fs_supp = firestore_store.get_suppression(clean_email)
+            if fs_supp:
+                return True, f"Email '{clean_email}' is suppressed in canonical store: {fs_supp.get('reason', 'Opt-out')}"
+            if clean_domain:
+                fs_dom = firestore_store.get_suppression(clean_domain)
+                if fs_dom:
+                    return True, f"Domain '@{clean_domain}' is suppressed in canonical store: {fs_dom.get('reason', 'Domain suppression')}"
+            if clean_lead:
+                fs_lead = firestore_store.get_suppression(clean_lead.lower())
+                if fs_lead:
+                    return True, f"Lead '{clean_lead}' is suppressed in canonical store: {fs_lead.get('reason', 'Lead suppression')}"
+        except Exception:
+            pass
+
         return False, None
 
     def add_suppression(
@@ -178,6 +195,14 @@ class EmailSuppressionManager:
             }
             records.append(entry)
             atomic_write_json(self.suppression_path, records)
+
+            # Synchronize into canonical Cloud Firestore suppression store
+            try:
+                from lib.system.firestore_state_store import firestore_store
+                firestore_store.save_suppression(actual_target, entry)
+            except Exception:
+                pass
+
             return entry
 
     def suppress_email(self, email: str, reason: str = "Recipient opted out", metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -223,6 +248,13 @@ class EmailSuppressionManager:
             }
             atomic_write_json(self.unsubscribes_path, tokens)
 
+            # Synchronize into canonical Cloud Firestore unsubscribes store
+            try:
+                from lib.system.firestore_state_store import firestore_store
+                firestore_store.save_unsubscribe(token, tokens[token])
+            except Exception:
+                pass
+
         root_url = (base_url or self.base_url).rstrip("/")
         url = f"{root_url}/api/email/unsubscribe/{token}"
         return UnsubscribeLink(token, url)
@@ -240,7 +272,13 @@ class EmailSuppressionManager:
 
     def get_unsubscribe_record(self, token: str) -> Optional[Dict[str, Any]]:
         tokens = self._load_unsubscribes()
-        return tokens.get(token)
+        if token in tokens:
+            return tokens[token]
+        try:
+            from lib.system.firestore_state_store import firestore_store
+            return firestore_store.get_unsubscribe(token)
+        except Exception:
+            return None
 
     def process_unsubscribe(
         self,

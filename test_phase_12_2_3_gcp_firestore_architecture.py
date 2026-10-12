@@ -396,7 +396,54 @@ class TestPipelineRunManagerFirestoreIntegration(unittest.TestCase):
             self.assertEqual(remote_rec["run_id"], run_id)
             self.assertEqual(remote_rec["status"], "QUEUED")
 
+    def test_email_suppression_manager_respects_canonical_firestore_suppressions(self):
+        """22. EmailSuppressionManager queries and honors suppressions stored in Firestore."""
+        import tempfile
+        from lib.outreach.email_suppression import EmailSuppressionManager
+        from lib.system.firestore_state_store import firestore_store
+
+        firestore_store.clear_mock_data()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            empty_supp_path = os.path.join(tmpdir, "empty_supp.json")
+            empty_unsub_path = os.path.join(tmpdir, "empty_unsub.json")
+            supp_mgr = EmailSuppressionManager(
+                suppression_path=empty_supp_path,
+                unsubscribes_path=empty_unsub_path,
+            )
+
+            # Initially not suppressed
+            target_email = "optout-corp@manchester-restaurants.co.uk"
+            is_supp, reason = supp_mgr.is_suppressed(email=target_email)
+            self.assertFalse(is_supp)
+
+            # Store suppression in Firestore canonical store
+            firestore_store.save_suppression(target_email, {
+                "target": target_email,
+                "reason": "CAN-SPAM unsubscribe processed via Cloud Run",
+                "suppression_type": "EMAIL_UNSUBSCRIBE",
+            })
+
+            # Now EmailSuppressionManager must detect it via Firestore!
+            is_supp, reason = supp_mgr.is_suppressed(email=target_email)
+            self.assertTrue(is_supp, "Email must be suppressed when present in Firestore canonical store")
+            self.assertIn("canonical store", reason)
+
+            # Test unsubscribe token lookup via Firestore
+            unsub_token = "token_remote_firestore_99"
+            firestore_store.save_unsubscribe(unsub_token, {
+                "unsubscribe_token": unsub_token,
+                "lead_id": "LD-TEST-99",
+                "email": target_email,
+                "unsubscribed": True,
+            })
+            valid, lead_id, email = supp_mgr.verify_unsubscribe_token(unsub_token)
+            self.assertTrue(valid)
+            self.assertEqual(lead_id, "LD-TEST-99")
+            self.assertEqual(email, target_email)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

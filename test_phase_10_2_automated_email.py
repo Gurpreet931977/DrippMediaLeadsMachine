@@ -41,6 +41,7 @@ import time
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
@@ -1202,7 +1203,9 @@ class TestEmailAPIEndpoints(unittest.TestCase):
             "message_id": "inbound-msg-9999",
             "provider": "SENDGRID_INBOUND",
         }
-        res = self.client.post("/api/email/inbound/reply-webhook", json=payload)
+        with patch.dict(os.environ, {"INBOUND_WEBHOOK_SECRET": "test-webhook-secret-phase-10-2"}):
+            headers = {"x-webhook-secret": "test-webhook-secret-phase-10-2"}
+            res = self.client.post("/api/email/inbound/reply-webhook", json=payload, headers=headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn(data["status"], ("PROCESSED", "REPLY_RECORDED"))
