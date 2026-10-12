@@ -1,0 +1,35 @@
+# Render Blueprint Specification for Dripp Media Leads Machine Backend
+# Documentation: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: dripp-media-leads-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt # or oregon / ohio
+    healthCheckPath: /api/system/health
+    disk:
+      name: dripp-leads-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: TRAVEL_MODE
+        value: ACTIVE
+      - key: COMMERCIAL_ACTIONS_ENABLED
+        value: "false"
+      - key: AUTOMATED_EMAIL_ENABLED
+        value: "false"
+      - key: CRON
+        value: DISABLED
+      - key: ALLOWED_ORIGINS
+        value: "https://dripp-media-leads-machine.vercel.app,http://localhost:3000,http://127.0.0.1:3000"
+      - key: OPERATOR_KEY
+        generateValue: true
+      - key: GOOGLE_SHEET_NAME
+        value: "Dripp Media Leads CRM"
+      - key: GOOGLE_SHEET_KEY
+        value: "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false # Set securely in Render Dashboard as Secret

@@ -4029,7 +4029,7 @@
                 <strong style="font-size:0.82rem; color:var(--text-main);">Backend API URL</strong>
                 <span id="backendEnvIndicator" style="font-size:0.7rem; font-family:var(--font-mono); color:var(--accent-yellow);">LOCAL / RELATIVE</span>
               </div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Leave empty to use current origin / localhost:8000, or enter hosted FastAPI URL (e.g. https://api.drippmedia.com)</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">On localhost, defaults to local port 8000. On Vercel / production, enter your hosted FastAPI HTTPS URL (e.g. https://api.drippmedia.com or Render/Railway endpoint).</div>
               <div style="display:flex; gap:0.5rem; width:100%; margin-top:4px;">
                 <input id="inputBackendUrl" type="url" placeholder="http://127.0.0.1:8000 or https://..." class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
               </div>
@@ -4037,11 +4037,18 @@
 
             <div class="settings-action-row" style="flex-direction:column; align-items:flex-start; gap:0.4rem; margin-top:0.75rem;">
               <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                <strong style="font-size:0.82rem; color:var(--text-main);">Operator API Key</strong>
-                <span style="font-size:0.7rem; color:var(--text-muted);">Optional for local dev</span>
+                <strong style="font-size:0.82rem; color:var(--text-main);">Operator Session &amp; Security</strong>
+                <span id="operatorSessionBadge" class="status-pill-mini pass" style="font-size:0.68rem;">UNAUTHENTICATED</span>
               </div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Enter Operator Key to issue a short-lived 2-hour session. Master secrets are never stored in localStorage.</div>
               <div style="display:flex; gap:0.5rem; width:100%; margin-top:4px;">
                 <input id="inputOperatorKey" type="password" placeholder="Enter Operator Key" class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
+                <button id="btnUnlockOperator" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.35rem 0.75rem;" onclick="loginOperatorSession()">
+                  <span>Unlock</span>
+                </button>
+                <button id="btnLockOperator" class="btn-pill btn-pill-secondary" style="display:none; font-size:0.72rem; padding:0.35rem 0.75rem; color:#FF4D4D;" onclick="logoutOperatorSession()">
+                  <span>Lock</span>
+                </button>
               </div>
             </div>
 
@@ -4072,9 +4079,12 @@
                 <strong style="font-size:0.82rem; color:var(--text-main);">Google Sheets CRM</strong>
                 <div class="settings-label-sub">Outreach staging &amp; lead truth record</div>
               </div>
-              <a href="https://docs.google.com/spreadsheets/d/1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc/edit" target="_blank" rel="noopener" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
-                <span>Open CRM</span>
-              </a>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span id="settingSheetsCrmBadge" class="status-pill-mini pass" style="font-size:0.68rem;">LIVE CRM</span>
+                <a href="https://docs.google.com/spreadsheets/d/1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc/edit" target="_blank" rel="noopener" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                  <span>Open CRM</span>
+                </a>
+              </div>
             </div>
 
             <div class="settings-action-row">
@@ -4914,7 +4924,7 @@
     let readinessData = null;
 
     // ========================================================================
-    // PHASE 12.1 UNIFIED API CLIENT & CONFIGURATION
+    // PHASE 12.2 UNIFIED SECURE API CLIENT & GATEWAY CONFIGURATION
     // ========================================================================
     const DrippConfig = {
       getBackendUrl: function() {
@@ -4923,36 +4933,55 @@
         if (typeof window.__ENV__ !== 'undefined' && window.__ENV__.BACKEND_API_URL) {
           return window.__ENV__.BACKEND_API_URL.replace(/\/$/, '');
         }
-        // If loaded directly from the backend server (e.g. localhost:8000 or 127.0.0.1:8000):
+        if (typeof window.DRIPP_BACKEND_URL !== 'undefined' && window.DRIPP_BACKEND_URL) {
+          return window.DRIPP_BACKEND_URL.replace(/\/$/, '');
+        }
+        // If loaded directly from local backend server (port 8000 or localhost without dev port):
         if (window.location.port === '8000' || (window.location.hostname === 'localhost' && window.location.port !== '3000')) {
           return '';
         }
-        // When loaded from Vercel (or any other domain/port), default to localhost:8000
-        return 'http://localhost:8000';
-      },
-      getOperatorKey: function() {
-        return localStorage.getItem('dripp_operator_key') || (typeof window.__ENV__ !== 'undefined' ? window.__ENV__.OPERATOR_KEY : '') || '';
+        // On remote origins (e.g. Vercel or custom domain), NEVER silently default to localhost:8000!
+        // Return null to indicate unconfigured state and prevent false-success / silent failure
+        return null;
       },
       setBackendUrl: function(url) {
-        if (url) localStorage.setItem('dripp_backend_api_url', url.trim());
+        if (url && url.trim()) localStorage.setItem('dripp_backend_api_url', url.trim());
         else localStorage.removeItem('dripp_backend_api_url');
       },
-      setOperatorKey: function(key) {
-        if (key) localStorage.setItem('dripp_operator_key', key.trim());
-        else localStorage.removeItem('dripp_operator_key');
+      getSessionToken: function() {
+        return sessionStorage.getItem('dripp_operator_session_token') || '';
+      },
+      setSessionToken: function(token) {
+        if (token && token.trim()) sessionStorage.setItem('dripp_operator_session_token', token.trim());
+        else sessionStorage.removeItem('dripp_operator_session_token');
+      },
+      clearPermanentOperatorSecrets: function() {
+        // Enforce Phase 12.2 credential hygiene: eradicate permanent master keys from browser storage
+        localStorage.removeItem('dripp_operator_key');
+        localStorage.removeItem('OPERATOR_KEY');
       }
     };
 
+    // Immediately sanitize browser storage on client startup
+    DrippConfig.clearPermanentOperatorSecrets();
+
     async function apiFetch(endpoint, options = {}) {
       const baseUrl = DrippConfig.getBackendUrl();
+      if (baseUrl === null) {
+        const unconfigMsg = 'Backend Gateway Unconfigured. Enter your hosted FastAPI URL in System Settings.';
+        console.warn('[API Gateway Notice]', unconfigMsg);
+        updateBackendConnectionStatus(false, unconfigMsg);
+        throw new Error(unconfigMsg);
+      }
+
       const cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
       const url = (baseUrl ? baseUrl : '') + cleanEndpoint;
       
       const headers = Object.assign({}, options.headers || {});
-      const opKey = DrippConfig.getOperatorKey();
-      if (opKey && !headers['Authorization'] && !headers['X-Operator-Key']) {
-        headers['Authorization'] = `Bearer ${opKey}`;
-        headers['X-Operator-Key'] = opKey;
+      const sessionToken = DrippConfig.getSessionToken();
+      if (sessionToken && !headers['Authorization'] && !headers['X-Session-Token']) {
+        headers['Authorization'] = `Bearer ${sessionToken}`;
+        headers['X-Session-Token'] = sessionToken;
       }
 
       const fetchOpts = { ...options, headers: headers };
@@ -4975,14 +5004,22 @@
 
         if (res.ok) {
           updateBackendConnectionStatus(true);
+        } else if (res.status === 401) {
+          updateBackendConnectionStatus(false, 'Unauthorized: Operator session expired or key required');
         } else {
           updateBackendConnectionStatus(false, `HTTP ${res.status}`);
         }
         return res;
       } catch (err) {
-        console.error(`[API Gateway Error] Request failed to ${url}:`, err);
-        updateBackendConnectionStatus(false, err.message);
-        throw err;
+        let errDesc = err.message || 'Request failed';
+        if (err.name === 'AbortError') {
+          errDesc = `Timeout: Backend failed to respond within ${timeoutMs/1000}s`;
+        } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          errDesc = `Network / CORS Error: Cannot reach ${url}. Check backend hosting and CORS configuration.`;
+        }
+        console.error(`[API Gateway Error] Request failed to ${url}:`, errDesc);
+        updateBackendConnectionStatus(false, errDesc);
+        throw new Error(errDesc);
       }
     }
 
@@ -5006,11 +5043,11 @@
       } else {
         if (beacon) beacon.style.background = '#FF4D4D';
         if (text) {
-          text.innerText = 'API: OFFLINE';
+          text.innerText = DrippConfig.getBackendUrl() === null ? 'API: UNCONFIGURED' : 'API: OFFLINE';
           text.style.color = '#FF4D4D';
         }
         if (cardBadge) {
-          cardBadge.innerText = 'DISCONNECTED';
+          cardBadge.innerText = DrippConfig.getBackendUrl() === null ? 'UNCONFIGURED' : 'DISCONNECTED';
           cardBadge.className = 'status-pill-mini fail';
           cardBadge.style.color = '#FF4D4D';
         }
@@ -5022,62 +5059,174 @@
       }
     }
 
+    function updateCrmStatusIndicator(connected, info = '') {
+      const crmBadge = document.getElementById('settingSheetsCrmBadge');
+      if (!crmBadge) return;
+      if (connected) {
+        crmBadge.innerText = 'CONNECTED';
+        crmBadge.className = 'status-pill-mini pass';
+        crmBadge.style.color = 'var(--accent-yellow)';
+      } else {
+        crmBadge.innerText = info.includes('Unreachable') ? 'UNREACHABLE' : 'DISCONNECTED';
+        crmBadge.className = 'status-pill-mini fail';
+        crmBadge.style.color = '#FF4D4D';
+      }
+    }
+
     async function testBackendGatewayConnection() {
       const urlInput = document.getElementById('inputBackendUrl');
-      const keyInput = document.getElementById('inputOperatorKey');
       const probeResult = document.getElementById('gatewayProbeResult');
       
       const testUrl = (urlInput ? urlInput.value.trim() : '') || DrippConfig.getBackendUrl();
-      const testKey = (keyInput ? keyInput.value.trim() : '') || DrippConfig.getOperatorKey();
+      if (!testUrl && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+        if (probeResult) {
+          probeResult.style.display = 'block';
+          probeResult.style.color = '#FF4D4D';
+          probeResult.innerText = 'Please enter a Backend API URL before testing gateway connectivity.';
+        }
+        showToast('Please enter a Backend API URL');
+        return;
+      }
 
       if (probeResult) {
         probeResult.style.display = 'block';
         probeResult.style.color = 'var(--accent-yellow)';
-        probeResult.innerText = `Testing connection to: ${testUrl || '(current origin / localhost:8000)'}...`;
+        probeResult.innerText = `Probing backend gateway: ${testUrl || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:8000' : 'Current Origin')}...`;
       }
 
       const startTime = Date.now();
       try {
         const headers = {};
-        if (testKey) {
-          headers['Authorization'] = `Bearer ${testKey}`;
-          headers['X-Operator-Key'] = testKey;
+        const sessionToken = DrippConfig.getSessionToken();
+        if (sessionToken) {
+          headers['Authorization'] = `Bearer ${sessionToken}`;
+          headers['X-Session-Token'] = sessionToken;
         }
-        const targetUrl = (testUrl ? testUrl.replace(/\/$/, '') : '') + '/api/system/health';
-        const res = await fetch(targetUrl, { headers, signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined) });
+
+        const baseUrl = testUrl ? testUrl.replace(/\/$/, '') : '';
+        // 1. Probe Backend Health
+        const healthRes = await fetch(`${baseUrl}/api/system/health`, {
+          headers,
+          signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined)
+        });
         const latency = Date.now() - startTime;
-        if (res.ok) {
-          const data = await res.json();
-          if (probeResult) {
-            probeResult.style.color = 'var(--accent-yellow)';
-            probeResult.innerText = `Verified! Latency: ${latency}ms • Status: ${data.canonical_health_status || 'OPERATIONAL'} • Google Sheets CRM Connected`;
-          }
-          showToast(`Gateway connection verified (${latency}ms)`);
-          updateBackendConnectionStatus(true);
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          if (probeResult) {
-            probeResult.style.color = '#FF4D4D';
-            probeResult.innerText = `Error HTTP ${res.status}: ${errData.message || res.statusText}`;
-          }
-          showToast(`Gateway probe returned HTTP ${res.status}`);
-          updateBackendConnectionStatus(false, `HTTP ${res.status}`);
+        
+        if (!healthRes.ok) {
+          throw new Error(`Gateway returned HTTP ${healthRes.status}: ${healthRes.statusText}`);
         }
+        const healthData = await healthRes.json();
+        const backendStatus = healthData.canonical_health_status || healthData.system_status || 'OPERATIONAL';
+
+        // 2. Probe Google Sheets CRM Authority as an independent signal
+        let crmStatusText = 'Checking Google Sheets CRM...';
+        let crmConnected = false;
+        try {
+          const crmRes = await fetch(`${baseUrl}/api/crm/status`, {
+            headers,
+            signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined)
+          });
+          if (crmRes.ok) {
+            const crmData = await crmRes.json();
+            const leadCount = crmData.tabs?.LEADS?.count ?? '--';
+            const queueCount = crmData.tabs?.REVIEW_QUEUE?.count ?? '--';
+            crmStatusText = `CONNECTED (${leadCount} Qualified Leads, ${queueCount} In Review Queue)`;
+            crmConnected = true;
+          } else {
+            crmStatusText = `CRM Unreachable (HTTP ${crmRes.status})`;
+          }
+        } catch (crmErr) {
+          crmStatusText = `CRM Check Failed: ${crmErr.message}`;
+        }
+
+        // Render truth separation in Probe Result
+        if (probeResult) {
+          probeResult.style.color = crmConnected ? 'var(--accent-yellow)' : '#FFA500';
+          probeResult.innerHTML = `
+            <div><strong>Backend Gateway:</strong> LIVE &bull; Latency: ${latency}ms &bull; Status: ${backendStatus}</div>
+            <div style="margin-top:4px;"><strong>Google Sheets CRM:</strong> ${crmStatusText}</div>
+          `;
+        }
+        showToast(`Gateway verified (${latency}ms) &bull; ${crmConnected ? 'CRM Connected' : 'CRM Unavailable'}`);
+        updateBackendConnectionStatus(true);
+        updateCrmStatusIndicator(crmConnected, crmStatusText);
       } catch (e) {
         if (probeResult) {
           probeResult.style.color = '#FF4D4D';
-          probeResult.innerText = `Connection failed: ${e.message}. Ensure backend is running and CORS allows origin.`;
+          probeResult.innerText = `Gateway probe failed: ${e.message}. Ensure backend is running and CORS allows origin.`;
         }
-        showToast(`Connection failed: ${e.message}`);
+        showToast(`Gateway probe failed: ${e.message}`);
         updateBackendConnectionStatus(false, e.message);
+        updateCrmStatusIndicator(false, 'Disconnected');
+      }
+    }
+
+    async function loginOperatorSession() {
+      const keyInput = document.getElementById('inputOperatorKey');
+      const key = keyInput ? keyInput.value.trim() : '';
+      if (!key) {
+        showToast('Please enter an Operator Key');
+        return;
+      }
+      
+      try {
+        const res = await apiFetch('/api/operator/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operator_key: key })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          DrippConfig.setSessionToken(data.session_token);
+          if (keyInput) keyInput.value = '';
+          updateOperatorSessionUI(true, data.expires_at);
+          showToast('Operator session unlocked (short-lived 2h token)');
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast(`Authentication failed: ${err.message || 'Invalid key'}`);
+          updateOperatorSessionUI(false);
+        }
+      } catch (e) {
+        showToast(`Login failed: ${e.message}`);
+      }
+    }
+
+    async function logoutOperatorSession() {
+      try {
+        await apiFetch('/api/operator/logout', { method: 'POST' }).catch(() => {});
+      } finally {
+        DrippConfig.setSessionToken(null);
+        updateOperatorSessionUI(false);
+        showToast('Operator session locked & terminated');
+      }
+    }
+
+    function updateOperatorSessionUI(active, expiresAt = '') {
+      const badge = document.getElementById('operatorSessionBadge');
+      const unlockBtn = document.getElementById('btnUnlockOperator');
+      const lockBtn = document.getElementById('btnLockOperator');
+      if (active) {
+        if (badge) {
+          badge.innerText = 'SESSION ACTIVE (2H)';
+          badge.className = 'status-pill-mini pass';
+          badge.style.color = 'var(--accent-yellow)';
+        }
+        if (unlockBtn) unlockBtn.style.display = 'none';
+        if (lockBtn) lockBtn.style.display = 'inline-flex';
+      } else {
+        if (badge) {
+          badge.innerText = 'UNAUTHENTICATED';
+          badge.className = 'status-pill-mini fail';
+          badge.style.color = 'var(--text-dim)';
+        }
+        if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+        if (lockBtn) lockBtn.style.display = 'none';
       }
     }
 
     function saveBackendConfiguration() {
       const urlInput = document.getElementById('inputBackendUrl');
-      const keyInput = document.getElementById('inputOperatorKey');
       if (urlInput) DrippConfig.setBackendUrl(urlInput.value.trim());
-      if (keyInput) DrippConfig.setOperatorKey(keyInput.value.trim());
       showToast('Backend gateway configuration saved. Re-synchronizing CRM...');
       initBackendConfigInputs();
       loadAllData();
@@ -5085,16 +5234,28 @@
 
     function initBackendConfigInputs() {
       const urlInput = document.getElementById('inputBackendUrl');
-      const keyInput = document.getElementById('inputOperatorKey');
       const envInd = document.getElementById('backendEnvIndicator');
-      if (urlInput) urlInput.value = localStorage.getItem('dripp_backend_api_url') || (window.location.hostname.includes('vercel.app') ? 'http://localhost:8000' : '');
-      if (keyInput) keyInput.value = localStorage.getItem('dripp_operator_key') || '';
-      if (envInd) {
-        const custom = localStorage.getItem('dripp_backend_api_url');
-        if (custom) envInd.innerText = 'CUSTOM HOSTED URL';
-        else if (window.location.hostname.includes('vercel.app')) envInd.innerText = 'DEFAULT LOCAL GATEWAY (PORT 8000)';
-        else envInd.innerText = 'LOCAL / RELATIVE';
+      const custom = localStorage.getItem('dripp_backend_api_url');
+      
+      if (urlInput) {
+        urlInput.value = custom || '';
       }
+      if (envInd) {
+        if (custom) {
+          envInd.innerText = 'CUSTOM HOSTED GATEWAY';
+          envInd.style.color = 'var(--accent-yellow)';
+        } else if (window.location.port === '8000' || (window.location.hostname === 'localhost' && window.location.port !== '3000')) {
+          envInd.innerText = 'LOCAL SERVER (PORT 8000)';
+          envInd.style.color = 'var(--accent-yellow)';
+        } else {
+          envInd.innerText = 'UNCONFIGURED (ACTION REQUIRED)';
+          envInd.style.color = '#FF4D4D';
+        }
+      }
+
+      // Check session state
+      const hasSession = Boolean(DrippConfig.getSessionToken());
+      updateOperatorSessionUI(hasSession);
     }
 
     function renderHomeRadarBlips() {
@@ -5195,10 +5356,27 @@
       await Promise.all([
         loadLeadsData(),
         loadReadinessData(),
-        loadHealthData()
+        loadHealthData(),
+        loadCrmStatusData()
       ]);
       updateDiscoveryPageHUD();
       await syncDiscoveryStatusOnLoad();
+    }
+
+    async function loadCrmStatusData() {
+      try {
+        const res = await apiFetch('/api/crm/status');
+        if (res.ok) {
+          const data = await res.json();
+          const leadCount = data.tabs?.LEADS?.count ?? '--';
+          const queueCount = data.tabs?.REVIEW_QUEUE?.count ?? '--';
+          updateCrmStatusIndicator(true, `${leadCount} Qualified Leads / ${queueCount} In Review Queue`);
+        } else {
+          updateCrmStatusIndicator(false, `HTTP ${res.status}`);
+        }
+      } catch (err) {
+        updateCrmStatusIndicator(false, err.message || 'Offline');
+      }
     }
 
     async function loadLeadsData() {
@@ -5288,16 +5466,20 @@
         console.error('Failed to load leads:', err);
         const streamContainer = document.getElementById('leadsStreamContainer');
         if (streamContainer && (!allLeads || allLeads.length === 0)) {
-          const targetUrl = DrippConfig.getBackendUrl() || 'http://localhost:8000';
+          const rawUrl = DrippConfig.getBackendUrl();
+          const targetUrl = rawUrl || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:8000' : null);
+          const isUnconfigured = !targetUrl;
+          
           streamContainer.innerHTML = `
             <div style="padding:3.5rem 1.5rem; text-align:center;">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--accent-yellow); margin-bottom:0.75rem;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-bottom:0.4rem;">
-                Backend Connection Required
+                ${isUnconfigured ? 'Backend Gateway Unconfigured' : 'Backend Connection Offline'}
               </div>
-              <div style="font-size:0.8rem; color:var(--text-muted); max-width:420px; margin:0 auto 1.25rem; line-height:1.5;">
-                Could not retrieve leads from <code style="color:var(--accent-yellow); font-family:var(--font-mono);">${targetUrl}</code>.<br>
-                Make sure the backend is running with <code style="color:var(--text-main); font-family:var(--font-mono);">uvicorn server:app</code> or configure your public gateway in Settings.
+              <div style="font-size:0.8rem; color:var(--text-muted); max-width:440px; margin:0 auto 1.25rem; line-height:1.5;">
+                ${isUnconfigured 
+                  ? 'No Backend Gateway URL has been configured for this deployment. Please open Settings and enter your hosted FastAPI HTTPS endpoint.'
+                  : `Could not retrieve live CRM leads from <code style="color:var(--accent-yellow); font-family:var(--font-mono);">${targetUrl}</code>. Check that the service is running and CORS allows this origin.`}
               </div>
               <div style="display:flex; justify-content:center; gap:0.75rem;">
                 <button class="btn-pill" style="font-size:0.75rem; padding:0.45rem 1rem;" onclick="loadLeadsData()">Retry Connection</button>

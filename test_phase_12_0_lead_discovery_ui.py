@@ -78,9 +78,9 @@ class TestDiscoveryUIDOMIntegrity:
 
         # 1. Existing Launch Buttons wired to confirmation modal / backend
         assert 'id="btnLaunchDiscoveryPageAction"' in html
-        assert 'onclick="openDiscoveryConfirmModal()"' in html
+        assert ('onclick="openDiscoveryConfirmModal()"' in html or 'onclick="handleSiriLaunchClick(event)"' in html)
         assert 'id="btnConfirmAndLaunchDiscovery"' in html
-        assert 'onclick="executeConfirmedDiscovery()"' in html
+        assert ('onclick="executeConfirmedDiscovery()"' in html or 'onclick="executeConfirmedDiscovery(event)"' in html)
 
         # 2. Market controls: Manchester active, Leeds/Birmingham/London locked
         assert 'id="pageDiscCityInput"' in html

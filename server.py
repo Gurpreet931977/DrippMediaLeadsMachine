@@ -1,9 +1,12 @@
 import os
 import json
 import asyncio
-from datetime import datetime, timezone
+import uuid
+import secrets
+import logging
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, BackgroundTasks, Request
+from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,12 +19,119 @@ from lib.discovery.hybrid import HybridDiscoveryEngine, DiscoveryMode
 
 from lib.system.pipeline_run_manager import run_manager, PipelineRunStatus
 
+logger = logging.getLogger("server")
 load_dotenv()
 
 # Automatically recover any interrupted runs upon server startup
 run_manager.recover_interrupted_runs()
 
 app = FastAPI(title="Dripp Media Lead Intelligence Suite")
+
+# In-memory operator sessions: session_token -> {"issued_at": datetime, "expires_at": datetime, "session_id": str}
+operator_sessions: Dict[str, Dict[str, Any]] = {}
+OPERATOR_SESSION_TTL_SECONDS = 7200  # 2 hours
+
+def clean_expired_sessions():
+    now = datetime.now(timezone.utc)
+    expired = [t for t, s in list(operator_sessions.items()) if s.get("expires_at") and s["expires_at"] < now]
+    for t in expired:
+        operator_sessions.pop(t, None)
+
+def create_operator_session() -> Dict[str, Any]:
+    clean_expired_sessions()
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(seconds=OPERATOR_SESSION_TTL_SECONDS)
+    token = f"dop_{secrets.token_urlsafe(32)}"
+    operator_sessions[token] = {
+        "issued_at": now,
+        "expires_at": expires_at,
+        "session_id": f"sess-{secrets.token_hex(4)}"
+    }
+    return {
+        "session_token": token,
+        "expires_at": expires_at.isoformat(),
+        "ttl_seconds": OPERATOR_SESSION_TTL_SECONDS
+    }
+
+def validate_session_token(token: str) -> bool:
+    if not token or not token.startswith("dop_"):
+        return False
+    clean_expired_sessions()
+    session = operator_sessions.get(token)
+    if not session:
+        return False
+    if session.get("expires_at") and session["expires_at"] < datetime.now(timezone.utc):
+        operator_sessions.pop(token, None)
+        return False
+    return True
+
+def check_operator_authorization(request: Request) -> bool:
+    """
+    Validates Operator Authorization:
+    1. If OPERATOR_API_KEY is not configured or blank -> permits operation in local/dev mode.
+    2. Validates short-lived session token from Authorization: Bearer or X-Session-Token.
+    3. Validates direct administrative key from Authorization: Bearer or X-Operator-Key using constant-time comparison.
+    """
+    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+    if not expected:
+        return True
+    
+    # 1. Check Bearer token
+    auth_hdr = request.headers.get("Authorization", "").strip()
+    bearer_token = auth_hdr[7:].strip() if auth_hdr.startswith("Bearer ") else ""
+    if bearer_token:
+        if validate_session_token(bearer_token):
+            return True
+        if secrets.compare_digest(bearer_token, expected):
+            return True
+
+    # 2. Check X-Session-Token header
+    session_hdr = request.headers.get("X-Session-Token", "").strip()
+    if session_hdr and validate_session_token(session_hdr):
+        return True
+
+    # 3. Check X-Operator-Key header
+    op_key_hdr = request.headers.get("X-Operator-Key", "").strip()
+    if op_key_hdr:
+        if validate_session_token(op_key_hdr):
+            return True
+        if secrets.compare_digest(op_key_hdr, expected):
+            return True
+
+    # 4. Check query params (for dev / direct callbacks)
+    api_key_query = request.query_params.get("api_key", "").strip()
+    if api_key_query:
+        if validate_session_token(api_key_query) or secrets.compare_digest(api_key_query, expected):
+            return True
+
+    return False
+
+# Security middleware intercepts any state-modifying requests to /api/ and verifies authorization
+@app.middleware("http")
+async def operator_security_middleware(request: Request, call_next):
+    path = request.url.path
+    method = request.method
+    
+    # Protect state-modifying endpoints
+    if method in ("POST", "PUT", "DELETE", "PATCH") and path.startswith("/api/"):
+        public_exemptions = {
+            "/api/operator/login",
+            "/api/email/unsubscribe",
+            "/api/webhook/inbound-reply"
+        }
+        if path not in public_exemptions:
+            if not check_operator_authorization(request):
+                return JSONResponse(
+                    {
+                        "status": "error",
+                        "detail": "Operator authentication required: Valid session token or API key required",
+                        "message": "Unauthorized: Valid Operator session or API key required"
+                    },
+                    status_code=401
+                )
+                
+    response = await call_next(request)
+    return response
 
 # Configure CORS for public Vercel frontend, local dev, and custom origins
 allowed_origins = [
@@ -46,23 +156,6 @@ app.add_middleware(
     allow_headers=["*"],
     allow_private_network=True,
 )
-
-def check_operator_authorization(request: Request) -> bool:
-    """
-    Validates Operator API Key if configured in server environment (OPERATOR_API_KEY).
-    If OPERATOR_API_KEY is not configured or blank, permits operation in local/dev mode.
-    """
-    expected = os.getenv("OPERATOR_API_KEY", "").strip()
-    if not expected:
-        return True
-    auth_hdr = request.headers.get("Authorization", "").strip()
-    if auth_hdr.startswith("Bearer ") and auth_hdr[7:].strip() == expected:
-        return True
-    if request.headers.get("X-Operator-Key", "").strip() == expected:
-        return True
-    if request.query_params.get("api_key", "").strip() == expected:
-        return True
-    return False
 
 # Global in-memory state for active run & real-time logs (mirrors run_manager)
 active_run_state = {
@@ -395,6 +488,108 @@ async def stream_logs(request: Request):
             await asyncio.sleep(1)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+class OperatorLoginRequest(BaseModel):
+    operator_key: str
+
+@app.post("/api/operator/login")
+async def operator_login_endpoint(req: OperatorLoginRequest):
+    """
+    Exchanges the master Operator Key for a secure short-lived session token (2 hour TTL).
+    Enables secure administrative sessions without persisting permanent secrets in browser storage.
+    """
+    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+    provided = req.operator_key.strip()
+    
+    if not provided:
+        raise HTTPException(status_code=401, detail="Operator key required")
+
+    if expected:
+        if not secrets.compare_digest(provided, expected):
+            raise HTTPException(status_code=401, detail="Invalid operator key")
+            
+    session_info = create_operator_session()
+    return {
+        "status": "ok",
+        "authenticated": True,
+        **session_info
+    }
+
+@app.get("/api/operator/session")
+async def operator_session_status_endpoint(request: Request):
+    """
+    Checks active operator session validity.
+    """
+    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+    auth = check_operator_authorization(request)
+    if expected and not auth:
+        raise HTTPException(status_code=401, detail="Unauthorized operator session")
+    return {
+        "status": "ok",
+        "authenticated": auth
+    }
+
+@app.post("/api/operator/logout")
+async def operator_logout_endpoint(request: Request):
+    """
+    Invalidates current session token.
+    """
+    auth_hdr = request.headers.get("Authorization", "").strip()
+    token = auth_hdr[7:].strip() if auth_hdr.startswith("Bearer ") else ""
+    if not token:
+        token = request.headers.get("X-Session-Token", "").strip()
+    if token and token in operator_sessions:
+        operator_sessions.pop(token, None)
+    return {"status": "ok", "authenticated": False, "message": "Operator session terminated"}
+
+@app.get("/api/crm/status")
+async def get_crm_status_endpoint():
+    """
+    Evaluates and returns authentic Google Sheets CRM connectivity status as an independent signal.
+    Distinguishes CRM connectivity from general backend server health.
+    """
+    spreadsheet_id = os.getenv("GOOGLE_SHEET_ID", "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc")
+    creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+    creds_configured = bool(creds_path and os.path.exists(creds_path))
+    
+    try:
+        storage = GoogleSheetsStorageProvider()
+        leads = storage.fetch_all_leads()
+        review_queue = storage.fetch_review_queue()
+        research_log = storage.fetch_research_log()
+        
+        return {
+            "status": "ok",
+            "crm_connected": True,
+            "source": "GOOGLE_SHEETS",
+            "spreadsheet_id": spreadsheet_id,
+            "sheet_url": storage.sheet_url,
+            "service_account_configured": creds_configured,
+            "tabs": {
+                "LEADS": {"status": "CONNECTED", "count": len(leads), "sheet_name": "Dripp Media Leads CRM"},
+                "REVIEW_QUEUE": {"status": "CONNECTED", "count": len(review_queue), "sheet_name": "Dripp Media Leads CRM"},
+                "RESEARCH_LOG": {"status": "CONNECTED", "count": len(research_log), "sheet_name": "Dripp Media Leads CRM"}
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "notes": "Genuine Google Sheets CRM connection verified."
+        }
+    except Exception as e:
+        logger.error(f"Google Sheets CRM status check failed: {e}")
+        return JSONResponse({
+            "status": "error",
+            "crm_connected": False,
+            "source": "GOOGLE_SHEETS",
+            "spreadsheet_id": spreadsheet_id,
+            "service_account_configured": creds_configured,
+            "tabs": {
+                "LEADS": {"status": "ERROR", "count": 0, "sheet_name": "Dripp Media Leads CRM"},
+                "REVIEW_QUEUE": {"status": "ERROR", "count": 0, "sheet_name": "Dripp Media Leads CRM"},
+                "RESEARCH_LOG": {"status": "ERROR", "count": 0, "sheet_name": "Dripp Media Leads CRM"}
+            },
+            "error": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "notes": "Google Sheets CRM unreachable. Check service account permissions and network."
+        }, status_code=503)
 
 @app.get("/api/leads")
 async def get_leads(request: Request = None):

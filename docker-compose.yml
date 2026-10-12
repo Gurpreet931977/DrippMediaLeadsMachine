@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dripp-media-leads-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PORT=8000
+      - TRAVEL_MODE=ACTIVE
+      - COMMERCIAL_ACTIONS_ENABLED=false
+      - AUTOMATED_EMAIL_ENABLED=false
+      - CRON=DISABLED
+    volumes:
+      # Persistent storage volume for discovery runs, indices, and lock states
+      - ./data:/app/data
+      # Mount service account credentials file if using file-based auth
+      - ./poised-eye-509816-a4-5444ff3f8520.json:/app/poised-eye-509816-a4-5444ff3f8520.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/system/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
