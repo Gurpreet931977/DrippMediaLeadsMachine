@@ -17,6 +17,7 @@ import argparse
 import time
 import uuid
 import logging
+import threading
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
@@ -100,14 +101,36 @@ def run_discovery_task(args) -> int:
     # 4. Check for prior resumable checkpoint in Firestore
     checkpoint = firestore_store.get_checkpoint(run_id)
     processed_ids: List[str] = []
+    prior_qualified = 0
     if checkpoint:
         processed_ids = checkpoint.get("processed_ids", [])
+        prior_qualified = checkpoint.get("stats", {}).get("outreach_ready", 0)
         logger.info(
-            "Found prior checkpoint for run %s. Resuming execution with %d pre-processed candidates.",
-            run_id, len(processed_ids)
+            "Found prior checkpoint for run %s. Resuming execution with %d pre-processed candidates (%d already qualified).",
+            run_id, len(processed_ids), prior_qualified
         )
     else:
         logger.info("Starting fresh discovery run %s for %s (%d requested leads)...", run_id, cities, args.leads)
+
+    remaining_leads = max(0, args.leads - prior_qualified) if checkpoint else args.leads
+    if checkpoint and remaining_leads == 0:
+        logger.info("Target qualified leads (%d) already satisfied in prior checkpoint. Marking run complete.", args.leads)
+        firestore_store.save_run_record(run_id, {
+            "run_id": run_id,
+            "execution_id": execution_id,
+            "status": "COMPLETED",
+            "market": f"Manchester, {country}",
+            "country": country,
+            "cities": cities,
+            "industry": args.industry,
+            "qualified_leads_needed": args.leads,
+            "dry_run": args.dry_run,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "leads_count": prior_qualified,
+            "processed_candidates_count": len(processed_ids),
+        })
+        firestore_store.delete_checkpoint(run_id)
+        return 0
 
     # 5. Initialize run record in Firestore
     initial_record = {
@@ -125,18 +148,27 @@ def run_discovery_task(args) -> int:
     }
     firestore_store.save_run_record(run_id, initial_record)
 
-    # 6. Execute pipeline with periodic heartbeat and checkpoint persistence
-    last_heartbeat = time.time()
+    # 6. Setup safe bounded background lease heartbeat thread
+    # Ensures long-running stages (scrapes, network delays) never exceed lease TTL without renewal.
+    stop_heartbeat = threading.Event()
+    heartbeat_interval = min(30.0, max(5.0, args.ttl_seconds / 3.0))
 
+    def heartbeat_worker():
+        while not stop_heartbeat.wait(timeout=heartbeat_interval):
+            try:
+                renewed = firestore_store.renew_lease(lease_name, execution_id, ttl_seconds=args.ttl_seconds)
+                if not renewed:
+                    logger.warning("[HEARTBEAT] Lease renewal failed for '%s' (holder '%s').", lease_name, execution_id)
+                else:
+                    logger.debug("[HEARTBEAT] Successfully refreshed distributed lease '%s'.", lease_name)
+            except Exception as e:
+                logger.warning("[HEARTBEAT] Error during lease renewal: %s", e)
+
+    heartbeat_thread = threading.Thread(target=heartbeat_worker, daemon=True, name="LeaseHeartbeatThread")
+    heartbeat_thread.start()
+
+    # 7. Progress callback updates checkpoint in Firestore
     def job_progress_callback(msg: str, data: Optional[Dict[str, Any]] = None):
-        nonlocal last_heartbeat
-        now = time.time()
-        # Renew lease heartbeat every 60 seconds
-        if now - last_heartbeat > 60:
-            firestore_store.renew_lease(lease_name, execution_id, ttl_seconds=args.ttl_seconds)
-            last_heartbeat = now
-
-        # Update checkpoint in Firestore
         if data and "processed_ids" in data:
             current_processed = data.get("processed_ids", [])
             firestore_store.save_checkpoint(run_id, {
@@ -144,6 +176,7 @@ def run_discovery_task(args) -> int:
                 "status": "RUNNING",
                 "processed_ids": current_processed,
                 "stats": data.get("stats", {}),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             })
         logger.info("[PROGRESS] %s", msg)
 
@@ -158,19 +191,24 @@ def run_discovery_task(args) -> int:
             country=country,
             cities=cities,
             industry=args.industry,
-            requested_qualified_leads=args.leads,
+            requested_qualified_leads=remaining_leads,
             batch_size=args.batch_size,
             max_research_multiplier=args.max_multiplier,
-            log_callback=job_progress_callback
+            log_callback=job_progress_callback,
+            resume_processed_ids=processed_ids
         )
 
-        # 7. Finalize run record and remove checkpoint upon success
+        # 8. Finalize run record and remove checkpoint upon success
+        total_leads_count = prior_qualified + len(result.get("leads", []))
         final_record = {
             **initial_record,
             "status": "COMPLETED",
             "finished_at": datetime.now(timezone.utc).isoformat(),
             "results": result,
             "stats": result.get("stats", {}),
+            "leads_count": total_leads_count,
+            "review_queue_count": len(result.get("review_queue", [])),
+            "research_entries_count": len(result.get("research_entries", [])),
         }
         firestore_store.save_run_record(run_id, final_record)
         firestore_store.delete_checkpoint(run_id)
@@ -189,6 +227,9 @@ def run_discovery_task(args) -> int:
         return 1
 
     finally:
+        # Stop background heartbeat thread
+        stop_heartbeat.set()
+        heartbeat_thread.join(timeout=2.0)
         # Always release the distributed lease
         firestore_store.release_lease(lease_name, execution_id)
         logger.info("Released distributed lease '%s' held by '%s'.", lease_name, execution_id)

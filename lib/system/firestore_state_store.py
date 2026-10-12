@@ -84,7 +84,7 @@ class FirestoreStateStore:
                 from google.cloud import firestore
                 self._client = firestore.Client(project=self.project_id, database=self.database_id)
                 # Verify live connectivity and database existence; fail closed if API is disabled or inaccessible
-                _ = self._client.collection(COLL_LEASES).document("__healthcheck__").get(timeout=5.0)
+                _ = self._client.collection(COLL_LEASES).document("healthcheck_probe").get(timeout=5.0)
                 self._is_live = True
                 logger.info(
                     "Initialized production Google Cloud Firestore client for project %s (db: %s, location: %s)",

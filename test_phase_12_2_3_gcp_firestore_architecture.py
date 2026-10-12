@@ -261,17 +261,19 @@ class TestProductionFailClosedAndLocationSemantics(unittest.TestCase):
     def test_production_mode_requires_real_firestore_client_fails_closed(self):
         """15. In production mode, failing to connect to Firestore raises RuntimeError (no silent mock fallback)."""
         with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
-            with self.assertRaises(RuntimeError) as ctx:
-                FirestoreStateStore(force_mock=False)
-            self.assertIn("Production Firestore initialization failure", str(ctx.exception))
-            self.assertIn("Silent fallback to in-memory mock state is strictly prohibited", str(ctx.exception))
+            with patch("google.cloud.firestore.Client", side_effect=Exception("GCP connection error")):
+                with self.assertRaises(RuntimeError) as ctx:
+                    FirestoreStateStore(force_mock=False)
+                self.assertIn("Production Firestore initialization failure", str(ctx.exception))
+                self.assertIn("Silent fallback to in-memory mock state is strictly prohibited", str(ctx.exception))
 
     def test_firestore_enabled_flag_fails_closed_when_live_client_unavailable(self):
         """16. FIRESTORE_ENABLED=true raises RuntimeError if live SDK is unavailable."""
         with patch.dict(os.environ, {"FIRESTORE_ENABLED": "true", "ENVIRONMENT": "development"}):
-            with self.assertRaises(RuntimeError) as ctx:
-                FirestoreStateStore(force_mock=False)
-            self.assertIn("Production Firestore initialization failure", str(ctx.exception))
+            with patch("google.cloud.firestore.Client", side_effect=Exception("GCP SDK unavailable")):
+                with self.assertRaises(RuntimeError) as ctx:
+                    FirestoreStateStore(force_mock=False)
+                self.assertIn("Production Firestore initialization failure", str(ctx.exception))
 
     def test_location_identifier_distinction_nam5_vs_us_central1(self):
         """17. nam5 (multi-region US) and us-central1 (regional Iowa) are distinct, non-interchangeable locations."""

@@ -546,6 +546,17 @@ async def start_search(req: SearchRequest, background_tasks: BackgroundTasks, re
             "message": f"Cloud Run Job '{dispatch_res.get('job_name')}' dispatched for {leads_needed} qualified leads in Manchester, UK."
         }
 
+    # Truthful dispatch error reporting: Fail loudly if Cloud Run Job dispatch failed in production
+    if dispatch_res.get("execution_type") in ("FAILED_DISPATCH", "DISPATCH_EXCEPTION"):
+        active_run_state["is_running"] = False
+        active_run_state["status"] = PipelineRunStatus.FAILED.value
+        err_msg = dispatch_res.get("error", "Failed to trigger Cloud Run Job execution on GCP.")
+        logger.error("Cloud Run Job dispatch failure: %s", err_msg)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Cloud Run Job dispatch failed: {err_msg}"
+        )
+
     background_tasks.add_task(
         run_pipeline_task,
         run_id=run_id,

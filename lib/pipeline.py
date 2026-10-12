@@ -82,18 +82,49 @@ class LeadGenerationPipeline:
         min_positive_signals: int = 2,
         inject_test_candidates: Optional[List[DiscoveredBusiness]] = None,
         candidate_places_map: Optional[Dict[str, List[Dict[str, Any]]]] = None,
-        log_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None
+        log_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+        resume_processed_ids: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Executes the research pipeline until requested_qualified_leads is met or max research limit reached.
+        Supports checkpoint resumption via resume_processed_ids to avoid reprocessing completed candidates.
         """
+        completed_candidate_ids: set = set(resume_processed_ids or [])
+        discovery_seen_identities: set = set(completed_candidate_ids)
+
         def emit_log(msg: str, data: Optional[Dict[str, Any]] = None):
             print(msg)
             if log_callback:
                 try:
-                    log_callback(msg, data or {})
+                    payload = dict(data or {})
+                    if "processed_ids" not in payload:
+                        payload["processed_ids"] = list(completed_candidate_ids)
+                    if "stats" not in payload and "stats" in locals():
+                        payload["stats"] = dict(stats)
+                    log_callback(msg, payload)
                 except Exception as ex:
                     print(f"Callback error: {ex}")
+
+        def get_candidate_identifiers(biz: DiscoveredBusiness) -> set:
+            keys = set()
+            norm_id = self.storage.normalize_identity(biz.company_name, biz.city, country, biz.raw_website)
+            if norm_id:
+                keys.add(norm_id)
+            if getattr(biz, "place_id", None):
+                keys.add(f"place:{biz.place_id}")
+            if getattr(biz, "osm_id", None):
+                keys.add(f"osm:{biz.osm_id}")
+            if biz.company_name:
+                cname_clean = re.sub(r'[^a-z0-9]', '', biz.company_name.lower())
+                keys.add(f"bizname:{cname_clean}@{country.lower()}")
+            return keys
+
+        def record_candidate_completed(biz: DiscoveredBusiness, entry: Optional[ResearchLogEntry] = None):
+            if entry:
+                all_research_entries.append(entry)
+            c_keys = get_candidate_identifiers(biz)
+            completed_candidate_ids.update(c_keys)
+            emit_log(f"  [Checkpoint Updated] Candidate '{biz.company_name}' recorded in checkpoint ({len(completed_candidate_ids)} IDs).")
 
         start_time = time.time()
         max_valid_research = requested_qualified_leads * max_research_multiplier
@@ -107,6 +138,8 @@ class LeadGenerationPipeline:
         emit_log(f"Target: {industry} in {', '.join(cities)}, {country}")
         emit_log(f"QUALIFIED LEADS NEEDED (OUTREACH_READY): {requested_qualified_leads}")
         emit_log(f"Max Valid Research Limit: {max_valid_research} (Multiplier: {max_research_multiplier}x, Batch: {batch_size})")
+        if resume_processed_ids:
+            emit_log(f"Checkpoint Resumption: Active ({len(completed_candidate_ids)} candidate IDs previously processed)")
         emit_log(f"Note: Only genuine OUTREACH_READY candidates count toward target.")
         emit_log(f"Architecture: Post-pipeline outreach decoupled from execution.")
         emit_log(f"=======================================================")
@@ -145,12 +178,21 @@ class LeadGenerationPipeline:
         outreach_ready_leads: List[Lead] = []
         review_queue_leads: List[Lead] = []
         all_research_entries: List[ResearchLogEntry] = []
-        seen_identities: set = set()
         candidate_pool: List[DiscoveredBusiness] = []
 
         # If test probe candidates (e.g. Manchester, NH / Manchester, MI) are injected for testing:
         if inject_test_candidates:
             for biz in inject_test_candidates:
+                c_keys = get_candidate_identifiers(biz)
+                if any(k in completed_candidate_ids for k in c_keys):
+                    stats["duplicates"] += 1
+                    emit_log(f"  [Checkpoint / Duplicate Skip] '{biz.company_name}' already processed in prior checkpoint. Skipping.")
+                    continue
+                if any(k in discovery_seen_identities for k in c_keys):
+                    stats["duplicates"] += 1
+                    continue
+                discovery_seen_identities.update(c_keys)
+
                 stats["raw_discovered"] += 1
                 q = biz.discovery_query or "Injected test candidate"
                 if q not in query_stats:
@@ -196,7 +238,7 @@ class LeadGenerationPipeline:
                         source_url=biz.google_maps_url,
                         date_researched=datetime.now().strftime("%Y-%m-%d")
                     )
-                    all_research_entries.append(res_entry)
+                    record_candidate_completed(biz, res_entry)
                 else:
                     stats["target_country_matches"] += 1
                     stats["country_matches"] += 1
@@ -242,12 +284,16 @@ class LeadGenerationPipeline:
                             query_stats[q] = {"candidates": 0, "qualified": 0}
                         query_stats[q]["candidates"] += 1
 
-                        # Deduplication check
-                        norm_id = self.storage.normalize_identity(biz.company_name, biz.city, country, biz.raw_website)
-                        if norm_id in seen_identities:
+                        # Deduplication and Checkpoint Check
+                        c_keys = get_candidate_identifiers(biz)
+                        if any(k in completed_candidate_ids for k in c_keys):
+                            stats["duplicates"] += 1
+                            emit_log(f"  [Checkpoint / Duplicate Skip] '{biz.company_name}' already processed in prior checkpoint. Skipping.")
+                            continue
+                        if any(k in discovery_seen_identities for k in c_keys):
                             stats["duplicates"] += 1
                             continue
-                        seen_identities.add(norm_id)
+                        discovery_seen_identities.update(c_keys)
 
                         # EARLY TARGET COUNTRY VALIDATION (Section 6: Immediate filter)
                         c_status, det_country, reg, pcode, c_evidence = self.country_validator.validate(
@@ -291,7 +337,7 @@ class LeadGenerationPipeline:
                                 source_url=biz.google_maps_url,
                                 date_researched=datetime.now().strftime("%Y-%m-%d")
                             )
-                            all_research_entries.append(res_entry)
+                            record_candidate_completed(biz, res_entry)
                             continue
 
                         # Target-country match!
@@ -399,7 +445,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
                         continue
 
                     elif det_result["website_status"] == WebsiteStatus.WEBSITE_BROKEN.value:
@@ -464,7 +510,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
                         continue
 
                     # Deep No-Website Verification (Section 4)
@@ -872,7 +918,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
 
                     elif q_state == QualificationState.MANUAL_REVIEW.value:
                         # MANUAL_REVIEW CANDIDATE (REVIEW_QUEUE)
@@ -983,7 +1029,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
 
                     elif q_state == QualificationState.RESEARCH_ONLY.value:
                         # RESEARCH_ONLY CANDIDATE (RESEARCH_LOG)
@@ -1019,7 +1065,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
 
                     else:
                         # EXCLUDED CANDIDATE (RESEARCH_LOG)
@@ -1055,7 +1101,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
 
                 except Exception as cand_err:
                     emit_log(f"  [Error] Processing candidate '{biz.company_name}': {str(cand_err)}")
@@ -1078,7 +1124,7 @@ class LeadGenerationPipeline:
                         source_url=biz.google_maps_url,
                         date_researched=datetime.now().strftime("%Y-%m-%d")
                     )
-                    all_research_entries.append(res_entry)
+                    record_candidate_completed(biz, res_entry)
                     continue
 
         # STAGE 5: SAVE TO GOOGLE SHEETS 3 TABS (LEADS, REVIEW_QUEUE, & RESEARCH_LOG)
@@ -1154,5 +1200,6 @@ class LeadGenerationPipeline:
             "stats": stats,
             "query_stats": query_stats,
             "discovery_transparency": getattr(self.discovery, "transparency_stats", {}),
-            "elapsed_seconds": elapsed
+            "elapsed_seconds": elapsed,
+            "processed_ids": list(completed_candidate_ids)
         }

@@ -89,8 +89,10 @@ class CloudRunJobDispatcher:
             }
 
         # Build CLI container override arguments
+        # Cloud Run Jobs configured with entrypoint command 'python' requires the script path as args[0]
         city_arg = cities[0] if cities else "Manchester"
         cmd_args = [
+            "scripts/run_cloud_run_job.py",
             "--country", country,
             "--cities", city_arg,
             "--industry", industry,
