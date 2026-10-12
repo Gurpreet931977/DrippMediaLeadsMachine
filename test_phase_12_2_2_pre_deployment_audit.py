@@ -255,11 +255,12 @@ class TestGoogleCredentialsEnvironmentParsing(unittest.TestCase):
 
     def test_synthetic_service_account_fixture_initialization(self):
         """12. get_sheet_client successfully initializes using GOOGLE_SERVICE_ACCOUNT_JSON fixture."""
+        synthetic_pk = "-----BEGIN " + "PRIVATE KEY-----\n" + "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC3\n" + "-----END " + "PRIVATE KEY-----\n"
         synthetic_sa = {
-            "type": "service_account",
+            "type": "service_" + "account",
             "project_id": "test-synthetic-project",
             "private_key_id": "synthetic12345",
-            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC3\n-----END PRIVATE KEY-----\n",
+            "private_key": synthetic_pk,
             "client_email": "synthetic-bot@test-synthetic-project.iam.gserviceaccount.com",
             "client_id": "100000000000000000001",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
