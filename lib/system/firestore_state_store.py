@@ -59,7 +59,7 @@ class FirestoreStateStore:
             or os.getenv("GCP_PROJECT")
             or os.getenv("PROJECT_ID", "poised-eye-509816-a4")
         )
-        self.database_id = database_id or os.getenv("FIRESTORE_DATABASE_ID", "(default)")
+        self.database_id = database_id or os.getenv("FIRESTORE_DATABASE_ID", "drippmedialeads")
         # Location identifier: regional 'us-central1' (preferred) vs multi-region 'nam5' (NOT interchangeable)
         self.location_id = location_id or os.getenv("FIRESTORE_LOCATION", "us-central1")
         self._is_live = False
