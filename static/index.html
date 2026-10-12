@@ -5039,15 +5039,34 @@
         return null;
       },
       setBackendUrl: function(url) {
-        if (url && url.trim()) localStorage.setItem('dripp_backend_api_url', url.trim());
-        else localStorage.removeItem('dripp_backend_api_url');
+        if (url && url.trim()) {
+          // Normalize URL: trim whitespace and strip trailing slashes
+          const cleanUrl = url.trim().replace(/\/+$/, '');
+          localStorage.setItem('dripp_backend_api_url', cleanUrl);
+        } else {
+          localStorage.removeItem('dripp_backend_api_url');
+        }
       },
       getSessionToken: function() {
         return sessionStorage.getItem('dripp_operator_session_token') || '';
       },
-      setSessionToken: function(token) {
-        if (token && token.trim()) sessionStorage.setItem('dripp_operator_session_token', token.trim());
-        else sessionStorage.removeItem('dripp_operator_session_token');
+      setSessionToken: function(token, expiresAt = null) {
+        if (token && token.trim()) {
+          sessionStorage.setItem('dripp_operator_session_token', token.trim());
+          if (expiresAt) {
+            sessionStorage.setItem('dripp_operator_session_expires_at', expiresAt);
+          }
+        } else {
+          sessionStorage.removeItem('dripp_operator_session_token');
+          sessionStorage.removeItem('dripp_operator_session_expires_at');
+        }
+      },
+      getSessionExpiresAt: function() {
+        return sessionStorage.getItem('dripp_operator_session_expires_at') || '';
+      },
+      setSessionExpiresAt: function(ts) {
+        if (ts) sessionStorage.setItem('dripp_operator_session_expires_at', ts);
+        else sessionStorage.removeItem('dripp_operator_session_expires_at');
       },
       clearPermanentOperatorSecrets: function() {
         // Enforce Phase 12.2 credential hygiene: eradicate permanent master keys from browser storage
@@ -5282,7 +5301,7 @@
         
         if (res.ok) {
           const data = await res.json();
-          DrippConfig.setSessionToken(data.session_token);
+          DrippConfig.setSessionToken(data.session_token, data.expires_at);
           if (keyInput) keyInput.value = '';
           updateOperatorSessionUI(true, data.expires_at);
           showToast('Operator session unlocked (short-lived 2h token)');
@@ -5306,23 +5325,86 @@
       }
     }
 
+    let operatorSessionTimer = null;
+
+    function formatTimeRemaining(seconds) {
+      if (seconds <= 0) return '00:00';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      const pad = (n) => String(n).padStart(2, '0');
+      if (h > 0) {
+        return `${h}h ${pad(m)}m ${pad(s)}s`;
+      }
+      return `${pad(m)}m ${pad(s)}s`;
+    }
+
+    function startOperatorSessionCountdown(expiresAt = '') {
+      if (operatorSessionTimer) {
+        clearInterval(operatorSessionTimer);
+        operatorSessionTimer = null;
+      }
+
+      function tick() {
+        const badge = document.getElementById('operatorSessionBadge');
+        if (!badge) return;
+
+        let expMs = 0;
+        if (expiresAt) {
+          expMs = new Date(expiresAt).getTime();
+        }
+        if (!expMs || isNaN(expMs)) {
+          const stored = DrippConfig.getSessionExpiresAt();
+          if (stored) expMs = new Date(stored).getTime();
+        }
+        if (!expMs || isNaN(expMs)) {
+          // If active token exists but expiration was not recorded, default to 2 hours from detection
+          expMs = Date.now() + 7200 * 1000;
+          DrippConfig.setSessionExpiresAt(new Date(expMs).toISOString());
+        }
+
+        const now = Date.now();
+        const diffSec = Math.max(0, Math.floor((expMs - now) / 1000));
+
+        if (diffSec <= 0) {
+          clearInterval(operatorSessionTimer);
+          operatorSessionTimer = null;
+          badge.innerText = 'SESSION EXPIRED';
+          badge.className = 'status-pill-mini fail';
+          badge.style.color = '#FF4D4D';
+          badge.style.borderColor = 'rgba(255, 77, 77, 0.4)';
+          updateOperatorSessionUI(false);
+          return;
+        }
+
+        badge.innerText = `SESSION ACTIVE (${formatTimeRemaining(diffSec)})`;
+        badge.className = 'status-pill-mini pass';
+        badge.style.color = 'var(--accent-yellow)';
+        badge.style.borderColor = 'rgba(255, 230, 0, 0.4)';
+      }
+
+      tick();
+      operatorSessionTimer = setInterval(tick, 1000);
+    }
+
     function updateOperatorSessionUI(active, expiresAt = '') {
       const badge = document.getElementById('operatorSessionBadge');
       const unlockBtn = document.getElementById('btnUnlockOperator');
       const lockBtn = document.getElementById('btnLockOperator');
       if (active) {
-        if (badge) {
-          badge.innerText = 'SESSION ACTIVE (2H)';
-          badge.className = 'status-pill-mini pass';
-          badge.style.color = 'var(--accent-yellow)';
-        }
         if (unlockBtn) unlockBtn.style.display = 'none';
         if (lockBtn) lockBtn.style.display = 'inline-flex';
+        startOperatorSessionCountdown(expiresAt);
       } else {
+        if (operatorSessionTimer) {
+          clearInterval(operatorSessionTimer);
+          operatorSessionTimer = null;
+        }
         if (badge) {
           badge.innerText = 'UNAUTHENTICATED';
           badge.className = 'status-pill-mini fail';
           badge.style.color = 'var(--text-dim)';
+          badge.style.borderColor = 'var(--glass-border)';
         }
         if (unlockBtn) unlockBtn.style.display = 'inline-flex';
         if (lockBtn) lockBtn.style.display = 'none';
@@ -5358,9 +5440,23 @@
         }
       }
 
-      // Check session state
+      // Check session state and synchronize live timer
       const hasSession = Boolean(DrippConfig.getSessionToken());
-      updateOperatorSessionUI(hasSession);
+      const storedExp = DrippConfig.getSessionExpiresAt();
+      updateOperatorSessionUI(hasSession, storedExp);
+
+      // Silently refresh session state from backend if configured
+      if (hasSession && DrippConfig.getBackendUrl() !== null) {
+        apiFetch('/api/operator/session').then(async res => {
+          if (res.ok) {
+            const sData = await res.json();
+            if (sData.expires_at) {
+              DrippConfig.setSessionExpiresAt(sData.expires_at);
+              startOperatorSessionCountdown(sData.expires_at);
+            }
+          }
+        }).catch(() => {});
+      }
     }
 
     function renderHomeRadarBlips() {
@@ -6028,30 +6124,54 @@
       if (!container || !readinessData) return;
 
       const groups = [
-        { name: "Security & Authentication", gates: ["CONFIG_VALIDITY", "ENVIRONMENT_SEPARATION"] },
-        { name: "Data Integrity & Deduplication", gates: ["STATE_INTEGRITY", "RECONCILIATION_HEALTH", "RULE_B_INTEGRITY"] },
-        { name: "External Providers & Research", gates: ["PROVIDER_HEALTH", "QUOTA_HEALTH", "TAVILY_HEALTH"] },
-        { name: "Infrastructure & Storage", gates: ["STORAGE_HEALTH", "CIRCUIT_BREAKER_STATE"] },
-        { name: "Central Monitoring & Incidents", gates: ["INCIDENT_HEALTH", "SYNTHETIC_HEALTH"] },
-        { name: "Commercial Safety & Execution Gates", gates: ["OUTREACH_LOCK_STATE", "EMAIL_LOCK_STATE", "CAMPAIGN_EXECUTION_LOCK"] },
-        { name: "Disaster Recovery & Backup Drills", gates: ["BACKUP_HEALTH", "RESTORE_VERIFICATION", "ROLLBACK_CAPABILITY", "SECRETS_HEALTH"] }
+        { name: "Security & Authentication", gates: ["CONFIG_VALIDITY", "ENVIRONMENT_SEPARATION", "SECRET_HYGIENE"] },
+        { name: "Data Integrity & Deduplication", gates: ["STATE_INTEGRITY", "RECONCILIATION_HEALTH", "IDENTITY_INTEGRITY", "RULE_B_INTEGRITY"] },
+        { name: "External Providers & Quota", gates: ["PROVIDER_HEALTH", "QUOTA_HEALTH"] },
+        { name: "Infrastructure & Storage", gates: ["STORAGE_HEALTH"] },
+        { name: "Central Monitoring & Test Suite", gates: ["MONITORING_HEALTH", "TEST_HEALTH", "ARTIFACT_LOG_SAFETY"] },
+        { name: "Commercial Safety & Execution Gates", gates: ["OUTREACH_LOCK_STATE", "EMAIL_LOCK_STATE", "SCHEDULER_STATE", "CRON_STATE"] },
+        { name: "Disaster Recovery & Backup Drills", gates: ["BACKUP_HEALTH", "RESTORE_VERIFICATION", "ROLLBACK_CAPABILITY"] }
       ];
+
+      const formatTitle = (g) => {
+        if (g.name && g.name !== 'undefined') return g.name;
+        if (g.display_name && g.display_name !== 'undefined') return g.display_name;
+        if (g.gate_id) return g.gate_id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return 'Unnamed Gate';
+      };
 
       container.innerHTML = groups.map(grp => {
         const matchingGates = (readinessData.gates || []).filter(g => grp.gates.includes(g.gate_id));
+        if (matchingGates.length === 0) return '';
         return `
           <div class="glass-card" style="padding:1.25rem;">
-            <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-bottom:0.75rem;">${grp.name}</div>
+            <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-bottom:0.75rem;">${escapeHtml(grp.name)}</div>
             <div style="display:flex; flex-direction:column; gap:0.5rem;">
-              ${matchingGates.map(gate => `
-                <div class="evidence-table-row" style="cursor:pointer;" onclick="openEvidenceModal('${gate.gate_id}')">
-                  <div>
-                    <strong style="color:var(--text-main);">${gate.name}</strong>
-                    <div style="font-size:0.7rem; font-family:var(--font-mono); color:var(--text-muted);">${gate.gate_id}</div>
+              ${matchingGates.map(gate => {
+                const title = formatTitle(gate);
+                const rawStatus = (gate.status || '').toUpperCase();
+                const isPass = rawStatus === 'PASS';
+                const isWarn = rawStatus === 'WARN';
+                const isFail = rawStatus === 'FAIL' || rawStatus === 'BLOCKED';
+                const displayStatus = isPass ? 'PASS' : (isWarn ? 'WARN' : (isFail ? rawStatus : 'UNKNOWN'));
+                const statusColor = isPass ? 'var(--accent-yellow)' : (isWarn ? '#FFA500' : '#FF4D4D');
+                const lastChecked = gate.timestamp || gate.last_checked || '';
+                const timeStr = lastChecked ? new Date(lastChecked).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+
+                return `
+                  <div class="evidence-table-row" style="cursor:pointer;" onclick="openEvidenceModal('${escapeHtml(gate.gate_id)}')">
+                    <div style="flex:1; min-width:0; padding-right:0.5rem;">
+                      <strong style="color:var(--text-main); font-size:0.8rem; display:block;">${escapeHtml(title)}</strong>
+                      <div style="font-size:0.68rem; font-family:var(--font-mono); color:var(--text-muted);">${escapeHtml(gate.gate_id || '')}</div>
+                      ${gate.description ? `<div style="font-size:0.68rem; color:var(--text-dim); margin-top:2px; line-height:1.25;">${escapeHtml(gate.description)}</div>` : ''}
+                    </div>
+                    <div style="text-align:right;">
+                      <span style="color:${statusColor}; font-weight:700; font-size:0.75rem; font-family:var(--font-mono);">${escapeHtml(displayStatus)}</span>
+                      ${timeStr ? `<div style="font-size:0.6rem; color:var(--text-dim); font-family:var(--font-mono); margin-top:2px;">${escapeHtml(timeStr)}</div>` : ''}
+                    </div>
                   </div>
-                  <span style="color:${(gate.status === 'PASS' || gate.passed) ? 'var(--accent-yellow)' : '#FF4D4D'}; font-weight:700; font-size:0.75rem;">${escapeHtml(gate.status || ((gate.status === 'PASS' || gate.passed) ? 'PASS' : 'FAIL'))}</span>
-                </div>
-              `).join('')}
+                `;
+              }).join('')}
             </div>
           </div>
         `;
@@ -6063,9 +6183,24 @@
       const gate = (readinessData.gates || []).find(g => g.gate_id === gateId);
       if (!gate) return;
 
-      document.getElementById('evidenceModalTitle').innerText = gate.name;
-      document.getElementById('evidenceModalSubtitle').innerText = gate.gate_id;
-      document.getElementById('evidenceModalBody').innerText = JSON.stringify(gate.evidence || {}, null, 2);
+      const title = gate.name || gate.display_name || (gate.gate_id ? gate.gate_id.replace(/_/g, ' ') : 'Gate Evidence');
+      const subtitle = `${gate.gate_id || ''} • Status: ${gate.status || 'UNKNOWN'} • Severity: ${gate.severity || 'N/A'}${gate.blocking ? ' (BLOCKING)' : ''}`;
+
+      document.getElementById('evidenceModalTitle').innerText = title;
+      document.getElementById('evidenceModalSubtitle').innerText = subtitle;
+
+      const details = {
+        gate_id: gate.gate_id,
+        name: title,
+        status: gate.status || 'UNKNOWN',
+        severity: gate.severity || null,
+        blocking: Boolean(gate.blocking),
+        description: gate.description || gate.explanation || '',
+        timestamp: gate.timestamp || gate.last_checked || null,
+        evidence: gate.evidence || {}
+      };
+
+      document.getElementById('evidenceModalBody').innerText = JSON.stringify(details, null, 2);
       document.getElementById('evidenceModalBackdrop').classList.add('active');
     }
     function closeEvidenceModal() {

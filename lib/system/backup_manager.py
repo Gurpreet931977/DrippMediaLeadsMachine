@@ -64,7 +64,7 @@ class BackupManager:
 
     def __init__(self, data_dir: Optional[str] = None, backups_dir: Optional[str] = None):
         self.data_dir = data_dir or DATA_DIR
-        self.backups_dir = backups_dir or DEFAULT_BACKUPS_DIR
+        self.backups_dir = backups_dir or os.path.join(self.data_dir, "backups")
         if not os.path.exists(self.backups_dir):
             os.makedirs(self.backups_dir, exist_ok=True)
 

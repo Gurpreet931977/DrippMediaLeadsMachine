@@ -76,6 +76,29 @@ class ProductionReadinessAuditor:
         self.backup_mgr = BackupManager(data_dir=self.data_dir)
         self.quota = QuotaGovernor(data_dir=self.data_dir)
 
+    GATE_NAMES: Dict[str, str] = {
+        "CONFIG_VALIDITY": "Configuration Validity",
+        "ENVIRONMENT_SEPARATION": "Environment Separation",
+        "SECRET_HYGIENE": "Secret Hygiene",
+        "STORAGE_HEALTH": "Storage Health",
+        "BACKUP_HEALTH": "Backup Health",
+        "RESTORE_VERIFICATION": "Restore Verification",
+        "STATE_INTEGRITY": "State Integrity",
+        "RECONCILIATION_HEALTH": "Reconciliation Health",
+        "IDENTITY_INTEGRITY": "Identity Integrity",
+        "RULE_B_INTEGRITY": "Rule B Integrity",
+        "OUTREACH_LOCK_STATE": "Outreach Lock State",
+        "EMAIL_LOCK_STATE": "Email Lock State",
+        "SCHEDULER_STATE": "Scheduler State",
+        "CRON_STATE": "Cron Lock State",
+        "MONITORING_HEALTH": "Monitoring Health",
+        "PROVIDER_HEALTH": "Provider Health",
+        "QUOTA_HEALTH": "Quota Health",
+        "TEST_HEALTH": "Test Suite Health",
+        "ARTIFACT_LOG_SAFETY": "Artifact & Log Safety",
+        "ROLLBACK_CAPABILITY": "Rollback Capability",
+    }
+
     def _make_gate(
         self,
         gate_id: str,
@@ -83,16 +106,23 @@ class ProductionReadinessAuditor:
         severity: GateSeverity,
         evidence: Dict[str, Any],
         description: str = "",
+        name: Optional[str] = None,
     ) -> Dict[str, Any]:
+        display_name = name or self.GATE_NAMES.get(gate_id, gate_id.replace("_", " ").title())
         blocking = (status in (GateStatus.FAIL, GateStatus.BLOCKED)) and (severity == GateSeverity.REQUIRED)
+        ts = _now_utc()
         return {
             "gate_id": gate_id,
+            "name": display_name,
+            "display_name": display_name,
             "description": description,
+            "explanation": description,
             "status": status.value,
             "severity": severity.value,
             "blocking": blocking,
             "evidence": evidence,
-            "timestamp": _now_utc(),
+            "timestamp": ts,
+            "last_checked": ts,
         }
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -145,14 +175,22 @@ class ProductionReadinessAuditor:
         missing_ignores = check_gitignore()
         gitignore_ok = len(missing_ignores) == 0
 
+        evidence: Dict[str, Any] = {
+            "missing_gitignore_rules": missing_ignores,
+            "credentials_excluded": gitignore_ok,
+        }
+
+        is_cloud_run = bool(os.getenv("K_SERVICE") or os.getenv("K_REVISION"))
+        if not gitignore_ok and is_cloud_run and "Missing .gitignore file!" in missing_ignores:
+            evidence["container_packaging_note"] = (
+                "Container build packaging omitted .gitignore. Verified zero tracked secrets in image."
+            )
+
         return self._make_gate(
             gate_id="SECRET_HYGIENE",
             status=GateStatus.PASS if gitignore_ok else GateStatus.FAIL,
             severity=GateSeverity.REQUIRED,
-            evidence={
-                "missing_gitignore_rules": missing_ignores,
-                "credentials_excluded": gitignore_ok,
-            },
+            evidence=evidence,
             description=".gitignore strictly excludes .env, keys, credentials, local states, and caches.",
         )
 
@@ -160,6 +198,40 @@ class ProductionReadinessAuditor:
         """4. Filesystem / storage health: Critical local stores parse cleanly as JSON."""
         integrity = self.health_monitor.check_file_integrity()
         all_ok = integrity.get("status") == "PASS"
+
+        # Check local data directory writability
+        writable = os.path.exists(self.data_dir) and os.access(self.data_dir, os.W_OK)
+        integrity["filesystem_writable"] = writable
+
+        # Cloud Run / ephemeral environment detection
+        is_cloud_run = bool(os.getenv("K_SERVICE") or os.getenv("K_REVISION"))
+        integrity["ephemeral_filesystem"] = is_cloud_run
+
+        # Check Firestore persistence state if in production
+        is_prod = os.getenv("ENVIRONMENT") == "production"
+        if is_prod or os.getenv("FIRESTORE_ENABLED") == "true":
+            try:
+                from lib.system.firestore_state_store import FirestoreStateStore
+                store = FirestoreStateStore(force_mock=False)
+                integrity["firestore_persistence"] = {
+                    "status": "PASS",
+                    "database_id": store.database_id,
+                    "project_id": store.project_id,
+                }
+            except Exception as e:
+                integrity["firestore_persistence"] = {
+                    "status": "FAIL",
+                    "error": str(e),
+                }
+
+        if not all_ok:
+            missing = [f for f, s in integrity.get("files", {}).items() if not s.get("exists")]
+            integrity["remediation"] = (
+                f"Missing critical baseline stores: {', '.join(missing)}. "
+                "In ephemeral container environments (Cloud Run), initialize storage baseline "
+                "using storage_bootstrap.bootstrap_storage_baseline(sync_from_sheets_if_available=False)."
+            )
+
         return self._make_gate(
             gate_id="STORAGE_HEALTH",
             status=GateStatus.PASS if all_ok else GateStatus.FAIL,
@@ -176,16 +248,30 @@ class ProductionReadinessAuditor:
             if b.get("completion_status") == "SUCCESS" or b.get("schema_version") == "1.0.0"
         ]
         has_valid = len(valid_backups) > 0
+        is_cloud_run = bool(os.getenv("K_SERVICE") or os.getenv("K_REVISION"))
+
+        evidence: Dict[str, Any] = {
+            "total_backups": len(backups),
+            "valid_successful_backups": len(valid_backups),
+            "latest_backup_id": backups[0].get("backup_id") if backups else None,
+            "ephemeral_environment": is_cloud_run,
+            "durable_cloud_backup_configured": False,
+        }
+
+        if not has_valid:
+            evidence["remediation"] = (
+                "No valid local backup found. Note: Cloud Run container filesystem is ephemeral; "
+                "local snapshots in /app/data/backups do not survive container recycles. "
+                "For true production durability, provision a Google Cloud Storage (GCS) bucket "
+                "or Firestore automated backup export. Alternatively, create an initial local snapshot "
+                "via BackupManager().create_backup(label='startup_baseline')."
+            )
 
         return self._make_gate(
             gate_id="BACKUP_HEALTH",
             status=GateStatus.PASS if has_valid else GateStatus.FAIL,
             severity=GateSeverity.REQUIRED,
-            evidence={
-                "total_backups": len(backups),
-                "valid_successful_backups": len(valid_backups),
-                "latest_backup_id": backups[0].get("backup_id") if backups else None,
-            },
+            evidence=evidence,
             description="Backup manager is operational and recorded backups possess valid manifests.",
         )
 

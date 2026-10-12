@@ -29,6 +29,13 @@ load_dotenv()
 # Automatically recover any interrupted runs upon server startup
 run_manager.recover_interrupted_runs()
 
+# Initialize baseline storage stores in ephemeral environments safely
+try:
+    from lib.system.storage_bootstrap import bootstrap_storage_baseline
+    bootstrap_storage_baseline(sync_from_sheets_if_available=False)
+except Exception as e:
+    logger.warning("Startup storage bootstrap notice: %s", e)
+
 app = FastAPI(title="Dripp Media Lead Intelligence Suite")
 
 # In-memory operator sessions: session_token -> {"issued_at": datetime, "expires_at": datetime, "session_id": str}
@@ -705,15 +712,42 @@ async def operator_login_endpoint(req: OperatorLoginRequest, request: Request):
 @app.get("/api/operator/session")
 async def operator_session_status_endpoint(request: Request):
     """
-    Checks active operator session validity.
+    Checks active operator session validity and returns remaining TTL.
     """
     expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
-    auth = check_operator_authorization(request)
+    auth_res = get_authenticated_operator(request)
+    auth = auth_res["authenticated"]
     if expected and not auth:
         raise HTTPException(status_code=401, detail="Unauthorized operator session")
+
+    # Extract session details if authenticated via a session token
+    session_data = {}
+    auth_hdr = request.headers.get("Authorization", "").strip()
+    token = ""
+    if auth_hdr.startswith("Bearer "):
+        token = auth_hdr[7:].strip()
+    if not token:
+        token = request.headers.get("X-Session-Token", "").strip()
+    if not token:
+        token = request.cookies.get("dripp_session", "").strip()
+
+    if token and token in operator_sessions:
+        sess = operator_sessions[token]
+        exp = sess.get("expires_at")
+        if exp:
+            now = datetime.now(timezone.utc)
+            rem = max(0, int((exp - now).total_seconds()))
+            session_data = {
+                "expires_at": exp.isoformat(),
+                "remaining_seconds": rem,
+                "session_id": sess.get("session_id")
+            }
+
     return {
         "status": "ok",
-        "authenticated": auth
+        "authenticated": auth,
+        "auth_channel": auth_res.get("auth_channel"),
+        **session_data
     }
 
 @app.post("/api/operator/logout")
