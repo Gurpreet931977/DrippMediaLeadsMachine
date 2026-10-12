@@ -38,7 +38,7 @@ EXPOSE 8000
 
 # Container healthcheck against canonical backend health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/system/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/api/system/health || exit 1
 
 # Start FastAPI application via Uvicorn with proxy headers enabled for HTTPS ingress
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+CMD exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers
