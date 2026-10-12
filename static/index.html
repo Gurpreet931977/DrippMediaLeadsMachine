@@ -4983,8 +4983,15 @@
         headers['Authorization'] = `Bearer ${sessionToken}`;
         headers['X-Session-Token'] = sessionToken;
       }
+      if (!headers['X-Requested-With']) {
+        headers['X-Requested-With'] = 'XMLHttpRequest';
+      }
 
-      const fetchOpts = { ...options, headers: headers };
+      const fetchOpts = {
+        credentials: 'include',
+        ...options,
+        headers: headers
+      };
       const timeoutMs = options.timeoutMs || 15000;
       if (!fetchOpts.signal && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
         fetchOpts.signal = AbortSignal.timeout(timeoutMs);
@@ -5096,7 +5103,7 @@
 
       const startTime = Date.now();
       try {
-        const headers = {};
+        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
         const sessionToken = DrippConfig.getSessionToken();
         if (sessionToken) {
           headers['Authorization'] = `Bearer ${sessionToken}`;
@@ -5107,6 +5114,7 @@
         // 1. Probe Backend Health
         const healthRes = await fetch(`${baseUrl}/api/system/health`, {
           headers,
+          credentials: 'include',
           signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined)
         });
         const latency = Date.now() - startTime;
@@ -5123,6 +5131,7 @@
         try {
           const crmRes = await fetch(`${baseUrl}/api/crm/status`, {
             headers,
+            credentials: 'include',
             signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined)
           });
           if (crmRes.ok) {
@@ -5131,6 +5140,8 @@
             const queueCount = crmData.tabs?.REVIEW_QUEUE?.count ?? '--';
             crmStatusText = `CONNECTED (${leadCount} Qualified Leads, ${queueCount} In Review Queue)`;
             crmConnected = true;
+          } else if (crmRes.status === 401) {
+            crmStatusText = 'PROTECTED (Authentication required to read CRM)';
           } else {
             crmStatusText = `CRM Unreachable (HTTP ${crmRes.status})`;
           }
@@ -5382,6 +5393,12 @@
     async function loadLeadsData() {
       try {
         const res = await apiFetch('/api/leads');
+        if (res.status === 401) {
+          console.warn('[CRM Notice] Operator authentication required to view private leads.');
+          const homeQual = document.getElementById('homeQualifiedVal');
+          if (homeQual) homeQual.innerText = '--';
+          return;
+        }
         const data = await res.json();
         allLeads = data.leads || [];
 

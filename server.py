@@ -65,75 +65,7 @@ def validate_session_token(token: str) -> bool:
         return False
     return True
 
-def check_operator_authorization(request: Request) -> bool:
-    """
-    Validates Operator Authorization:
-    1. If OPERATOR_API_KEY is not configured or blank -> permits operation in local/dev mode.
-    2. Validates short-lived session token from Authorization: Bearer or X-Session-Token.
-    3. Validates direct administrative key from Authorization: Bearer or X-Operator-Key using constant-time comparison.
-    """
-    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
-    if not expected:
-        return True
-    
-    # 1. Check Bearer token
-    auth_hdr = request.headers.get("Authorization", "").strip()
-    bearer_token = auth_hdr[7:].strip() if auth_hdr.startswith("Bearer ") else ""
-    if bearer_token:
-        if validate_session_token(bearer_token):
-            return True
-        if secrets.compare_digest(bearer_token, expected):
-            return True
-
-    # 2. Check X-Session-Token header
-    session_hdr = request.headers.get("X-Session-Token", "").strip()
-    if session_hdr and validate_session_token(session_hdr):
-        return True
-
-    # 3. Check X-Operator-Key header
-    op_key_hdr = request.headers.get("X-Operator-Key", "").strip()
-    if op_key_hdr:
-        if validate_session_token(op_key_hdr):
-            return True
-        if secrets.compare_digest(op_key_hdr, expected):
-            return True
-
-    # 4. Check query params (for dev / direct callbacks)
-    api_key_query = request.query_params.get("api_key", "").strip()
-    if api_key_query:
-        if validate_session_token(api_key_query) or secrets.compare_digest(api_key_query, expected):
-            return True
-
-    return False
-
-# Security middleware intercepts any state-modifying requests to /api/ and verifies authorization
-@app.middleware("http")
-async def operator_security_middleware(request: Request, call_next):
-    path = request.url.path
-    method = request.method
-    
-    # Protect state-modifying endpoints
-    if method in ("POST", "PUT", "DELETE", "PATCH") and path.startswith("/api/"):
-        public_exemptions = {
-            "/api/operator/login",
-            "/api/email/unsubscribe",
-            "/api/webhook/inbound-reply"
-        }
-        if path not in public_exemptions:
-            if not check_operator_authorization(request):
-                return JSONResponse(
-                    {
-                        "status": "error",
-                        "detail": "Operator authentication required: Valid session token or API key required",
-                        "message": "Unauthorized: Valid Operator session or API key required"
-                    },
-                    status_code=401
-                )
-                
-    response = await call_next(request)
-    return response
-
-# Configure CORS for public Vercel frontend, local dev, and custom origins
+# Configure CORS and CSRF allowed origins
 allowed_origins = [
     "https://dripp-media-leads-machine.vercel.app",
     "http://localhost:8000",
@@ -146,6 +78,157 @@ if env_cors:
     for o in env_cors.split(","):
         if o.strip() and o.strip() not in allowed_origins:
             allowed_origins.append(o.strip())
+
+def is_allowed_origin(origin: str) -> bool:
+    if not origin:
+        return False
+    clean_origin = origin.rstrip("/")
+    for ao in allowed_origins:
+        if clean_origin == ao.rstrip("/"):
+            return True
+    if clean_origin.startswith("https://") and clean_origin.endswith(".vercel.app"):
+        return True
+    return False
+
+def get_authenticated_operator(request: Request) -> Dict[str, Any]:
+    """
+    Evaluates operator authentication and returns auth status + auth channel.
+    Channels: 'dev_open', 'cookie', 'bearer_session', 'bearer_master_key', 'header_session', 'header_master_key', 'query_param'.
+    """
+    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+    if not expected:
+        return {"authenticated": True, "auth_channel": "dev_open", "error": None}
+    
+    # 1. Check Bearer token in Authorization header
+    auth_hdr = request.headers.get("Authorization", "").strip()
+    if auth_hdr.startswith("Bearer "):
+        bearer_token = auth_hdr[7:].strip()
+        if validate_session_token(bearer_token):
+            return {"authenticated": True, "auth_channel": "bearer_session", "error": None}
+        if secrets.compare_digest(bearer_token, expected):
+            return {"authenticated": True, "auth_channel": "bearer_master_key", "error": None}
+
+    # 2. Check X-Session-Token header
+    session_hdr = request.headers.get("X-Session-Token", "").strip()
+    if session_hdr and validate_session_token(session_hdr):
+        return {"authenticated": True, "auth_channel": "header_session", "error": None}
+
+    # 3. Check X-Operator-Key header
+    op_key_hdr = request.headers.get("X-Operator-Key", "").strip()
+    if op_key_hdr:
+        if validate_session_token(op_key_hdr):
+            return {"authenticated": True, "auth_channel": "header_session", "error": None}
+        if secrets.compare_digest(op_key_hdr, expected):
+            return {"authenticated": True, "auth_channel": "header_master_key", "error": None}
+
+    # 4. Check HttpOnly dripp_session cookie (server-managed session)
+    cookie_token = request.cookies.get("dripp_session", "").strip()
+    if cookie_token and validate_session_token(cookie_token):
+        return {"authenticated": True, "auth_channel": "cookie", "error": None}
+
+    # 5. Check query params (for dev / direct callbacks)
+    api_key_query = request.query_params.get("api_key", "").strip()
+    if api_key_query:
+        if validate_session_token(api_key_query):
+            return {"authenticated": True, "auth_channel": "query_param", "error": None}
+        if secrets.compare_digest(api_key_query, expected):
+            return {"authenticated": True, "auth_channel": "query_param", "error": None}
+
+    return {"authenticated": False, "auth_channel": None, "error": "Valid Operator session or API key required"}
+
+def check_operator_authorization(request: Request) -> bool:
+    """Convenience boolean helper for checking operator authorization."""
+    return get_authenticated_operator(request)["authenticated"]
+
+PUBLIC_API_ROUTES = {
+    "/api/system/health",
+    "/api/operator/login",
+    "/api/operator/logout",
+    "/api/email/unsubscribe",
+    "/api/email/inbound/reply-webhook",
+    "/api/webhook/inbound-reply"
+}
+
+def is_public_api_endpoint(path: str) -> bool:
+    if path in PUBLIC_API_ROUTES:
+        return True
+    if path.startswith("/api/email/unsubscribe/"):
+        return True
+    return False
+
+def validate_csrf_protection(request: Request, auth_channel: Optional[str]) -> bool:
+    """
+    Validates CSRF protection for state-modifying verbs.
+    If authenticated via cookie, verifies Origin / Referer OR custom header.
+    """
+    if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
+        return True
+    
+    # Custom non-simple headers cannot be sent cross-site by browser HTML forms
+    has_custom_hdr = bool(
+        request.headers.get("X-Requested-With")
+        or request.headers.get("X-Session-Token")
+        or (request.headers.get("Authorization") and auth_channel != "cookie")
+    )
+    if has_custom_hdr:
+        return True
+
+    # If auth channel is not cookie (e.g. Bearer token in header), CSRF is not applicable
+    if auth_channel in ("bearer_session", "bearer_master_key", "header_session", "header_master_key"):
+        return True
+
+    # Origin check
+    origin = request.headers.get("Origin", "").strip()
+    if origin:
+        return is_allowed_origin(origin)
+
+    # Referer check
+    referer = request.headers.get("Referer", "").strip()
+    if referer:
+        import urllib.parse
+        ref_parsed = urllib.parse.urlparse(referer)
+        ref_origin = f"{ref_parsed.scheme}://{ref_parsed.netloc}"
+        return is_allowed_origin(ref_origin)
+
+    # In dev mode without origin/referer
+    if auth_channel == "dev_open":
+        return True
+
+    return False
+
+# Security middleware intercepts requests to /api/ and verifies authorization & CSRF
+@app.middleware("http")
+async def operator_security_middleware(request: Request, call_next):
+    path = request.url.path
+    method = request.method
+    
+    # Protect all private API routes (both reads and writes)
+    if path.startswith("/api/") and not is_public_api_endpoint(path):
+        auth_res = get_authenticated_operator(request)
+        if not auth_res["authenticated"]:
+            return JSONResponse(
+                {
+                    "status": "error",
+                    "detail": "Operator authentication required: Valid session token or API key required",
+                    "message": "Unauthorized: Valid Operator session or API key required"
+                },
+                status_code=401
+            )
+            
+        # Enforce CSRF protection for state-modifying requests
+        if method in ("POST", "PUT", "DELETE", "PATCH"):
+            if not validate_csrf_protection(request, auth_res["auth_channel"]):
+                return JSONResponse(
+                    {
+                        "status": "error",
+                        "detail": "CSRF protection: Request rejected due to untrusted origin or missing custom header",
+                        "message": "Forbidden: CSRF validation failed"
+                    },
+                    status_code=403
+                )
+                
+    response = await call_next(request)
+    return response
 
 app.add_middleware(
     CORSMiddleware,
@@ -493,10 +576,10 @@ class OperatorLoginRequest(BaseModel):
     operator_key: str
 
 @app.post("/api/operator/login")
-async def operator_login_endpoint(req: OperatorLoginRequest):
+async def operator_login_endpoint(req: OperatorLoginRequest, request: Request):
     """
-    Exchanges the master Operator Key for a secure short-lived session token (2 hour TTL).
-    Enables secure administrative sessions without persisting permanent secrets in browser storage.
+    Exchanges the master Operator Key for a secure short-lived session token (2 hour TTL)
+    and sets an HttpOnly Secure cookie for server-managed session persistence.
     """
     expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
     provided = req.operator_key.strip()
@@ -509,11 +592,26 @@ async def operator_login_endpoint(req: OperatorLoginRequest):
             raise HTTPException(status_code=401, detail="Invalid operator key")
             
     session_info = create_operator_session()
-    return {
+    response = JSONResponse({
         "status": "ok",
         "authenticated": True,
         **session_info
-    }
+    })
+
+    # Set server-managed HttpOnly session cookie
+    is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    samesite_policy = "none" if is_https else "lax"
+    
+    response.set_cookie(
+        key="dripp_session",
+        value=session_info["session_token"],
+        httponly=True,
+        secure=is_https,
+        samesite=samesite_policy,
+        max_age=OPERATOR_SESSION_TTL_SECONDS,
+        path="/"
+    )
+    return response
 
 @app.get("/api/operator/session")
 async def operator_session_status_endpoint(request: Request):
@@ -532,15 +630,33 @@ async def operator_session_status_endpoint(request: Request):
 @app.post("/api/operator/logout")
 async def operator_logout_endpoint(request: Request):
     """
-    Invalidates current session token.
+    Invalidates current session token and clears the server-managed dripp_session cookie.
     """
+    token = ""
     auth_hdr = request.headers.get("Authorization", "").strip()
-    token = auth_hdr[7:].strip() if auth_hdr.startswith("Bearer ") else ""
+    if auth_hdr.startswith("Bearer "):
+        token = auth_hdr[7:].strip()
     if not token:
         token = request.headers.get("X-Session-Token", "").strip()
+    if not token:
+        token = request.cookies.get("dripp_session", "").strip()
+
     if token and token in operator_sessions:
         operator_sessions.pop(token, None)
-    return {"status": "ok", "authenticated": False, "message": "Operator session terminated"}
+
+    response = JSONResponse({"status": "ok", "authenticated": False, "message": "Operator session terminated"})
+
+    is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    samesite_policy = "none" if is_https else "lax"
+
+    response.delete_cookie(
+        key="dripp_session",
+        path="/",
+        httponly=True,
+        secure=is_https,
+        samesite=samesite_policy
+    )
+    return response
 
 @app.get("/api/crm/status")
 async def get_crm_status_endpoint():
@@ -2164,17 +2280,27 @@ async def mark_proposal_lost_endpoint(request: Request):
 # =============================================================================
 
 @app.get("/api/system/health")
-async def get_system_health_endpoint():
+async def get_system_health_endpoint(request: Request):
     """
-    Returns global system health status (HEALTHY, DEGRADED, FAILED)
-    aggregating file integrity, last successful runs, reconciliation, backups,
-    quota status, scheduler status, and data quality issues.
+    Returns global system health status.
+    Deliberately exposes only minimal, non-sensitive liveness information without authentication.
+    Requires valid operator authorization for full diagnostic and operational telemetry.
     """
+    auth = check_operator_authorization(request)
+    if not auth:
+        return {
+            "status": "ok",
+            "canonical_health_status": "OPERATIONAL",
+            "service": "Dripp Media Lead Intelligence Suite",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "authenticated": False
+        }
+
     try:
         from lib.system.system_health import SystemHealthMonitor
         monitor = SystemHealthMonitor()
         snapshot = monitor.generate_snapshot()
-        return {"status": "ok", **snapshot}
+        return {"status": "ok", "authenticated": True, **snapshot}
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
