@@ -1,14 +1,19 @@
 """
 lib/sheets/operational_ledger.py
 ================================
-Durable Operational Job-State Ledger backed by Google Sheets.
-Fulfills Phase 12.2.3 Requirements:
-1. Operational job progress and stage checkpoints persisted in dedicated 'OPERATIONAL_JOBS' worksheet.
-2. Complete separation from business CRM records: never mixes operational state with LEADS, REVIEW_QUEUE, or RESEARCH_LOG.
-3. Single-instance mutual exclusion with heartbeats and stale-job reconciliation (fails closed on conflict).
-4. Resumable checkpoint tracking: candidate cursor, processed keys, and recovery metadata.
-5. Google Sheets API quota conservation: bounded batched updates, debounced heartbeats, exponential backoff.
-6. Offline / Mock mode support for isolated testing without modifying live CRM records.
+Operational Job-State Ledger and Google Sheets Export/Audit View.
+
+ARCHITECTURE ROLE (Phase 12.2.5 Reconciliation):
+- Canonical Authoritative State Store: Google Cloud Firestore (`FirestoreStateStore`)
+  holds authoritative distributed leases, atomic transactions, execution checkpoints,
+  and recovery metadata across containers.
+- Secondary Audit / Export View: Google Sheets `OPERATIONAL_JOBS` worksheet provides
+  a human-inspectable operational mirror for operators without accessing the GCP console.
+- CRITICAL BOUNDARY: Google Sheets does NOT provide atomic distributed transactions
+  across multi-container workloads; distributed lease mutual exclusion must always be
+  enforced via Firestore transactional operations.
+- CRM Data Isolation: Never mixes operational progress records into `LEADS`, `REVIEW_QUEUE`,
+  or `RESEARCH_LOG` sheets.
 """
 
 import os

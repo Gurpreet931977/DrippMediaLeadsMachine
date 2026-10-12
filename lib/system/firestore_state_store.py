@@ -49,7 +49,8 @@ class FirestoreStateStore:
     def __init__(
         self,
         project_id: Optional[str] = None,
-        database_id: str = "(default)",
+        database_id: Optional[str] = None,
+        location_id: Optional[str] = None,
         force_mock: bool = False,
     ):
         self.project_id = (
@@ -58,10 +59,12 @@ class FirestoreStateStore:
             or os.getenv("GCP_PROJECT")
             or os.getenv("PROJECT_ID", "dripp-media-leads")
         )
-        self.database_id = database_id
+        self.database_id = database_id or os.getenv("FIRESTORE_DATABASE_ID", "(default)")
+        # Location identifier: multi-region 'nam5' vs regional 'us-central1' (NOT interchangeable)
+        self.location_id = location_id or os.getenv("FIRESTORE_LOCATION", "nam5")
         self._is_live = False
         self._client = None
-        self._mock_data: Dict[str, Dict[str, Dict[str, Any]]] = {
+        self._mock_data: Dict[str, Dict[str, Any]] = {
             COLL_LEASES: {},
             COLL_CHECKPOINTS: {},
             COLL_RUNS: {},
@@ -69,20 +72,30 @@ class FirestoreStateStore:
             COLL_UNSUBSCRIBES: {},
         }
 
-        # Check if live Firestore is explicitly enabled and SDK is installed
-        live_enabled = os.getenv("FIRESTORE_ENABLED", "").lower() in ("true", "1", "yes")
-        if live_enabled and not force_mock:
+        # Check environment mode
+        env_mode = os.getenv("ENVIRONMENT", "").strip().lower()
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        is_production = env_mode in ("production", "prod") or app_env in ("production", "prod")
+        live_enabled = os.getenv("FIRESTORE_ENABLED", "").strip().lower() in ("true", "1", "yes")
+
+        if (is_production or live_enabled) and not force_mock:
+            # Production runtime strictly requires real Firestore client and fails closed on error
             try:
                 from google.cloud import firestore
                 self._client = firestore.Client(project=self.project_id, database=self.database_id)
                 self._is_live = True
-                logger.info("Initialized live Google Cloud Firestore client for project %s", self.project_id)
-            except Exception as e:
-                logger.warning(
-                    "Could not initialize live Google Cloud Firestore client (%s). Falling back to resilient mock store.",
-                    e,
+                logger.info(
+                    "Initialized production Google Cloud Firestore client for project %s (db: %s, location: %s)",
+                    self.project_id, self.database_id, self.location_id
                 )
-                self._is_live = False
+            except Exception as e:
+                logger.error("FATAL: Failed to initialize Google Cloud Firestore in production: %s", e)
+                raise RuntimeError(
+                    f"Production Firestore initialization failure: {e}. "
+                    f"In production mode (project={self.project_id}, db={self.database_id}, location={self.location_id}), "
+                    "a live Google Cloud Firestore client and valid identity are strictly required. "
+                    "Silent fallback to in-memory mock state is strictly prohibited."
+                ) from e
         else:
             self._is_live = False
 
@@ -248,6 +261,41 @@ class FirestoreStateStore:
                 return None
         else:
             return self._mock_data[COLL_LEASES].get(lease_name)
+
+    def reconcile_stale_leases(self) -> List[Dict[str, Any]]:
+        """
+        Scans all leases and safely reconciles any whose TTL has expired.
+        Expired leases are purged, freeing the resource for subsequent runs.
+        Returns a list of reconciled/cleared lease records.
+        """
+        now = _now_epoch()
+        reconciled = []
+
+        if self._is_live:
+            try:
+                docs = self._client.collection(COLL_LEASES).stream()
+                for doc in docs:
+                    data = doc.to_dict()
+                    expires_epoch = data.get("expires_epoch", 0.0)
+                    if expires_epoch < now:
+                        lease_name = data.get("lease_name") or doc.id
+                        logger.warning(
+                            "Reconciling expired lease '%s' held by %s (expired at epoch %.2f vs now %.2f)",
+                            lease_name, data.get("holder_id"), expires_epoch, now
+                        )
+                        doc.reference.delete()
+                        reconciled.append(data)
+            except Exception as e:
+                logger.error("Error during live Firestore stale lease reconciliation: %s", e)
+        else:
+            for lease_name, data in list(self._mock_data[COLL_LEASES].items()):
+                expires_epoch = data.get("expires_epoch", 0.0)
+                if expires_epoch < now:
+                    logger.info("Reconciling mock expired lease '%s'", lease_name)
+                    self._mock_data[COLL_LEASES].pop(lease_name, None)
+                    reconciled.append(data)
+
+        return reconciled
 
     # -------------------------------------------------------------------------
     # 2. JOB RESUMABILITY & CHECKPOINTS

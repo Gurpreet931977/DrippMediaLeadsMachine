@@ -66,6 +66,13 @@ class DurablePipelineRunManager:
         except Exception as e:
             print(f"[RunManager] Failed to persist run record {run_id}: {e}")
 
+        # Synchronize into canonical Cloud Firestore operational state store
+        try:
+            from lib.system.firestore_state_store import firestore_store
+            firestore_store.save_run_record(run_id, record)
+        except Exception:
+            pass
+
     def create_run(
         self,
         country: str,
@@ -332,6 +339,14 @@ class DurablePipelineRunManager:
         """Loads a specific run record from disk."""
         path = self._get_run_path(run_id)
         if not os.path.exists(path):
+            # Fallback to canonical Firestore state store
+            try:
+                from lib.system.firestore_state_store import firestore_store
+                remote = firestore_store.get_run_record(run_id)
+                if remote:
+                    return remote
+            except Exception:
+                pass
             return None
         try:
             with open(path, "r", encoding="utf-8") as f:

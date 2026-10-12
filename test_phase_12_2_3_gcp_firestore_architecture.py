@@ -255,5 +255,148 @@ class TestSafetyInvariantsAndRules(unittest.TestCase):
         self.assertNotIn("password", lease_str.lower())
 
 
+class TestProductionFailClosedAndLocationSemantics(unittest.TestCase):
+    """Verifies fail-closed behavior in production and location distinction."""
+
+    def test_production_mode_requires_real_firestore_client_fails_closed(self):
+        """15. In production mode, failing to connect to Firestore raises RuntimeError (no silent mock fallback)."""
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
+            with self.assertRaises(RuntimeError) as ctx:
+                FirestoreStateStore(force_mock=False)
+            self.assertIn("Production Firestore initialization failure", str(ctx.exception))
+            self.assertIn("Silent fallback to in-memory mock state is strictly prohibited", str(ctx.exception))
+
+    def test_firestore_enabled_flag_fails_closed_when_live_client_unavailable(self):
+        """16. FIRESTORE_ENABLED=true raises RuntimeError if live SDK is unavailable."""
+        with patch.dict(os.environ, {"FIRESTORE_ENABLED": "true", "ENVIRONMENT": "development"}):
+            with self.assertRaises(RuntimeError) as ctx:
+                FirestoreStateStore(force_mock=False)
+            self.assertIn("Production Firestore initialization failure", str(ctx.exception))
+
+    def test_location_identifier_distinction_nam5_vs_us_central1(self):
+        """17. nam5 (multi-region US) and us-central1 (regional Iowa) are distinct, non-interchangeable locations."""
+        store_multi = FirestoreStateStore(force_mock=True, location_id="nam5")
+        store_regional = FirestoreStateStore(force_mock=True, location_id="us-central1")
+
+        self.assertEqual(store_multi.location_id, "nam5")
+        self.assertEqual(store_regional.location_id, "us-central1")
+        self.assertNotEqual(store_multi.location_id, store_regional.location_id)
+
+    def test_reconcile_stale_leases(self):
+        """18. reconcile_stale_leases finds expired leases and removes them from active pool."""
+        store = FirestoreStateStore(force_mock=True)
+        store.clear_mock_data()
+
+        # Acquire lease with 0.05s TTL
+        store.acquire_lease("job_lock_1", "worker_old", ttl_seconds=0.05)
+        self.assertIsNotNone(store.get_lease("job_lock_1"))
+
+        time.sleep(0.06)
+        reconciled = store.reconcile_stale_leases()
+        self.assertEqual(len(reconciled), 1)
+        self.assertEqual(reconciled[0]["lease_name"], "job_lock_1")
+
+        # Lease is now cleared
+        self.assertIsNone(store.get_lease("job_lock_1"))
+
+
+class TestSuppressionMigrationIdempotence(unittest.TestCase):
+    """Verifies safe, reversible suppression migration tooling."""
+
+    def test_migration_dry_run_reports_without_writing(self):
+        """19. Migration in dry_run mode calculates records without mutating store."""
+        from scripts.migrate_suppressions_to_firestore import run_migration
+        mock_store = FirestoreStateStore(force_mock=True)
+        mock_store.clear_mock_data()
+
+        res = run_migration(direction="to-firestore", dry_run=True, store=mock_store)
+        self.assertEqual(res["status"], "DRY_RUN_COMPLETE")
+        self.assertTrue(res["integrity_verified"])
+        self.assertEqual(len(mock_store.list_suppressions()), 0)
+
+    def test_synthetic_fixture_migration_and_reversal(self):
+        """20. Synthetic suppression migration to Firestore and round-trip export preserves counts and integrity."""
+        import tempfile
+        from scripts.migrate_suppressions_to_firestore import run_migration
+
+        synthetic_suppressions = [
+            {"suppression_id": "SUPP-TEST-1", "suppression_type": "EMAIL_UNSUBSCRIBE", "target": "user1@synth.test"},
+            {"suppression_id": "SUPP-TEST-2", "suppression_type": "DOMAIN_SUPPRESSION", "target": "spam.synth.test"},
+        ]
+        synthetic_unsubscribes = {
+            "token_synth_1": {"unsubscribe_token": "token_synth_1", "email": "user1@synth.test", "unsubscribed": True},
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            supp_file = os.path.join(tmpdir, "supp.json")
+            unsub_file = os.path.join(tmpdir, "unsub.json")
+
+            with open(supp_file, "w") as f:
+                json.dump(synthetic_suppressions, f)
+            with open(unsub_file, "w") as f:
+                json.dump(synthetic_unsubscribes, f)
+
+            mock_store = FirestoreStateStore(force_mock=True)
+            mock_store.clear_mock_data()
+
+            # Step A: Migrate to Firestore
+            res_forward = run_migration(
+                direction="to-firestore",
+                suppression_file=supp_file,
+                unsubscribes_file=unsub_file,
+                dry_run=False,
+                store=mock_store,
+            )
+            self.assertEqual(res_forward["status"], "SUCCESS")
+            self.assertEqual(res_forward["suppressions_migrated"], 2)
+            self.assertEqual(res_forward["unsubscribes_migrated"], 1)
+            self.assertEqual(len(mock_store.list_suppressions()), 2)
+
+            # Step B: Reverse migration (Export from Firestore to fresh destination files)
+            export_supp_file = os.path.join(tmpdir, "export_supp.json")
+            export_unsub_file = os.path.join(tmpdir, "export_unsub.json")
+
+            res_reverse = run_migration(
+                direction="from-firestore",
+                suppression_file=export_supp_file,
+                unsubscribes_file=export_unsub_file,
+                dry_run=False,
+                store=mock_store,
+            )
+            self.assertEqual(res_reverse["status"], "SUCCESS")
+            self.assertEqual(res_reverse["suppressions_migrated"], 2)
+            self.assertEqual(res_reverse["unsubscribes_migrated"], 1)
+
+
+class TestPipelineRunManagerFirestoreIntegration(unittest.TestCase):
+    """Verifies that PipelineRunManager synchronizes into canonical FirestoreStateStore."""
+
+    def test_pipeline_run_manager_synchronizes_to_firestore(self):
+        """21. Creating a run via DurablePipelineRunManager persists record to Firestore."""
+        import tempfile
+        from lib.system.pipeline_run_manager import DurablePipelineRunManager
+        from lib.system.firestore_state_store import firestore_store
+
+        firestore_store.clear_mock_data()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mgr = DurablePipelineRunManager(runs_dir=tmpdir)
+            rec = mgr.create_run(
+                country="United Kingdom",
+                cities=["Manchester"],
+                industry="Restaurants",
+                qualified_leads_needed=5,
+                dry_run=True,
+            )
+            run_id = rec["run_id"]
+
+            # Verify presence in canonical Firestore state store
+            remote_rec = firestore_store.get_run_record(run_id)
+            self.assertIsNotNone(remote_rec, "Run record must be synchronized into Firestore")
+            self.assertEqual(remote_rec["run_id"], run_id)
+            self.assertEqual(remote_rec["status"], "QUEUED")
+
+
 if __name__ == "__main__":
     unittest.main()
+

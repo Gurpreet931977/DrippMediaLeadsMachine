@@ -123,18 +123,37 @@ class TechnicalOrchestrator:
             jobs.append(job_dict)
         self._save_jobs(jobs)
 
+        # Synchronize into canonical Cloud Firestore state store
+        try:
+            from lib.system.firestore_state_store import firestore_store
+            firestore_store.save_run_record(job_dict["run_id"], job_dict)
+        except Exception:
+            pass
+
     def _save_checkpoint(self, run_id: str, checkpoint: Dict[str, Any]) -> str:
         path = os.path.join(self.checkpoints_dir, f"{run_id}.json")
         atomic_write_json(path, checkpoint)
+
+        # Synchronize into canonical Cloud Firestore state store
+        try:
+            from lib.system.firestore_state_store import firestore_store
+            firestore_store.save_checkpoint(run_id, checkpoint)
+        except Exception:
+            pass
         return path
 
     def _load_checkpoint(self, run_id: str) -> Optional[Dict[str, Any]]:
         path = os.path.join(self.checkpoints_dir, f"{run_id}.json")
-        if not os.path.exists(path):
-            return None
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        # Fallback to canonical Cloud Firestore state store
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            from lib.system.firestore_state_store import firestore_store
+            return firestore_store.get_checkpoint(run_id)
         except Exception:
             return None
 
