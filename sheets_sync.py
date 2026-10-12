@@ -72,7 +72,15 @@ def get_sheet_client():
             creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
             return gspread.authorize(creds)
 
-    # 4. Local dev default file fallback
+    # 4. Application Default Credentials (ADC) / Attached Service Account Identity
+    try:
+        import google.auth
+        adc_creds, _ = google.auth.default(scopes=SCOPES)
+        return gspread.authorize(adc_creds)
+    except Exception:
+        pass
+
+    # 5. Local dev default file fallback
     default_dev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poised-eye-509816-a4-5444ff3f8520.json")
     if os.path.exists(default_dev_file):
         creds = Credentials.from_service_account_file(default_dev_file, scopes=SCOPES)
@@ -80,7 +88,7 @@ def get_sheet_client():
 
     raise FileNotFoundError(
         "No Google Service Account credentials found. "
-        "Set GOOGLE_SERVICE_ACCOUNT_JSON in environment or GOOGLE_APPLICATION_CREDENTIALS."
+        "Set GOOGLE_SERVICE_ACCOUNT_JSON in environment, GOOGLE_APPLICATION_CREDENTIALS, or attach a Service Account with ADC."
     )
 
 def get_worksheet(sheet_url=None, worksheet_name="Sheet1"):

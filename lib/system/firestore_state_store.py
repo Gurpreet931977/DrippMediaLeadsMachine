@@ -57,11 +57,11 @@ class FirestoreStateStore:
             project_id
             or os.getenv("GOOGLE_CLOUD_PROJECT")
             or os.getenv("GCP_PROJECT")
-            or os.getenv("PROJECT_ID", "dripp-media-leads")
+            or os.getenv("PROJECT_ID", "poised-eye-509816-a4")
         )
         self.database_id = database_id or os.getenv("FIRESTORE_DATABASE_ID", "(default)")
-        # Location identifier: multi-region 'nam5' vs regional 'us-central1' (NOT interchangeable)
-        self.location_id = location_id or os.getenv("FIRESTORE_LOCATION", "nam5")
+        # Location identifier: regional 'us-central1' (preferred) vs multi-region 'nam5' (NOT interchangeable)
+        self.location_id = location_id or os.getenv("FIRESTORE_LOCATION", "us-central1")
         self._is_live = False
         self._client = None
         self._mock_data: Dict[str, Dict[str, Any]] = {

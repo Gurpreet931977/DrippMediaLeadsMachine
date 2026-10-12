@@ -186,7 +186,8 @@ def main():
                         help="Migration direction (to-firestore or from-firestore)")
     parser.add_argument("--suppression-file", default=None, help="Path to suppression JSON file")
     parser.add_argument("--unsubscribes-file", default=None, help="Path to unsubscribes JSON file")
-    parser.add_argument("--apply", action="store_true", help="Apply migration (default is dry-run)")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="Simulate migration without modifying destination (default behavior)")
+    parser.add_argument("--apply", action="store_true", help="Apply migration with live writes (disables dry-run)")
     args = parser.parse_args()
 
     dry_run = not args.apply

@@ -522,6 +522,30 @@ async def start_search(req: SearchRequest, background_tasks: BackgroundTasks, re
     active_run_state["is_running"] = True
     active_run_state["status"] = PipelineRunStatus.QUEUED.value
 
+    from lib.system.cloud_run_job_dispatcher import cloud_run_dispatcher
+    dispatch_res = cloud_run_dispatcher.dispatch_discovery_job(
+        country="United Kingdom",
+        cities=["Manchester"],
+        industry=req.industry or "Restaurants",
+        leads=leads_needed,
+        batch_size=bounded_batch,
+        max_multiplier=multiplier,
+        run_id=run_id,
+        dry_run=bool(req.dry_run),
+    )
+
+    if dispatch_res["dispatched"]:
+        return {
+            "status": "started",
+            "run_id": run_id,
+            "lifecycle": PipelineRunStatus.QUEUED.value,
+            "execution_type": "CLOUD_RUN_JOB",
+            "execution_name": dispatch_res.get("execution_name"),
+            "dry_run": bool(req.dry_run),
+            "batch_size": bounded_batch,
+            "message": f"Cloud Run Job '{dispatch_res.get('job_name')}' dispatched for {leads_needed} qualified leads in Manchester, UK."
+        }
+
     background_tasks.add_task(
         run_pipeline_task,
         run_id=run_id,
@@ -539,6 +563,7 @@ async def start_search(req: SearchRequest, background_tasks: BackgroundTasks, re
         "status": "started",
         "run_id": run_id,
         "lifecycle": PipelineRunStatus.QUEUED.value,
+        "execution_type": "IN_PROCESS",
         "dry_run": bool(req.dry_run),
         "batch_size": bounded_batch,
         "message": f"Lead engine started in {mode} mode for {leads_needed} qualified leads in Manchester, UK ({'DRY-RUN' if req.dry_run else 'LIVE'})."
