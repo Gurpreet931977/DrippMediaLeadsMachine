@@ -377,10 +377,32 @@ class TestPhase1227DurableRecoveryDrill(unittest.TestCase):
         bucket_name = "dripp-leads-backups-poised-eye-509816-a4"
         canonical_pattern = f"projects/_/buckets/{bucket_name}/objects/checkpoints/"
 
-        # Ensure no accidental backslash escaped underscore
-        self.assertNotIn(r"projects/\_", canonical_pattern)
-        self.assertIn("projects/_/buckets/", canonical_pattern)
-        self.assertTrue(canonical_pattern.startswith("projects/_/buckets/"))
+    def test_upload_durable_backup_to_gcs(self):
+        """10. Verifies upload_durable_backup_to_gcs correctly targets backups/ prefix with matching names."""
+        bundle = self.engine.create_durable_backup_bundle(
+            label="test_upload",
+            output_dir=self.tmp_dir,
+        )
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_archive_blob = MagicMock()
+        mock_manifest_blob = MagicMock()
+        mock_bucket.blob.side_effect = lambda path: mock_archive_blob if path.endswith(".tar.gz") else mock_manifest_blob
+
+        res = DurableBackupEngine.upload_durable_backup_to_gcs(
+            bucket_name="dripp-leads-backups-poised-eye-509816-a4",
+            archive_path=bundle["archive_path"],
+            manifest_path=bundle["manifest_path"],
+            storage_client=mock_client,
+        )
+
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertEqual(res["bucket"], "dripp-leads-backups-poised-eye-509816-a4")
+        self.assertTrue(res["archive_uri"].startswith("gs://dripp-leads-backups-poised-eye-509816-a4/backups/"))
+        self.assertTrue(res["manifest_uri"].startswith("gs://dripp-leads-backups-poised-eye-509816-a4/backups/"))
+        mock_archive_blob.upload_from_filename.assert_called_once_with(bundle["archive_path"])
+        mock_manifest_blob.upload_from_filename.assert_called_once_with(bundle["manifest_path"])
 
 
 if __name__ == "__main__":

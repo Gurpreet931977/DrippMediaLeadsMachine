@@ -546,6 +546,69 @@ class DurableBackupEngine:
                 shutil.rmtree(sandbox, ignore_errors=True)
 
     # ──────────────────────────────────────────────────────────────────────────
+    # DURABLE CLOUD UPLOADER (GCS Bucket Destination)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @classmethod
+    def upload_durable_backup_to_gcs(
+        cls,
+        bucket_name: str,
+        archive_path: str,
+        manifest_path: str,
+        storage_client: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """
+        Uploads a durable backup archive (.tar.gz) and companion manifest (.manifest.json)
+        to gs://{bucket_name}/backups/ using the provided or ambient Storage client.
+
+        Under least-privilege Managed Folders, the caller identity must possess
+        roles/storage.objectCreator on managed folder backups/ (e.g. dripp-leads-api).
+        """
+        clean_bucket = bucket_name.strip()
+        if not clean_bucket:
+            raise ValueError("GCS backup bucket name must not be empty.")
+
+        if not os.path.exists(archive_path):
+            raise FileNotFoundError(f"Backup archive not found: {archive_path}")
+        if not os.path.exists(manifest_path):
+            raise FileNotFoundError(f"Backup manifest not found: {manifest_path}")
+
+        from google.cloud import storage
+        client = storage_client or storage.Client()
+        bucket = client.bucket(clean_bucket)
+
+        archive_filename = os.path.basename(archive_path)
+        manifest_filename = os.path.basename(manifest_path)
+
+        archive_blob = bucket.blob(f"backups/{archive_filename}")
+        manifest_blob = bucket.blob(f"backups/{manifest_filename}")
+
+        # 1. Upload archive first
+        archive_blob.upload_from_filename(archive_path)
+        archive_size = os.path.getsize(archive_path)
+        archive_sha = calculate_sha256(archive_path)
+
+        # 2. Upload manifest
+        manifest_blob.upload_from_filename(manifest_path)
+
+        logger.info(
+            "Uploaded durable backup to gs://%s/backups/: %s (%d bytes), %s",
+            clean_bucket, archive_filename, archive_size, manifest_filename
+        )
+
+        return {
+            "status": "SUCCESS",
+            "bucket": clean_bucket,
+            "archive_filename": archive_filename,
+            "manifest_filename": manifest_filename,
+            "archive_uri": f"gs://{clean_bucket}/backups/{archive_filename}",
+            "manifest_uri": f"gs://{clean_bucket}/backups/{manifest_filename}",
+            "archive_size_bytes": archive_size,
+            "archive_sha256": archive_sha,
+            "uploaded_at": _now_utc(),
+        }
+
+    # ──────────────────────────────────────────────────────────────────────────
     # DURABLE CLOUD VERIFIER (GCS Bucket Evaluation)
     # ──────────────────────────────────────────────────────────────────────────
 
