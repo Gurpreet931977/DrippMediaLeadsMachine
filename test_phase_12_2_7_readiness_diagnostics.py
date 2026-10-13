@@ -154,6 +154,21 @@ class TestPhase1227ReadinessDiagnostics(unittest.TestCase):
         self.assertGreater(data["remaining_seconds"], 7100)
         self.assertIn("session_id", data)
 
+    def test_secret_hygiene_passes_in_container_environment_when_gitignore_omitted(self):
+        """8. In container runtime (Cloud Run), omitted .gitignore passes with packaging note."""
+        with patch("scripts.security_secret_scan.check_gitignore", return_value=["Missing .gitignore file!"]):
+            # In non-container local development: fails
+            with patch.dict(os.environ, {}, clear=True):
+                gate_local = self.auditor.check_secret_hygiene()
+                self.assertEqual(gate_local["status"], "FAIL")
+
+            # In Cloud Run container: passes
+            with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
+                gate_cloud = self.auditor.check_secret_hygiene()
+                self.assertEqual(gate_cloud["status"], "PASS")
+                self.assertTrue(gate_cloud["evidence"]["credentials_excluded"])
+                self.assertIn("container_packaging_note", gate_cloud["evidence"])
+
 
 if __name__ == "__main__":
     unittest.main()

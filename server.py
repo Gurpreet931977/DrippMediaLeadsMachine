@@ -29,10 +29,14 @@ load_dotenv()
 # Automatically recover any interrupted runs upon server startup
 run_manager.recover_interrupted_runs()
 
-# Initialize baseline storage stores in ephemeral environments safely
+# Initialize baseline storage stores and baseline backup in ephemeral environments safely
 try:
     from lib.system.storage_bootstrap import bootstrap_storage_baseline
     bootstrap_storage_baseline(sync_from_sheets_if_available=False)
+    from lib.system.backup_manager import BackupManager
+    bm = BackupManager()
+    if not bm.list_backups():
+        bm.create_backup(label="startup_baseline")
 except Exception as e:
     logger.warning("Startup storage bootstrap notice: %s", e)
 

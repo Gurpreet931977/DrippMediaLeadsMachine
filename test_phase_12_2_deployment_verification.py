@@ -39,6 +39,8 @@ class TestPhase12DeploymentVerification(unittest.TestCase):
         self.client = TestClient(app)
         # Clear test sessions before each run
         operator_sessions.clear()
+        session = create_operator_session()
+        self.auth_headers = {"Authorization": f"Bearer {session['session_token']}"}
 
     # -------------------------------------------------------------------------
     # 1. Missing Backend URL in Production
@@ -163,7 +165,7 @@ class TestPhase12DeploymentVerification(unittest.TestCase):
         mock_instance.fetch_all_leads.side_effect = Exception("Google Sheets API 429: Rate Limit Exceeded")
         mock_provider_class.return_value = mock_instance
 
-        resp = self.client.get("/api/crm/status")
+        resp = self.client.get("/api/crm/status", headers=self.auth_headers)
         self.assertEqual(resp.status_code, 503)
         data = resp.json()
         self.assertEqual(data["status"], "error")
@@ -185,7 +187,7 @@ class TestPhase12DeploymentVerification(unittest.TestCase):
         mock_instance.sheet_url = "https://docs.google.com/spreadsheets/d/1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
         mock_provider_class.return_value = mock_instance
 
-        resp = self.client.get("/api/crm/status")
+        resp = self.client.get("/api/crm/status", headers=self.auth_headers)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["status"], "ok")
@@ -200,14 +202,14 @@ class TestPhase12DeploymentVerification(unittest.TestCase):
     # -------------------------------------------------------------------------
     def test_live_data_response_metadata_and_timestamps(self):
         """8. CRM status and leads endpoints supply ISO timestamps and spreadsheet metadata."""
-        resp_status = self.client.get("/api/crm/status")
+        resp_status = self.client.get("/api/crm/status", headers=self.auth_headers)
         self.assertEqual(resp_status.status_code, 200)
         data = resp_status.json()
         self.assertIn("timestamp", data)
         self.assertIn("spreadsheet_id", data)
         self.assertEqual(data["tabs"]["LEADS"]["sheet_name"], "Dripp Media Leads CRM")
 
-        resp_leads = self.client.get("/api/leads")
+        resp_leads = self.client.get("/api/leads", headers=self.auth_headers)
         self.assertEqual(resp_leads.status_code, 200)
         lead_data = resp_leads.json()
         self.assertIn("timestamp", lead_data)
