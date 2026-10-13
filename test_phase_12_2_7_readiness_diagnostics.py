@@ -215,6 +215,16 @@ class TestPhase1227ReadinessDiagnostics(unittest.TestCase):
                         self.assertTrue(gate["blocking"])
                         self.assertIn(".env", gate["evidence"]["prohibited_files_detected"])
 
+    def test_container_readiness_scan_unmocked_executes_without_name_error(self):
+        """11. Real scan_runtime_files and check_prohibited_files execute without NameError in container mode."""
+        orig_exists = os.path.exists
+        with patch("os.path.exists", side_effect=lambda p: False if str(p).endswith(".git") else orig_exists(p)):
+            with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
+                # Verify that check_secret_hygiene imports and invokes real scan_runtime_files without NameError
+                gate = self.auditor.check_secret_hygiene()
+                self.assertIn("vcs_context", gate["evidence"])
+                self.assertEqual(gate["evidence"]["vcs_context"], "container_runtime")
+
 
 if __name__ == "__main__":
     unittest.main()
