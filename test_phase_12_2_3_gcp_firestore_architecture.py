@@ -729,6 +729,90 @@ class TestFirestoreSerializationRegression(unittest.TestCase):
         encoded = _helpers.encode_value(clean)
         self.assertIsNotNone(encoded)
 
+    def test_unsupported_object_fails_explicitly_with_descriptive_type_error(self):
+        """
+        Verifies that unsupported objects (arbitrary classes without to_dict, functions, sockets,
+        complex objects) fail explicitly with a descriptive TypeError identifying the type,
+        rather than being silently stringified or dumped via __dict__.
+        Also verifies that ResearchLogEntry, Lead, nested collections, Enums, and None still
+        serialize cleanly.
+        """
+        from lib.system.firestore_state_store import to_firestore_compatible
+        from lib.types import ResearchLogEntry, Lead, QualificationState
+
+        class UnsupportedPayload:
+            def __init__(self, raw_value: str):
+                self.raw_value = raw_value
+
+            def __repr__(self):
+                return f"UnsupportedPayload(raw_value={self.raw_value!r})"
+
+        bad_obj = UnsupportedPayload("secret_binary_buffer")
+
+        # 1. Direct call fails with TypeError identifying UnsupportedPayload
+        with self.assertRaises(TypeError) as ctx:
+            to_firestore_compatible(bad_obj)
+        self.assertIn("UnsupportedPayload", str(ctx.exception))
+        self.assertIn("Cannot convert object of type", str(ctx.exception))
+
+        # 2. Nested inside a dictionary fails explicitly
+        with self.assertRaises(TypeError) as ctx_nested:
+            to_firestore_compatible({"safe_metric": 42, "payload": bad_obj})
+        self.assertIn("UnsupportedPayload", str(ctx_nested.exception))
+
+        # 3. Nested inside a list fails explicitly
+        with self.assertRaises(TypeError) as ctx_list:
+            to_firestore_compatible([1, 2, bad_obj])
+        self.assertIn("UnsupportedPayload", str(ctx_list.exception))
+
+        # 4. store.save_run_record fails explicitly when given unsupported objects
+        with self.assertRaises(TypeError) as ctx_store:
+            self.store.save_run_record("CRJ-BAD-TYPE", {
+                "status": "RUNNING",
+                "custom_unsupported": bad_obj,
+            })
+        self.assertIn("UnsupportedPayload", str(ctx_store.exception))
+
+        # 5. Verify supported types still serialize successfully:
+        # ResearchLogEntry, Lead, nested collections, Enums, and None
+        r = ResearchLogEntry(
+            research_id="res-check-99",
+            company_name="Valid Gym",
+            industry="fitness",
+            target_country="United Kingdom",
+            detected_country="United Kingdom",
+            country_status="MATCH",
+            city="Manchester",
+            review_count=None,
+            rating=None,
+            qualification_status="QUALIFIED",
+            qualification_state=QualificationState.OUTREACH_READY.value,
+        )
+        l = Lead(
+            lead_id="lead-check-99",
+            company_name="Valid Gym",
+            industry="fitness",
+            target_country="United Kingdom",
+            country="United Kingdom",
+            city="Manchester",
+        )
+        valid_record = {
+            "entry": r,
+            "lead": l,
+            "state": QualificationState.OUTREACH_READY,
+            "nested_list": [1, "two", None],
+            "nested_set": {"alpha", "beta"},
+            "null_field": None,
+        }
+        clean_valid = to_firestore_compatible(valid_record)
+        self.assertIsInstance(clean_valid["entry"], dict)
+        self.assertIsNone(clean_valid["entry"]["review_count"])
+        self.assertIsInstance(clean_valid["lead"], dict)
+        self.assertEqual(clean_valid["state"], "OUTREACH_READY")
+        self.assertEqual(clean_valid["nested_list"], [1, "two", None])
+        self.assertEqual(clean_valid["nested_set"], ["alpha", "beta"])
+        self.assertIsNone(clean_valid["null_field"])
+
 
 if __name__ == "__main__":
     unittest.main()

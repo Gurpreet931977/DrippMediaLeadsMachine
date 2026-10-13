@@ -113,11 +113,10 @@ def to_firestore_compatible(val: Any) -> Any:
     if isinstance(val, (uuid.UUID, os.PathLike)):
         return str(val)
 
-    # Objects with __dict__
-    if hasattr(val, "__dict__") and not isinstance(val, type):
-        return {str(k): to_firestore_compatible(v) for k, v in val.__dict__.items() if not k.startswith("_")}
-
-    return str(val)
+    # Fail explicitly with a descriptive TypeError on unsupported types
+    raise TypeError(
+        f"Cannot convert object of type {type(val)!r} to a Firestore-compatible value: {val!r}"
+    )
 
 
 class FirestoreStateStore:
