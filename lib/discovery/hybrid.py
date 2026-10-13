@@ -26,7 +26,13 @@ from lib.discovery.osm import OpenStreetMapProvider, OverpassQueryError
 from lib.discovery.foursquare import FoursquareProvider
 from lib.discovery.web_search import WebSearchProvider
 from lib.discovery.crawler import CrawlEngine
-from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
+from lib.types import (
+    DiscoveredBusiness,
+    SocialStatus,
+    CountryStatus,
+    CreatorEvidenceStatus,
+    CreatorEvidenceConfidence,
+)
 from lib.validation.country_validator import CountryValidator
 from lib.validation.creator_evidence import CreatorEvidenceValidator
 from lib.validation.social_validator import SocialIdentityValidator
