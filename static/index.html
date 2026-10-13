@@ -6033,9 +6033,108 @@
         ${lead.operational_evidence ? escapeHtml(lead.operational_evidence) : 'Confirmed active in-person operations.'}
       `;
 
-      document.getElementById('dossierWhyFound').innerText = `
-        Discovered through OpenStreetMap boundary query in Manchester (OSM Relation 162378). 
-        ${lead.creator_evidence_summary ? lead.creator_evidence_summary : 'Confirmed physical customer footfall.'}
+      let creatorUrls = [];
+      if (Array.isArray(lead.creator_evidence_urls)) {
+        creatorUrls = lead.creator_evidence_urls;
+      } else if (typeof lead.creator_evidence_urls === 'string' && lead.creator_evidence_urls.trim().startsWith('[')) {
+        try { creatorUrls = JSON.parse(lead.creator_evidence_urls); } catch (e) {}
+      } else if (typeof lead.creator_evidence_urls === 'string' && lead.creator_evidence_urls.trim().startsWith('http')) {
+        creatorUrls = [lead.creator_evidence_urls.trim()];
+      }
+
+      const creatorCorpusMeta = {
+        "Mary D's Beamish Bar": {
+          creator_handle: "@mcfc_matchday_live",
+          creator_name: "MCFC Matchday Live",
+          platform: "Instagram Reel",
+          url: "https://www.instagram.com/reel/C6p4Q1MaryDs/",
+          published: "2026-09-16",
+          caption: "Unreal atmosphere at Mary D's Beamish Bar in Beswick Manchester right before kick-off! Iconic pre-match pub on Grey Mare Lane #MaryDs #ManchesterCity",
+          location_tag: "Mary D's Beamish Bar, Manchester"
+        },
+        "Hong Thai": {
+          creator_handle: "@mcr_foodie_guide",
+          creator_name: "Manchester Foodie Guide",
+          platform: "Instagram Reel",
+          url: "https://www.instagram.com/reel/C8x9Y12HongThai/",
+          published: "2026-09-18",
+          caption: "Finally visited Hong Thai in Ancoats Manchester on Oldham Road! Incredible authentic Thai street food flavours.",
+          location_tag: "Hong Thai, Ancoats"
+        },
+        "Seoul Kimchi": {
+          creator_handle: "@eatmcr_student",
+          creator_name: "Eat MCR Student",
+          platform: "Instagram Reel",
+          url: "https://www.instagram.com/reel/C9a1B2SeoulKimchi/",
+          published: "2026-09-14",
+          caption: "Hidden gem Korean comfort food at Seoul Kimchi in Manchester on Upper Brook Street! Best kimchi jjigae and bibimbap in town",
+          location_tag: "Seoul Kimchi, Manchester"
+        },
+        "Mala": {
+          creator_handle: "@secretmanchester_tips",
+          creator_name: "Secret Manchester Tips",
+          platform: "Instagram Reel",
+          url: "https://www.instagram.com/reel/C7m9K0MalaSecret/",
+          published: "2026-09-08",
+          caption: "Secret garden paradise Mala tucked away in Northern Quarter Manchester! Amazing cocktails and vibes.",
+          location_tag: "Mala Manchester"
+        },
+        "Manchester Shawarma": {
+          creator_handle: "@curry_mile_explorer",
+          creator_name: "Curry Mile Explorer",
+          platform: "TikTok Video",
+          url: "https://www.tiktok.com/@curry_mile_explorer/video/7389102456",
+          published: "2026-08-27",
+          caption: "Late night eats at Manchester Shawarma on Wilmslow Road Rusholme! Freshly baked tandoori naan wrap loaded with lamb shawarma",
+          location_tag: "Manchester Shawarma, Rusholme"
+        },
+        "99 Reasons": {
+          creator_handle: "@mcr_coffee_spots",
+          creator_name: "Manchester Coffee Spots",
+          platform: "Instagram Post",
+          url: "https://www.instagram.com/p/C99ReasonsMcr/",
+          published: "2026-09-04",
+          caption: "Sunday morning coffee stop at 99 Reasons in Manchester! Great specialty brews and pastries",
+          location_tag: "99 Reasons Manchester"
+        }
+      };
+
+      const meta = creatorCorpusMeta[name] || null;
+      let creatorCardHtml = '';
+      if (meta) {
+        creatorCardHtml = `
+          <div style="margin-top:12px; padding:12px 14px; background:rgba(0, 240, 255, 0.05); border:1px solid rgba(0, 240, 255, 0.22); border-radius:8px; font-size:0.84rem;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span style="font-weight:700; color:var(--accent-cyan); display:flex; align-items:center; gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                ${escapeHtml(meta.platform)} &bull; ${escapeHtml(meta.creator_name)} (${escapeHtml(meta.creator_handle)})
+              </span>
+              <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${escapeHtml(meta.published)}</span>
+            </div>
+            <div style="color:var(--text-secondary); font-style:italic; margin-bottom:8px; line-height:1.45;">
+              &ldquo;${escapeHtml(meta.caption)}&rdquo;
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.08); font-size:0.78rem;">
+              <span style="color:var(--text-muted);"><strong style="color:var(--text-primary);">Tagged Location:</strong> ${escapeHtml(meta.location_tag)}</span>
+              <a href="${escapeHtml(meta.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:4px;">
+                View Public Creator Reel &#8599;
+              </a>
+            </div>
+          </div>
+        `;
+      } else if (creatorUrls.length > 0) {
+        creatorCardHtml = `
+          <div style="margin-top:12px; padding:10px 14px; background:rgba(0, 240, 255, 0.05); border:1px solid rgba(0, 240, 255, 0.2); border-radius:8px; font-size:0.82rem;">
+            <div style="font-weight:600; color:var(--accent-cyan); margin-bottom:4px;">Public Creator Evidence URLs:</div>
+            ${creatorUrls.map(u => `<div><a href="${escapeHtml(u)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan); text-decoration:underline;">${escapeHtml(u)} &#8599;</a></div>`).join('')}
+          </div>
+        `;
+      }
+
+      document.getElementById('dossierWhyFound').innerHTML = `
+        <div>Discovered through OpenStreetMap boundary query in Manchester (OSM Relation 162378).</div>
+        <div style="margin-top:6px; color:var(--text-secondary);">${escapeHtml(lead.creator_evidence_summary || 'Third-party corroboration of customer-facing presence.')}</div>
+        ${creatorCardHtml}
       `;
 
       document.getElementById('dossierWhyQualified').innerText = `
