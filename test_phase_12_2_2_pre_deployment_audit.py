@@ -297,6 +297,65 @@ class TestGoogleCredentialsEnvironmentParsing(unittest.TestCase):
                 get_sheet_client()
             self.assertIn("Failed to initialize Google credentials", str(ctx.exception))
 
+    def test_cloud_run_adc_scope_initialization(self):
+        """13b. Cloud Run environment requests spreadsheets scope via ADC without service account keys."""
+        with patch.dict(os.environ, {
+            "GOOGLE_SERVICE_ACCOUNT_JSON": "",
+            "GOOGLE_APPLICATION_CREDENTIALS": "",
+            "CLOUD_RUN_JOB_NAME": "dripp-discovery-job",
+        }, clear=False):
+            with patch("google.auth.default") as mock_auth_default, \
+                 patch("gspread.authorize") as mock_authorize:
+                mock_creds = MagicMock()
+                mock_auth_default.return_value = (mock_creds, "poised-eye-509816-a4")
+                mock_client = MagicMock()
+                mock_authorize.return_value = mock_client
+
+                client = get_sheet_client()
+
+                self.assertIs(client, mock_client)
+                mock_auth_default.assert_called_once_with(scopes=["https://www.googleapis.com/auth/spreadsheets"])
+                mock_authorize.assert_called_once_with(mock_creds)
+
+    def test_cloud_run_adc_failure_raises_runtime_error_without_key_fallback(self):
+        """13c. Cloud Run ADC failure raises descriptive RuntimeError and halts without disk key fallback."""
+        with patch.dict(os.environ, {
+            "GOOGLE_SERVICE_ACCOUNT_JSON": "",
+            "GOOGLE_APPLICATION_CREDENTIALS": "",
+            "CLOUD_RUN_JOB_NAME": "dripp-discovery-job",
+        }, clear=False):
+            with patch("google.auth.default", side_effect=Exception("Metadata server token request failed")):
+                with self.assertRaises(RuntimeError) as ctx:
+                    get_sheet_client()
+                self.assertIn("Cloud Run Google Sheets ADC authorization failed", str(ctx.exception))
+                self.assertIn("Metadata server token request failed", str(ctx.exception))
+
+    def test_local_dev_fallback_when_adc_fails(self):
+        """13d. Local development falls back to local dev credentials when ADC raises error."""
+        with patch.dict(os.environ, {
+            "GOOGLE_SERVICE_ACCOUNT_JSON": "",
+            "GOOGLE_APPLICATION_CREDENTIALS": "",
+            "CLOUD_RUN_JOB_NAME": "",
+            "K_SERVICE": "",
+            "CLOUD_RUN_JOB": "",
+            "K_REVISION": "",
+        }, clear=False):
+            with patch("google.auth.default", side_effect=Exception("No ADC on Mac")), \
+                 patch("os.path.exists", return_value=True), \
+                 patch("google.oauth2.service_account.Credentials.from_service_account_file") as mock_from_file, \
+                 patch("gspread.authorize") as mock_authorize:
+                mock_creds = MagicMock()
+                mock_from_file.return_value = mock_creds
+                mock_client = MagicMock()
+                mock_authorize.return_value = mock_client
+
+                client = get_sheet_client()
+
+                self.assertIs(client, mock_client)
+                mock_from_file.assert_called_once()
+                mock_authorize.assert_called_once_with(mock_creds)
+
+
 
 class TestPreDeploymentSafetyInvariants(unittest.TestCase):
     """Verifies that all required commercial locks and qualification rules remain frozen."""

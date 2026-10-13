@@ -8,7 +8,6 @@ load_dotenv()
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
 ]
 
 DEFAULT_HEADERS = [
@@ -77,8 +76,15 @@ def get_sheet_client():
         import google.auth
         adc_creds, _ = google.auth.default(scopes=SCOPES)
         return gspread.authorize(adc_creds)
-    except Exception:
-        pass
+    except Exception as e:
+        is_cloud_run = bool(
+            os.getenv("K_SERVICE")
+            or os.getenv("CLOUD_RUN_JOB")
+            or os.getenv("CLOUD_RUN_JOB_NAME")
+            or os.getenv("K_REVISION")
+        )
+        if is_cloud_run:
+            raise RuntimeError(f"Cloud Run Google Sheets ADC authorization failed: {e}") from e
 
     # 5. Local dev default file fallback
     default_dev_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poised-eye-509816-a4-5444ff3f8520.json")
