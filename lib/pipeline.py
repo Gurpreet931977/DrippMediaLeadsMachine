@@ -361,6 +361,9 @@ class LeadGenerationPipeline:
 
                 except Exception as disc_err:
                     emit_log(f"[Error] Discovery error: {disc_err}")
+                    if stats["raw_discovered"] == 0 and not candidate_pool and not outreach_ready_leads and not review_queue_leads:
+                        emit_log(f"[FATAL ERROR] Discovery provider outage resulted in 0 candidates: {disc_err}")
+                        raise RuntimeError(f"Discovery provider failure: {disc_err}") from disc_err
                     break
 
             if not candidate_pool:

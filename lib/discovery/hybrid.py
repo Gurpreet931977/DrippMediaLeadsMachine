@@ -17,11 +17,12 @@ Handles:
 import os
 import re
 import time
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 from dotenv import load_dotenv
 
 from lib.discovery.base import DiscoveryProvider, DiscoveryMetrics
-from lib.discovery.osm import OpenStreetMapProvider
+from lib.discovery.osm import OpenStreetMapProvider, OverpassQueryError
 from lib.discovery.foursquare import FoursquareProvider
 from lib.discovery.web_search import WebSearchProvider
 from lib.discovery.crawler import CrawlEngine
@@ -29,6 +30,8 @@ from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
 from lib.validation.country_validator import CountryValidator
 from lib.validation.creator_evidence import CreatorEvidenceValidator
 from lib.validation.social_validator import SocialIdentityValidator
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -406,16 +409,21 @@ class HybridDiscoveryEngine(DiscoveryProvider):
 
         # Free-First Stack:
         # Step 1: OpenStreetMap (Primary Discovery)
-        osm_candidates = self.osm.search_businesses(city=city, country=country, industry=industry, limit=limit)
-        for cand in osm_candidates:
-            self.transparency_stats["businesses_discovered_total"] += 1
-            self.transparency_stats["by_source"]["OPENSTREETMAP"] += 1
-            canon_id = self._canonical_identity(cand.company_name, cand.city, cand.target_country)
-            if canon_id in pool:
-                duplicates_in_round += 1
-                pool[canon_id] = self.merge_candidates(pool[canon_id], cand)
-            else:
-                pool[canon_id] = cand
+        osm_error = None
+        try:
+            osm_candidates = self.osm.search_businesses(city=city, country=country, industry=industry, limit=limit)
+            for cand in osm_candidates:
+                self.transparency_stats["businesses_discovered_total"] += 1
+                self.transparency_stats["by_source"]["OPENSTREETMAP"] += 1
+                canon_id = self._canonical_identity(cand.company_name, cand.city, cand.target_country)
+                if canon_id in pool:
+                    duplicates_in_round += 1
+                    pool[canon_id] = self.merge_candidates(pool[canon_id], cand)
+                else:
+                    pool[canon_id] = cand
+        except Exception as e:
+            osm_error = e
+            logger.error(f"[HybridDiscovery] OSM discovery provider error: {e}")
 
         # Step 2: Foursquare Places API (Secondary source if key exists)
         if self.foursquare.api_key:
@@ -452,6 +460,12 @@ class HybridDiscoveryEngine(DiscoveryProvider):
 
         self.transparency_stats["duplicates_merged"] += duplicates_in_round
         self.transparency_stats["unique_candidates"] = len(pool)
+
+        # If pool is empty AND primary provider encountered an outage, do NOT report a false empty success
+        if not pool and osm_error is not None:
+            err_msg = f"Discovery provider outage: Primary OSM discovery failed ({osm_error}) and no secondary candidates available."
+            logger.error(f"[HybridDiscovery] {err_msg}")
+            raise RuntimeError(err_msg) from osm_error
 
         # Candidate prioritization for Dripp Media (Targeting businesses without website)
         # 0: No website listed

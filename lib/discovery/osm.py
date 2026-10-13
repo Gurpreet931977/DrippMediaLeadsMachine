@@ -14,6 +14,7 @@ import re
 import json
 import time
 import hashlib
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 import requests
 
@@ -23,31 +24,69 @@ from lib.validation.country_validator import CountryValidator
 from lib.discovery.boundary_validator import CityBoundaryValidator
 from lib.discovery.address_normalizer import AddressNormalizer, AddressCompleteness, extract_uk_postcode
 
-OVERPASS_ENDPOINTS = [
+logger = logging.getLogger(__name__)
+
+DEFAULT_OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
+    "https://lz4.overpass-api.de/api/interpreter",
+    "https://z.overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
-    "https://lz4.overpass-api.de/api/interpreter"
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
 ]
+
+
+def get_default_endpoints() -> List[str]:
+    """Retrieves list of Overpass endpoints, allowing override via OVERPASS_ENDPOINTS env var."""
+    env_endpoints = os.environ.get("OVERPASS_ENDPOINTS")
+    if env_endpoints:
+        parsed = [ep.strip() for ep in env_endpoints.split(",") if ep.strip()]
+        if parsed:
+            return parsed
+    return list(DEFAULT_OVERPASS_ENDPOINTS)
+
+
+OVERPASS_ENDPOINTS = get_default_endpoints()
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
 USER_AGENT = "DrippMediaLeadEngine/3.0 (contact: mediadripp@gmail.com; lead-research)"
+
+
+class OverpassQueryError(RuntimeError):
+    """Raised when an OpenStreetMap Overpass query fails across all configured endpoints."""
+    pass
+
 
 class OpenStreetMapProvider(DiscoveryProvider):
     def __init__(
         self,
         cache_dir: Optional[str] = None,
         cache_ttl_seconds: int = 86400, # 24 hours
-        request_timeout: int = 30,
-        min_request_interval: float = 1.2
+        request_timeout: Optional[int] = None,
+        min_request_interval: float = 1.2,
+        endpoints: Optional[List[str]] = None
     ):
         super().__init__(name="OpenStreetMap")
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.cache_dir = cache_dir or os.path.join(self.base_dir, "data", "cache_osm")
         os.makedirs(self.cache_dir, exist_ok=True)
         self.cache_ttl = cache_ttl_seconds
-        self.timeout = request_timeout
+
+        # Sensible timeout: configurable via env OVERPASS_TIMEOUT or param or default 25s
+        env_timeout = os.environ.get("OVERPASS_TIMEOUT")
+        if request_timeout is not None:
+            self.timeout = request_timeout
+        elif env_timeout:
+            try:
+                self.timeout = int(env_timeout)
+            except ValueError:
+                self.timeout = 25
+        else:
+            self.timeout = 25
+
         self.min_interval = min_request_interval
+        self.endpoints = list(endpoints) if endpoints is not None else get_default_endpoints()
         self._last_request_time: float = 0.0
         self.country_validator = CountryValidator()
         self.boundary_validator = CityBoundaryValidator()
@@ -80,29 +119,28 @@ class OpenStreetMapProvider(DiscoveryProvider):
             pass
 
     def health_check(self) -> Dict[str, Any]:
-        """Checks Overpass API connectivity."""
+        """Checks Overpass API connectivity across configured endpoints."""
         headers = {"User-Agent": USER_AGENT}
-        try:
-            r = requests.get("https://overpass-api.de/api/status", headers=headers, timeout=10)
-            if r.status_code == 200 and "Rate limit" in r.text:
-                return {
-                    "provider": "OpenStreetMap",
-                    "status": "CONNECTED",
-                    "endpoint": "overpass-api.de",
-                    "details": r.text.strip().split("\n")[:3]
-                }
-            return {
-                "provider": "OpenStreetMap",
-                "status": "CONNECTED",
-                "endpoint": "overpass-api.de",
-                "http_status": r.status_code
-            }
-        except Exception as ex:
-            return {
-                "provider": "OpenStreetMap",
-                "status": "NOT_CONNECTED",
-                "error": str(ex)
-            }
+        endpoints = self.endpoints or OVERPASS_ENDPOINTS
+        for ep in endpoints:
+            status_url = ep.replace("/api/interpreter", "/api/status")
+            try:
+                r = requests.get(status_url, headers=headers, timeout=6)
+                if r.status_code == 200:
+                    details = r.text.strip().split("\n")[:3]
+                    return {
+                        "provider": "OpenStreetMap",
+                        "status": "CONNECTED",
+                        "endpoint": ep,
+                        "details": details
+                    }
+            except Exception:
+                continue
+        return {
+            "provider": "OpenStreetMap",
+            "status": "NOT_CONNECTED",
+            "error": "All Overpass status endpoints unreachable"
+        }
 
     def get_city_bounding_box(self, city: str, country: str) -> Optional[Tuple[str, str, str, str]]:
         """
@@ -134,7 +172,7 @@ class OpenStreetMapProvider(DiscoveryProvider):
                         self._set_cache(cache_key, list(res))
                         return res
         except Exception as e:
-            print(f"[OSM] Nominatim geocoding error for {city}, {country}: {e}")
+            logger.warning("[OSM] Nominatim geocoding error for %s, %s: %s", city, country, e)
         return None
 
     def execute_overpass_query(self, query: str) -> Dict[str, Any]:
@@ -149,10 +187,15 @@ class OpenStreetMapProvider(DiscoveryProvider):
             "User-Agent": USER_AGENT,
             "Accept": "application/json"
         }
+        endpoints = self.endpoints or OVERPASS_ENDPOINTS
         last_error = None
+        attempt_errors = []
 
-        for endpoint in OVERPASS_ENDPOINTS:
-            for attempt in range(3):
+        max_attempts_per_endpoint = 2
+        req_timeout = (min(6.0, float(self.timeout)), float(self.timeout)) if isinstance(self.timeout, (int, float)) and self.timeout > 6 else self.timeout
+
+        for endpoint in endpoints:
+            for attempt in range(1, max_attempts_per_endpoint + 1):
                 self._wait_rate_limit()
                 try:
                     start_t = time.time()
@@ -160,33 +203,70 @@ class OpenStreetMapProvider(DiscoveryProvider):
                         endpoint,
                         data={"data": query},
                         headers=headers,
-                        timeout=self.timeout
+                        timeout=req_timeout
                     )
                     latency = time.time() - start_t
 
                     if resp.status_code == 200:
                         try:
                             data = resp.json()
+                            elements = data.get("elements", [])
                             self._set_cache(query, data)
-                            self.record_call(latency=latency, candidates_count=len(data.get("elements", [])))
+                            self.record_call(latency=latency, candidates_count=len(elements))
+                            logger.info(
+                                "[OSM] Query succeeded via %s in %.2fs (%d elements found)",
+                                endpoint, latency, len(elements)
+                            )
                             return data
                         except Exception as j_err:
-                            last_error = f"JSON decode error: {j_err}"
-                    elif resp.status_code in [429, 504, 502, 503]:
-                        # Backoff and retry
-                        backoff = (attempt + 1) * 2.0
-                        time.sleep(backoff)
+                            last_error = f"JSON decode error from {endpoint}: {j_err}"
+                            attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
+                            logger.warning("[OSM] %s", last_error)
+                    elif resp.status_code in [429, 502, 503, 504]:
+                        backoff = attempt * 1.5
                         last_error = f"HTTP {resp.status_code} from {endpoint}"
+                        attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
+                        logger.warning(
+                            "[OSM] %s (attempt %d/%d). %s",
+                            last_error, attempt, max_attempts_per_endpoint,
+                            f"Backing off {backoff:.1f}s..." if attempt < max_attempts_per_endpoint else "Failing over to next mirror."
+                        )
+                        if attempt < max_attempts_per_endpoint:
+                            time.sleep(backoff)
                     else:
-                        last_error = f"HTTP {resp.status_code}: {resp.text[:150]}"
+                        snippet = resp.text[:150].replace('\n', ' ')
+                        last_error = f"HTTP {resp.status_code} from {endpoint}: {snippet}"
+                        attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
+                        logger.warning("[OSM] Non-retryable %s. Failing over to next mirror.", last_error)
                         break
+                except requests.exceptions.Timeout as t_err:
+                    last_error = f"Timeout ({self.timeout}s) from {endpoint}: {t_err}"
+                    attempt_errors.append(f"{endpoint} (attempt {attempt}): timeout")
+                    logger.warning(
+                        "[OSM] Timeout on %s (attempt %d/%d). %s",
+                        endpoint, attempt, max_attempts_per_endpoint,
+                        "Retrying..." if attempt < max_attempts_per_endpoint else "Failing over to next mirror."
+                    )
+                    if attempt < max_attempts_per_endpoint:
+                        time.sleep(1.0)
                 except Exception as ex:
-                    last_error = str(ex)
-                    time.sleep(1.5)
+                    last_error = f"Error from {endpoint}: {ex}"
+                    attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
+                    logger.warning(
+                        "[OSM] Error on %s (attempt %d/%d): %s. %s",
+                        endpoint, attempt, max_attempts_per_endpoint, ex,
+                        "Retrying..." if attempt < max_attempts_per_endpoint else "Failing over to next mirror."
+                    )
+                    if attempt < max_attempts_per_endpoint:
+                        time.sleep(1.0)
 
         self.record_call(latency=0.0, error=True)
-        print(f"[OSM] Query failed across endpoints: {last_error}")
-        return {"elements": []}
+        error_msg = (
+            f"OpenStreetMap Overpass query failed across all {len(endpoints)} endpoints. "
+            f"Last error: {last_error}. Details: {'; '.join(attempt_errors[-4:])}"
+        )
+        logger.error("[OSM] %s", error_msg)
+        raise OverpassQueryError(error_msg)
 
     def _build_amenity_filter(self, industry: str) -> str:
         ind = industry.lower()
