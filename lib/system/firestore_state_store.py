@@ -468,18 +468,22 @@ class FirestoreStateStore:
         """Lists recent run records."""
         if self._is_live:
             try:
-                docs = (
-                    self._client.collection(COLL_RUNS)
-                    .order_by("created_at", direction="DESCENDING")
-                    .limit(limit)
-                    .stream()
+                docs = self._client.collection(COLL_RUNS).limit(max(limit * 2, 100)).stream()
+                records = [d.to_dict() for d in docs]
+                records.sort(
+                    key=lambda r: r.get("created_at") or r.get("started_at") or r.get("updated_at") or "",
+                    reverse=True
                 )
-                return [d.to_dict() for d in docs]
-            except Exception:
+                return records[:limit]
+            except Exception as e:
+                logger.warning("Failed to list run records from Firestore: %s", e)
                 return []
         else:
             records = list(self._mock_data[COLL_RUNS].values())
-            records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+            records.sort(
+                key=lambda r: r.get("created_at") or r.get("started_at") or r.get("updated_at") or "",
+                reverse=True
+            )
             return records[:limit]
 
     # -------------------------------------------------------------------------

@@ -367,21 +367,39 @@ class DurablePipelineRunManager:
         return runs[0] if runs else None
 
     def list_runs(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Returns list of runs sorted newest first."""
-        records: List[Dict[str, Any]] = []
-        if not os.path.exists(self.runs_dir):
-            return []
-        for fname in os.listdir(self.runs_dir):
-            if fname.startswith("RUN-") and fname.endswith(".json"):
-                fpath = os.path.join(self.runs_dir, fname)
-                try:
-                    with open(fpath, "r", encoding="utf-8") as f:
-                        rec = json.load(f)
-                        records.append(rec)
-                except Exception:
-                    continue
+        """Returns list of runs sorted newest first, merging Firestore and local records."""
+        by_id: Dict[str, Dict[str, Any]] = {}
 
-        records.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+        # 1. Fetch from Firestore if available
+        try:
+            from lib.system.firestore_state_store import firestore_store
+            remote_runs = firestore_store.list_run_records(limit=limit)
+            for r in remote_runs:
+                rid = r.get("run_id")
+                if rid:
+                    by_id[rid] = r
+        except Exception:
+            pass
+
+        # 2. Merge local run files
+        if os.path.exists(self.runs_dir):
+            for fname in os.listdir(self.runs_dir):
+                if (fname.startswith("RUN-") or fname.startswith("CRJ-RUN-")) and fname.endswith(".json"):
+                    fpath = os.path.join(self.runs_dir, fname)
+                    try:
+                        with open(fpath, "r", encoding="utf-8") as f:
+                            rec = json.load(f)
+                            rid = rec.get("run_id")
+                            if rid and rid not in by_id:
+                                by_id[rid] = rec
+                    except Exception:
+                        continue
+
+        records = list(by_id.values())
+        records.sort(
+            key=lambda r: r.get("created_at") or r.get("started_at") or r.get("updated_at") or "",
+            reverse=True
+        )
         return records[:limit]
 
     def recover_interrupted_runs(self) -> int:

@@ -154,12 +154,13 @@ def run_discovery_task(args) -> int:
         firestore_store.delete_checkpoint(run_id)
         return 0
 
-    # 5. Initialize run record in Firestore
+    now_iso = datetime.now(timezone.utc).isoformat()
     initial_record = {
         "run_id": run_id,
         "execution_id": execution_id,
         "status": "RUNNING",
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": now_iso,
+        "started_at": now_iso,
         "market": f"Manchester, {country}",
         "country": country,
         "cities": cities,
