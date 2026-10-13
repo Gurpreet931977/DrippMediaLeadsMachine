@@ -1,7 +1,7 @@
 import re
 
 
-def _format_optional_metric(value: Any) -> str:
+def _format_optional_metric(value) -> str:
     """Render missing evidence as UNKNOWN; preserve a genuine numeric zero."""
     return "UNKNOWN" if value is None else str(value)
 import json
