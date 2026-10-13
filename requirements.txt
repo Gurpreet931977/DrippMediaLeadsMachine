@@ -6,6 +6,7 @@ gspread>=6.0.0
 google-auth>=2.20.0
 google-auth-oauthlib>=1.0.0
 google-cloud-firestore>=2.14.0
+google-cloud-storage>=2.14.0
 beautifulsoup4>=4.12.0
 email-validator>=2.0.0
 dnspython>=2.4.0

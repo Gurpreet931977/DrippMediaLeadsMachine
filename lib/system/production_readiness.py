@@ -359,7 +359,21 @@ class ProductionReadinessAuditor:
                     description="Durable backup storage is configured, verified, and restorable.",
                 )
             else:
-                remote_ok = has_valid_local and restore_verified
+                from lib.system.durable_backup_engine import DurableBackupEngine
+                durable_eval = DurableBackupEngine.verify_durable_cloud_backup(gcs_bucket)
+                evidence["durable_verification"] = durable_eval
+                remote_ok = durable_eval.get("is_valid", False) and durable_eval.get("isolated_restore_verified", False)
+                if not remote_ok:
+                    remed = durable_eval.get("remediation")
+                    evidence["remediation"] = (
+                        f"Durable cloud backup verification failed: {remed}"
+                        if remed
+                        else (
+                            f"Durable cloud backup verification failed for gs://{gcs_bucket}: {durable_eval.get('error')}. "
+                            "A durable backup artifact must exist in the bucket, its remote manifest and checksums must validate, "
+                            "and an isolated restore drill must succeed."
+                        )
+                    )
                 return self._make_gate(
                     gate_id="BACKUP_HEALTH",
                     status=GateStatus.PASS if remote_ok else GateStatus.FAIL,

@@ -142,12 +142,20 @@ class TestPhase1227ReadinessDiagnostics(unittest.TestCase):
             self.assertFalse(gate_cloud["evidence"]["durable_cloud_backup_configured"])
             self.assertIn("remediation", gate_cloud["evidence"])
 
-        # On Cloud Run WITH durable GCS bucket configured: PASSES
+        # On Cloud Run WITH durable GCS bucket configured but NO durable artifact: FAILS (Rule 6)
         with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api", "GCS_BACKUP_BUCKET": "dripp-leads-backups-test"}):
-            gate_durable = self.auditor.check_backup_health()
-            self.assertEqual(gate_durable["status"], "PASS")
-            self.assertTrue(gate_durable["evidence"]["durable_cloud_backup_configured"])
-            self.assertEqual(gate_durable["evidence"]["durable_destination"], "gs://dripp-leads-backups-test")
+            with patch("lib.system.durable_backup_engine.DurableBackupEngine.verify_durable_cloud_backup", return_value={"is_valid": False, "status": "FAIL", "error": "No durable artifacts in bucket"}):
+                gate_unverified = self.auditor.check_backup_health()
+                self.assertEqual(gate_unverified["status"], "FAIL")
+                self.assertTrue(gate_unverified["evidence"]["durable_cloud_backup_configured"])
+
+        # On Cloud Run WITH durable GCS bucket configured AND verified durable artifact: PASSES
+        with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api", "GCS_BACKUP_BUCKET": "dripp-leads-backups-test"}):
+            with patch("lib.system.durable_backup_engine.DurableBackupEngine.verify_durable_cloud_backup", return_value={"is_valid": True, "status": "PASS", "isolated_restore_verified": True}):
+                gate_durable = self.auditor.check_backup_health()
+                self.assertEqual(gate_durable["status"], "PASS")
+                self.assertTrue(gate_durable["evidence"]["durable_cloud_backup_configured"])
+                self.assertEqual(gate_durable["evidence"]["durable_destination"], "gs://dripp-leads-backups-test")
 
     def test_operator_session_status_contract(self):
         """7. /api/operator/session returns session_id, expires_at, and remaining_seconds for valid session tokens."""
