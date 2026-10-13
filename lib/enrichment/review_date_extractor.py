@@ -602,8 +602,7 @@ class ReviewDateExtractor:
         # ── Step C: Look for Explicitly Anchored Review Dates ──
         # e.g. "Reviewed 3 weeks ago", "Reviewed on 15 Aug 2026", "Date of visit: August 2026"
         for pat in REVIEW_ANCHOR_PATTERNS:
-            m = pat.search(clean_combined)
-            if m:
+            for m in pat.finditer(clean_combined):
                 anchor_snippet = m.group(1).strip()
                 # Check relative age first
                 norm_rel, raw_rel, days_rel = cls.normalize_relative_date(anchor_snippet, as_of_dt)

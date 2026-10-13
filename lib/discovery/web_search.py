@@ -990,8 +990,8 @@ class WebSearchProvider(DiscoveryProvider):
 
                     for i, link_tag in enumerate(links[:num_results]):
                         link = link_tag.get("href", "").strip()
-                        title = link_tag.get_text(strip=True)
-                        snippet = snippets[i].get_text(strip=True) if i < len(snippets) else ""
+                        title = link_tag.get_text(" ", strip=True)
+                        snippet = snippets[i].get_text(" ", strip=True) if i < len(snippets) else ""
 
                         if link:
                             results.append({
@@ -1020,8 +1020,8 @@ class WebSearchProvider(DiscoveryProvider):
                         latency=total_latency
                     )
 
-                elif resp.status_code in [403, 429, 500, 502, 503, 504]:
-                    # Transient error - eligible for retry
+                elif resp.status_code in [202, 403, 429, 500, 502, 503, 504]:
+                    # Transient error or challenge - eligible for retry
                     last_error = f"HTTP {resp.status_code}"
                     if attempt < max_retries:
                         attempt += 1
@@ -1062,7 +1062,7 @@ class WebSearchProvider(DiscoveryProvider):
         self._sync_stats()
 
         outcome = SearchOutcome.SEARCH_TIMEOUT if "Timeout" in last_error else (
-            SearchOutcome.SEARCH_BLOCKED if (last_status in [403, 429] or "403" in last_error) else SearchOutcome.SEARCH_FAILED
+            SearchOutcome.SEARCH_BLOCKED if (last_status in [202, 403, 429] or "403" in last_error or "202" in last_error) else SearchOutcome.SEARCH_FAILED
         )
         return SearchResultList(
             outcome=outcome,

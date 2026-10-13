@@ -36,7 +36,7 @@ from lib.qualification.lead_scoring import LeadScoringProvider
 from lib.outreach.outreach_generator import OutreachAngleGenerator
 from lib.sheets.google_sheets import GoogleSheetsStorageProvider
 from lib.validation.country_validator import CountryValidator
-from lib.enrichment.review_rating_enricher import ReviewEvidenceItem
+from lib.enrichment.review_rating_enricher import ReviewEvidenceItem, ReviewRatingEnricher
 from lib.enrichment.gosom_fallback import GosomReviewFreshnessFallback
 
 class LeadGenerationPipeline:
@@ -59,16 +59,18 @@ class LeadGenerationPipeline:
         storage_provider: Optional[GoogleSheetsStorageProvider] = None,
         country_validator: Optional[CountryValidator] = None,
         gosom_fallback: Optional[GosomReviewFreshnessFallback] = None,
+        review_enricher: Optional[ReviewRatingEnricher] = None,
         shadow_mode: bool = False
     ):
         self.discovery = discovery_provider or HybridDiscoveryEngine()
         self.detector = detection_provider or NodeWebsiteDetectionProvider()
-        self.verifier = verification_provider or NoWebsiteVerificationProvider()
+        self.verifier = verification_provider or NoWebsiteVerificationProvider(web_search_provider=getattr(self.discovery, "web_search", None))
         self.scorer = scoring_provider or LeadScoringProvider()
         self.outreach = outreach_provider or OutreachAngleGenerator()
         self.storage = storage_provider or GoogleSheetsStorageProvider()
         self.country_validator = country_validator or CountryValidator()
         self.gosom_fallback = gosom_fallback
+        self.review_enricher = review_enricher or ReviewRatingEnricher(web_search_provider=getattr(self.discovery, "web_search", None))
         self.shadow_mode = shadow_mode
 
     def run(
@@ -161,6 +163,8 @@ class LeadGenerationPipeline:
             "website_unclear": 0,
             "website_broken": 0,
             "not_qualified": 0,
+            "active_confirmed": 0,
+            "social_verified": 0,
             "outreach_ready": 0,
             "manual_review": 0,
             "research_only": 0,
@@ -393,8 +397,8 @@ class LeadGenerationPipeline:
                     biz_to_query_map[biz.company_name] = q
 
             cached_searches = {}
-            if search_queries_needed and self.verifier.apify_client:
-                emit_log(f"[Verification] Batched web search for {len(search_queries_needed)} candidates...")
+            if search_queries_needed and (getattr(self.verifier, "apify_client", None) or getattr(self.verifier, "web_search_provider", None)):
+                emit_log(f"[Verification] Web search verification for {len(search_queries_needed)} candidates...")
                 cached_searches = self.verifier.batch_web_search(search_queries_needed)
 
             # Process each candidate in current batch
@@ -688,6 +692,25 @@ class LeadGenerationPipeline:
                     stats["no_website_confirmed"] += 1
                     emit_log(f"  [Confirmed No Website] {v_reason}")
 
+                    # Review & Rating Enrichment for No-Website candidates (if missing)
+                    if self.review_enricher and (biz.review_count is None or biz.rating is None):
+                        try:
+                            emit_log(f"  [Review Enrichment] Enriching review/rating for '{biz.company_name}'...")
+                            biz = self.review_enricher.enrich_candidate(biz)
+                            if biz.review_count is not None:
+                                emit_log(f"    [Review Enrichment Found] {biz.review_count} reviews, {biz.rating}★ (Date: {biz.latest_review_date or 'N/A'})")
+                            else:
+                                emit_log(f"    [Review Enrichment] No review evidence found for '{biz.company_name}'.")
+                        except Exception as renrich_ex:
+                            emit_log(f"    [Review Enrichment Error] Failed to enrich '{biz.company_name}': {renrich_ex}")
+
+                    # Creator / Influencer Evidence Enrichment (if supported by discovery engine)
+                    if hasattr(self.discovery, "enrich_candidate_creator_evidence"):
+                        try:
+                            self.discovery.enrich_candidate_creator_evidence(biz, city=biz.city or (cities[0] if cities else ""), country=country)
+                        except Exception as crev_ex:
+                            emit_log(f"    [Creator Evidence Error] Failed for '{biz.company_name}': {crev_ex}")
+
                     # QUALIFICATION ENGINE V2 EVALUATION
                     audit = self.scorer.evaluate_lead(
                         business=biz,
@@ -794,6 +817,11 @@ class LeadGenerationPipeline:
                     evidence_freshness = audit.get("evidence_freshness", EvidenceFreshness.UNKNOWN.value)
                     red_flags_str = "; ".join(red_flags) if red_flags else ""
                     city_slug = biz.city[:3].upper() if biz.city else "LOC"
+
+                    if operational_status == OperationalStatus.ACTIVE_CONFIRMED.value:
+                        stats["active_confirmed"] += 1
+                    if social_ownership in [SocialOwnershipStatus.VERIFIED.value, "VERIFIED_OWNED", "VERIFIED"] or bool(audit.get("verified_social_urls")):
+                        stats["social_verified"] += 1
 
                     if q_state == QualificationState.OUTREACH_READY.value:
                         # OUTREACH_READY LEAD!
@@ -1171,8 +1199,8 @@ class LeadGenerationPipeline:
         emit_log(f"WEBSITE_EXISTS:          {stats['website_exists']}")
         emit_log(f"NO_WEBSITE_CONFIRMED:    {stats['no_website_confirmed']}")
         emit_log(f"IDENTITY_VERIFIED:       {stats['valid_candidates_researched']}")
-        emit_log(f"ACTIVE_CONFIRMED:        {stats['outreach_ready']}")
-        emit_log(f"SOCIAL_VERIFIED:         {stats['outreach_ready']}")
+        emit_log(f"ACTIVE_CONFIRMED:        {stats.get('active_confirmed', 0)}")
+        emit_log(f"SOCIAL_VERIFIED:         {stats.get('social_verified', 0)}")
         emit_log(f"OUTREACH_READY:          {stats['outreach_ready']}")
         emit_log(f"MANUAL_REVIEW:           {stats['manual_review']}")
         emit_log(f"RESEARCH_ONLY:           {stats['research_only']}")

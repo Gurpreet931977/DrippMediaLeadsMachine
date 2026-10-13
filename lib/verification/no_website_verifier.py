@@ -9,6 +9,9 @@ from lib.website.detector import NodeWebsiteDetectionProvider, PLATFORM_DOMAINS
 
 load_dotenv()
 
+_UNSET = object()
+
+
 class NoWebsiteVerificationProvider:
     """
     Multi-stage verification provider for confirming 'NO_WEBSITE_CONFIRMED'.
@@ -18,20 +21,22 @@ class NoWebsiteVerificationProvider:
       Check C: Social profile & bio link analysis
       Check D: Direct domain name resolution
     """
-    def __init__(self, apify_client: Optional[Any] = None, enable_search: bool = True):
+    def __init__(self, apify_client: Any = _UNSET, enable_search: bool = True, web_search_provider: Optional[Any] = None):
         import os
         token = os.getenv("APIFY_TOKEN")
+        apify_env_enabled = os.getenv("APIFY_ENABLED", "true").lower() in ("true", "1", "yes")
         self.apify_client = None
-        if apify_client is not None:
+        if apify_client is not _UNSET:
             self.apify_client = apify_client
-        elif enable_search and token:
+        elif enable_search and token and apify_env_enabled:
             try:
                 from apify_client import ApifyClient
                 self.apify_client = ApifyClient(token)
             except ImportError:
                 self.apify_client = None
         self.detector = NodeWebsiteDetectionProvider()
-        self._search_disabled = not enable_search or self.apify_client is None
+        self.web_search_provider = web_search_provider
+        self._search_disabled = not enable_search or (self.apify_client is None and self.web_search_provider is None)
 
     def _normalize_name(self, name: str) -> str:
         clean = re.sub(r'[^a-zA-Z0-9\s]', '', name).lower()
@@ -101,6 +106,26 @@ class NoWebsiteVerificationProvider:
             }
 
         if not self.apify_client:
+            if self.web_search_provider:
+                results_map = {}
+                for q in queries:
+                    s_res = self.web_search_provider.search_web(q, num_results=6)
+                    raw_items = [
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("result_url", "") or r.get("url", ""),
+                            "description": r.get("snippet", "") or r.get("description", "")
+                        }
+                        for r in s_res
+                    ]
+                    results_map[q] = SearchResultList(
+                        raw_items,
+                        outcome=getattr(s_res, "outcome", SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if raw_items else SearchOutcome.SEARCH_SUCCEEDED_EMPTY),
+                        provider=getattr(s_res, "provider", "WEB_SEARCH_FALLBACK"),
+                        query=q,
+                        latency=getattr(s_res, "latency", 0.0)
+                    )
+                return results_map
             return {}
 
         results_map: Dict[str, Any] = {q: [] for q in queries}
@@ -163,6 +188,27 @@ class NoWebsiteVerificationProvider:
                     )
         except Exception as e:
             err_msg = str(e).lower()
+            if self.web_search_provider:
+                print(f"[NoWebsiteVerifier] Apify batch search failed/limited ({e}); falling back to web_search_provider...")
+                for q in queries:
+                    s_res = self.web_search_provider.search_web(q, num_results=6)
+                    raw_items = [
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("result_url", "") or r.get("url", ""),
+                            "description": r.get("snippet", "") or r.get("description", "")
+                        }
+                        for r in s_res
+                    ]
+                    results_map[q] = SearchResultList(
+                        raw_items,
+                        outcome=getattr(s_res, "outcome", SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if raw_items else SearchOutcome.SEARCH_SUCCEEDED_EMPTY),
+                        provider=getattr(s_res, "provider", "WEB_SEARCH_FALLBACK"),
+                        query=q,
+                        latency=getattr(s_res, "latency", 0.0)
+                    )
+                return results_map
+
             if "billing" in err_msg or "usage" in err_msg or "limit" in err_msg:
                 self._search_disabled = True
                 print(f"[NoWebsiteVerifier] Batch search temporarily disabled due to Apify usage limit: {e}")
@@ -261,7 +307,7 @@ class NoWebsiteVerificationProvider:
         # CHECK B: Public Search Check
         search_query = f"{business.company_name} {business.city}"
         org_results = cached_search_results
-        if org_results is None and self.apify_client:
+        if org_results is None and (self.apify_client or self.web_search_provider):
             b_map = self.batch_web_search([search_query])
             org_results = b_map.get(search_query)
 

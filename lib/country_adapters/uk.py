@@ -132,10 +132,10 @@ class UKReviewSourceAdapter(ReviewSourceAdapter):
         postcode: str = ""
     ) -> List[str]:
         q = [
-            f'"{business_name}" "{city}" restaurant',
             f'"{business_name}" "{city}" reviews',
-            f'"{business_name}" "{city}" rating reviews',
             f'"{business_name}" "{city}" Tripadvisor',
+            f'"{business_name}" "{city}" rating reviews',
+            f'"{business_name}" "{city}" restaurant',
             f'"{business_name}" "{city}" Google reviews',
             f'"{business_name}" "{city}" Facebook reviews'
         ]

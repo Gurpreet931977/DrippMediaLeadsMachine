@@ -30,7 +30,7 @@ from dataclasses import dataclass, asdict, field
 from enum import Enum
 from typing import Dict, Any, List, Optional, Tuple, Set, Union
 
-from lib.types import DiscoveredBusiness
+from lib.types import DiscoveredBusiness, ResearchFailureState
 from lib.discovery.web_search import WebSearchProvider, check_searxng_health
 from lib.discovery.crawler import CrawlEngine
 from lib.enrichment.review_date_extractor import (
@@ -178,10 +178,10 @@ class ReviewRatingEnricher:
         """
         clean_name = re.sub(r'["\']', '', business_name).strip()
         queries = [
-            f'"{clean_name}" "{city}" restaurant',
             f'"{clean_name}" "{city}" reviews',
-            f'"{clean_name}" "{city}" rating reviews',
             f'"{clean_name}" "{city}" Tripadvisor',
+            f'"{clean_name}" "{city}" rating reviews',
+            f'"{clean_name}" "{city}" restaurant',
             f'"{clean_name}" "{city}" Google reviews',
             f'"{clean_name}" "{city}" Facebook reviews'
         ]
@@ -702,7 +702,22 @@ class ReviewRatingEnricher:
                 out_name = out_val.value if hasattr(out_val, "value") else str(out_val or "")
                 attempted_outcomes.append(out_name)
                 results_to_process.extend(res)
-                if len(res) >= 3:
+                # Break early only if review evidence was extracted from the results so far
+                has_extracted_evidence = any(
+                    self.extract_evidence_from_snippet(
+                        snippet=r.get("snippet", ""),
+                        title=r.get("title", ""),
+                        url=r.get("result_url", ""),
+                        business_name=business_name,
+                        city=city,
+                        street=street,
+                        postcode=postcode,
+                        country=country,
+                        provider=r.get("provider") or r.get("search_provider", "")
+                    ) is not None
+                    for r in res
+                )
+                if has_extracted_evidence:
                     break
 
             # If all attempted queries failed
@@ -776,6 +791,33 @@ class ReviewRatingEnricher:
             candidate.raw_data = {}
         candidate.raw_data["review_enrichment"] = res.to_dict()
 
+        res_telem = candidate.raw_data.get("research_telemetry", {})
+        if not isinstance(res_telem, dict):
+            res_telem = {}
+        if res.review_status == ReviewStatus.FOUND.value:
+            res_telem["failure_reason"] = ResearchFailureState.NONE.value
+            res_telem["provider_result"] = "SEARCH_SUCCEEDED"
+        elif res.review_status == ReviewStatus.CONFLICT_REQUIRES_REVIEW.value:
+            res_telem["failure_reason"] = ResearchFailureState.EVIDENCE_CONFLICT.value
+            res_telem["provider_result"] = "REJECTED_CONFLICT"
+        elif res.review_status == ReviewStatus.SEARCH_FAILED.value:
+            ev_str = str(res.review_evidence or "")
+            if "TIMEOUT" in ev_str:
+                res_telem["failure_reason"] = ResearchFailureState.PROVIDER_TIMEOUT.value
+            elif "UNAVAILABLE" in ev_str or "NOT_CONNECTED" in ev_str:
+                res_telem["failure_reason"] = ResearchFailureState.PROVIDER_UNAVAILABLE.value
+            elif "QUOTA" in ev_str:
+                res_telem["failure_reason"] = ResearchFailureState.QUOTA_EXCEEDED.value
+            elif "NOT_CONFIGURED" in ev_str:
+                res_telem["failure_reason"] = ResearchFailureState.PROVIDER_NOT_CONFIGURED.value
+            else:
+                res_telem["failure_reason"] = ResearchFailureState.PROVIDER_FAILED.value
+            res_telem["provider_result"] = "SEARCH_FAILED"
+        else:
+            res_telem["failure_reason"] = ResearchFailureState.NO_EVIDENCE_FOUND.value
+            res_telem["provider_result"] = "NO_EVIDENCE"
+        candidate.raw_data["research_telemetry"] = res_telem
+
         if res.review_status == ReviewStatus.FOUND.value:
             # Only update if candidate currently lacks review data OR if new evidence is HIGH confidence
             if candidate.review_count is None and res.review_count is not None:
@@ -790,5 +832,12 @@ class ReviewRatingEnricher:
 
             if res.review_evidence_date:
                 candidate.latest_review_date = res.review_evidence_date
+
+            if res.review_source_url:
+                s_url_lower = res.review_source_url.lower()
+                if "facebook.com" in s_url_lower and not candidate.facebook_url:
+                    candidate.facebook_url = res.review_source_url
+                elif "instagram.com" in s_url_lower and not candidate.instagram_url:
+                    candidate.instagram_url = res.review_source_url
 
         return candidate
