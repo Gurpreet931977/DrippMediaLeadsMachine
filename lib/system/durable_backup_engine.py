@@ -571,18 +571,30 @@ class DurableBackupEngine:
         # Attempt to inspect GCS via google.cloud.storage if available
         try:
             from google.cloud import storage
+            from google.api_core import exceptions as gcp_exceptions
             client = storage.Client()
             bucket = client.bucket(clean_bucket)
-            if not bucket.exists():
+
+            # Search for latest backup archive and companion manifest
+            # Under least-privilege Managed Folders, runtime service accounts lack bucket-level
+            # storage.buckets.get permissions (bucket.exists() fails with 403).
+            # Listing blobs under prefix="backups/" directly verifies both existence and prefix access.
+            try:
+                blobs = list(client.list_blobs(clean_bucket, prefix="backups/"))
+            except gcp_exceptions.NotFound:
                 return {
                     "is_valid": False,
                     "status": "FAIL",
-                    "error": f"Bucket gs://{clean_bucket} does not exist or access is forbidden",
+                    "error": f"Bucket gs://{clean_bucket} does not exist",
                     "remediation": f"Provision bucket gs://{clean_bucket} in us-central1 with uniform bucket-level access.",
                 }
-
-            # Search for latest backup archive and companion manifest
-            blobs = list(client.list_blobs(clean_bucket, prefix="backups/"))
+            except gcp_exceptions.Forbidden as e:
+                return {
+                    "is_valid": False,
+                    "status": "FAIL",
+                    "error": f"Access to gs://{clean_bucket}/backups/ is forbidden: {e}",
+                    "remediation": "Ensure caller identity possesses roles/storage.objectViewer on managed folder backups/.",
+                }
             manifest_blobs = [b for b in blobs if b.name.endswith(".manifest.json")]
             archive_blobs = [b for b in blobs if b.name.endswith(".tar.gz")]
 

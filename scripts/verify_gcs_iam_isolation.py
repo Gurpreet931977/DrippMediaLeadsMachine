@@ -201,7 +201,118 @@ def run_iam_verification_matrix(
     return report
 
 
+def run_live_iam_probes(bucket_name: str = BUCKET_NAME) -> Dict[str, Any]:
+    """
+    Executes actual authenticated HTTP requests to Google Cloud Storage
+    using the active local service account credentials to verify live enforcement.
+    """
+    from google.cloud import storage
+    from google.api_core.exceptions import Forbidden, NotFound
+
+    # Load environment variables if present
+    env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    if os.path.exists(env_file):
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    if k not in os.environ:
+                        os.environ[k] = v
+
+    # Fallback to local default key if credentials not set
+    if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        default_key = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "poised-eye-509816-a4-5444ff3f8520.json")
+        if os.path.exists(default_key):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = default_key
+
+    client = storage.Client(project=os.getenv("GOOGLE_CLOUD_PROJECT", "poised-eye-509816-a4"))
+    bucket = client.bucket(bucket_name)
+
+    report: Dict[str, Any] = {
+        "suite": "GCS_LIVE_AUTHENTICATED_IAM_VERIFICATION",
+        "bucket": bucket_name,
+        "caller_credentials": os.path.basename(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "default")),
+        "results": [],
+        "all_passed": True,
+    }
+
+    def record_probe(vec_id: str, desc: str, op: str, path: str, exp: int, act: int, details: str = ""):
+        passed = act == exp
+        if not passed:
+            report["all_passed"] = False
+        report["results"].append({
+            "vector_id": vec_id,
+            "description": desc,
+            "operation": op,
+            "resource_path": path,
+            "expected_code": exp,
+            "actual_code": act,
+            "status": "PASS" if passed else "FAIL",
+            "details": details,
+        })
+
+    # Probe 1: checkpoints/ create (expect 200)
+    try:
+        b = bucket.blob("checkpoints/live_probe_marker.txt")
+        b.upload_from_string("probe_live_verified")
+        record_probe("LIVE_DISC_01", "Create checkpoint in checkpoints/", "storage.objects.create", "checkpoints/live_probe_marker.txt", 200, 200)
+    except Exception as e:
+        record_probe("LIVE_DISC_01", "Create checkpoint in checkpoints/", "storage.objects.create", "checkpoints/live_probe_marker.txt", 200, getattr(e, "code", 500), str(e))
+
+    # Probe 2: checkpoints/ read (expect 200)
+    try:
+        b = bucket.blob("checkpoints/live_probe_marker.txt")
+        content = b.download_as_text()
+        record_probe("LIVE_DISC_02", "Read checkpoint from checkpoints/", "storage.objects.get", "checkpoints/live_probe_marker.txt", 200, 200, f"Read {len(content)} bytes")
+    except Exception as e:
+        record_probe("LIVE_DISC_02", "Read checkpoint from checkpoints/", "storage.objects.get", "checkpoints/live_probe_marker.txt", 200, getattr(e, "code", 500), str(e))
+
+    # Probe 3: checkpoints/ list (expect 200)
+    try:
+        blobs = list(client.list_blobs(bucket_name, prefix="checkpoints/"))
+        record_probe("LIVE_DISC_03", "List objects in checkpoints/", "storage.objects.list", "checkpoints/", 200, 200, f"Listed {len(blobs)} objects")
+    except Exception as e:
+        record_probe("LIVE_DISC_03", "List objects in checkpoints/", "storage.objects.list", "checkpoints/", 200, getattr(e, "code", 500), str(e))
+
+    # Probe 4: checkpoints/ delete (MUST FAIL 403)
+    try:
+        b = bucket.blob("checkpoints/live_probe_marker.txt")
+        b.delete()
+        record_probe("LIVE_DISC_04", "Delete object in checkpoints/ (MUST DENY)", "storage.objects.delete", "checkpoints/live_probe_marker.txt", 403, 200, "UNEXPECTED: delete succeeded")
+    except Forbidden:
+        record_probe("LIVE_DISC_04", "Delete object in checkpoints/ (MUST DENY)", "storage.objects.delete", "checkpoints/live_probe_marker.txt", 403, 403, "Correct: 403 Forbidden")
+    except Exception as e:
+        record_probe("LIVE_DISC_04", "Delete object in checkpoints/ (MUST DENY)", "storage.objects.delete", "checkpoints/live_probe_marker.txt", 403, getattr(e, "code", 500), str(e))
+
+    # Probe 5: backups/ create (MUST FAIL 403)
+    try:
+        b = bucket.blob("backups/unauthorized_live_probe.txt")
+        b.upload_from_string("bad")
+        record_probe("LIVE_DISC_05", "Write to backups/ (MUST DENY)", "storage.objects.create", "backups/unauthorized_live_probe.txt", 403, 200, "UNEXPECTED: create succeeded in backups/")
+    except Forbidden:
+        record_probe("LIVE_DISC_05", "Write to backups/ (MUST DENY)", "storage.objects.create", "backups/unauthorized_live_probe.txt", 403, 403, "Correct: 403 Forbidden")
+    except Exception as e:
+        record_probe("LIVE_DISC_05", "Write to backups/ (MUST DENY)", "storage.objects.create", "backups/unauthorized_live_probe.txt", 403, getattr(e, "code", 500), str(e))
+
+    # Probe 6: backups/ list (MUST FAIL 403)
+    try:
+        blobs = list(client.list_blobs(bucket_name, prefix="backups/"))
+        record_probe("LIVE_DISC_06", "List backups/ (MUST DENY)", "storage.objects.list", "backups/", 403, 200, "UNEXPECTED: list succeeded in backups/")
+    except Forbidden:
+        record_probe("LIVE_DISC_06", "List backups/ (MUST DENY)", "storage.objects.list", "backups/", 403, 403, "Correct: 403 Forbidden")
+    except Exception as e:
+        record_probe("LIVE_DISC_06", "List backups/ (MUST DENY)", "storage.objects.list", "backups/", 403, getattr(e, "code", 500), str(e))
+
+    return report
+
+
 if __name__ == "__main__":
-    rep = run_iam_verification_matrix()
-    print(json.dumps(rep, indent=2))
-    sys.exit(0 if rep["all_passed"] else 1)
+    if "--live" in sys.argv:
+        live_rep = run_live_iam_probes()
+        print(json.dumps(live_rep, indent=2))
+        sys.exit(0 if live_rep["all_passed"] else 1)
+    else:
+        rep = run_iam_verification_matrix()
+        print(json.dumps(rep, indent=2))
+        sys.exit(0 if rep["all_passed"] else 1)
