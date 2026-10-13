@@ -445,6 +445,291 @@ class TestPipelineRunManagerFirestoreIntegration(unittest.TestCase):
             self.assertEqual(email, target_email)
 
 
+class TestFirestoreSerializationRegression(unittest.TestCase):
+    """
+    Regression Suite: Verifies Firestore recursive serialization boundary.
+    Prevents TypeError: ('Cannot convert to a Firestore Value', ResearchLogEntry(...), ...)
+    and ensures nested dataclasses, Enums, sets, and None values encode cleanly into Firestore.
+    """
+
+    def setUp(self):
+        self.store = FirestoreStateStore(force_mock=True)
+        self.store.clear_mock_data()
+
+    def test_research_log_entry_nested_in_run_record_preserves_fields_and_survives_firestore_encoding(self):
+        """
+        Verifies that a final_record containing ResearchLogEntry dataclass objects
+        is recursively converted into Firestore-compatible primitives, preserving
+        all 28 canonical fields, None values, research evidence, and passes encode_value.
+        """
+        from datetime import datetime, timezone
+        from lib.types import ResearchLogEntry, Lead, QualificationState, SocialStatus, OperationalStatus
+        from google.cloud.firestore_v1 import _helpers
+
+        entry = ResearchLogEntry(
+            research_id="res-manchester-001",
+            company_name="Apex Fitness Manchester",
+            industry="gym",
+            target_country="United Kingdom",
+            detected_country="United Kingdom",
+            country_status="MATCH",
+            city="Manchester",
+            region="Greater Manchester",
+            postcode="M1 2WD",
+            address="45 Lever St, Manchester",
+            phone="+441619876543",
+            website="https://apexfitnessmcr.co.uk",
+            website_status="VALID",
+            verification_status="NO_WEBSITE_CONFIRMED",
+            review_count=None,
+            rating=None,
+            social_status=SocialStatus.SOCIAL_FOUND.value,
+            social_ownership_status="OWNED",
+            social_profile_status="ACTIVE",
+            operational_status=OperationalStatus.VERIFIED_ACTIVE.value,
+            operational_confidence="HIGH",
+            evidence_freshness="RECENT",
+            qualification_state=QualificationState.OUTREACH_READY.value,
+            qualification_status="QUALIFIED",
+            disqualification_reason="",
+            red_flags="",
+            source_url="https://overpass-api.de/api/interpreter",
+            date_researched="2026-10-13T20:15:00Z",
+        )
+
+        lead = Lead(
+            lead_id="lead-manchester-001",
+            company_name="Apex Fitness Manchester",
+            industry="gym",
+            target_country="United Kingdom",
+            country="United Kingdom",
+            city="Manchester",
+            phone="+441619876543",
+            website="https://apexfitnessmcr.co.uk",
+        )
+
+        final_record = {
+            "run_id": "CRJ-DRYRUN-VCT6B",
+            "execution_id": "dripp-discovery-job-vct6b",
+            "status": "COMPLETED",
+            "started_at": "2026-10-13T20:00:00Z",
+            "finished_at": "2026-10-13T20:15:00Z",
+            "market": "Manchester, United Kingdom",
+            "country": "United Kingdom",
+            "cities": ["Manchester"],
+            "industry": "gym",
+            "qualified_leads_needed": 5,
+            "dry_run": True,
+            "leads_count": 1,
+            "review_queue_count": 0,
+            "research_entries_count": 1,
+            "results": {
+                "leads": [lead],
+                "review_queue": [],
+                "research_entries": [entry],
+                "stats": {"discovered": 12, "qualified": 1},
+                "processed_ids": {"node:12345", "node:67890"},  # set of strings
+            },
+        }
+
+        # 1. Save through persistence boundary
+        self.store.save_run_record("CRJ-DRYRUN-VCT6B", final_record)
+
+        # 2. Retrieve saved record
+        saved = self.store.get_run_record("CRJ-DRYRUN-VCT6B")
+        self.assertIsNotNone(saved)
+        self.assertEqual(saved["status"], "COMPLETED")
+        self.assertEqual(saved["run_id"], "CRJ-DRYRUN-VCT6B")
+
+        # 3. Verify nested ResearchLogEntry is converted to dict, not stringified or discarded
+        results = saved["results"]
+        entries = results["research_entries"]
+        self.assertEqual(len(entries), 1)
+        r_saved = entries[0]
+        self.assertIsInstance(r_saved, dict)
+        self.assertNotIsInstance(r_saved, ResearchLogEntry)
+
+        # 4. Verify canonical fields and values survived intact
+        self.assertEqual(r_saved["research_id"], "res-manchester-001")
+        self.assertEqual(r_saved["company_name"], "Apex Fitness Manchester")
+        self.assertEqual(r_saved["target_country"], "United Kingdom")
+        self.assertEqual(r_saved["detected_country"], "United Kingdom")
+        self.assertEqual(r_saved["city"], "Manchester")
+        self.assertEqual(r_saved["qualification_status"], "QUALIFIED")
+        self.assertEqual(r_saved["source_url"], "https://overpass-api.de/api/interpreter")
+        self.assertEqual(r_saved["date_researched"], "2026-10-13T20:15:00Z")
+
+        # Crucial: None values are preserved, NOT discarded or turned into string 'None'
+        self.assertIsNone(r_saved["review_count"])
+        self.assertIsNone(r_saved["rating"])
+
+        # 5. Verify set conversion to list for Firestore compatibility
+        self.assertIsInstance(results["processed_ids"], list)
+        self.assertEqual(results["processed_ids"], ["node:12345", "node:67890"])
+
+        # 6. Verify nested Lead is also converted to dict
+        leads = results["leads"]
+        self.assertEqual(len(leads), 1)
+        self.assertIsInstance(leads[0], dict)
+        self.assertEqual(leads[0]["lead_id"], "lead-manchester-001")
+
+        # 7. Verify Google Cloud Firestore serialization accepts the saved record
+        encoded = _helpers.encode_value(saved)
+        self.assertIsNotNone(encoded)
+        # Check that review_count is explicitly a Firestore NullValue
+        entry_val = encoded.map_value.fields["results"].map_value.fields["research_entries"].array_value.values[0]
+        self.assertEqual(entry_val.map_value.fields["review_count"].null_value, 0)
+        self.assertEqual(entry_val.map_value.fields["research_id"].string_value, "res-manchester-001")
+
+    def test_all_cloud_run_record_types_survive_serialization(self):
+        """
+        Verifies that all record types emitted during Cloud Run job lifecycles
+        (initial STARTING, COMPLETED, FAILED, ABORTED, and COMPLETED_PRIOR)
+        serialize properly and encode to Firestore values.
+        """
+        from google.cloud.firestore_v1 import _helpers
+
+        # A. Initial run record
+        init_rec = {
+            "run_id": "CRJ-INIT",
+            "execution_id": "exec-001",
+            "status": "RUNNING",
+            "started_at": "2026-10-13T10:00:00Z",
+            "market": "Manchester, United Kingdom",
+            "country": "United Kingdom",
+            "cities": ["Manchester"],
+            "industry": "gym",
+            "qualified_leads_needed": 5,
+            "dry_run": True,
+            "processed_candidates_count": 0,
+        }
+        self.store.save_run_record("CRJ-INIT", init_rec)
+        saved_init = self.store.get_run_record("CRJ-INIT")
+        self.assertEqual(saved_init["status"], "RUNNING")
+        _helpers.encode_value(saved_init)
+
+        # B. Aborted duplicate record
+        aborted_rec = {
+            "status": "ABORTED_DUPLICATE_OR_ACTIVE",
+            "reason": "Active lease held by another container",
+            "aborted_at": "2026-10-13T10:01:00Z",
+        }
+        self.store.save_run_record("CRJ-ABORT", aborted_rec)
+        saved_aborted = self.store.get_run_record("CRJ-ABORT")
+        self.assertEqual(saved_aborted["status"], "ABORTED_DUPLICATE_OR_ACTIVE")
+        _helpers.encode_value(saved_aborted)
+
+        # C. Completed prior execution
+        prior_rec = {
+            "status": "COMPLETED_PRIOR_EXECUTION",
+            "finished_at": "2026-10-13T10:02:00Z",
+            "leads_count": 5,
+            "processed_candidates_count": 25,
+        }
+        self.store.save_run_record("CRJ-PRIOR", prior_rec)
+        saved_prior = self.store.get_run_record("CRJ-PRIOR")
+        self.assertEqual(saved_prior["status"], "COMPLETED_PRIOR_EXECUTION")
+        _helpers.encode_value(saved_prior)
+
+        # D. Failed execution record
+        failed_rec = {
+            "status": "FAILED",
+            "failed_at": "2026-10-13T10:05:00Z",
+            "error": "Simulated provider failure: Timeout connecting to OSM",
+        }
+        self.store.save_run_record("CRJ-FAIL", failed_rec)
+        saved_fail = self.store.get_run_record("CRJ-FAIL")
+        self.assertEqual(saved_fail["status"], "FAILED")
+        self.assertEqual(saved_fail["error"], "Simulated provider failure: Timeout connecting to OSM")
+        _helpers.encode_value(saved_fail)
+
+    def test_checkpoint_and_lease_serialization(self):
+        """
+        Verifies that checkpoints and leases containing sets, enums, dates, and None
+        are sanitized and encoded cleanly by Firestore.
+        """
+        from datetime import date
+        from google.cloud.firestore_v1 import _helpers
+        from lib.types import QualificationState
+
+        # Checkpoint with set of processed IDs
+        self.store.save_checkpoint("RUN-CHK-01", {
+            "market_id": "Manchester, United Kingdom",
+            "status": "RUNNING",
+            "processed_ids": {"node:1", "node:2", "way:3"},
+            "state_enum": QualificationState.RESEARCH_ONLY,
+            "stats": {"count": 10},
+            "snapshot_date": date(2026, 10, 13),
+            "nullable_metric": None,
+        })
+        chk = self.store.get_checkpoint("RUN-CHK-01")
+        self.assertIsInstance(chk["processed_ids"], list)
+        self.assertEqual(chk["state_enum"], "RESEARCH_ONLY")
+        self.assertEqual(chk["snapshot_date"], "2026-10-13")
+        self.assertIsNone(chk["nullable_metric"])
+        _helpers.encode_value(chk)
+
+        # Lease with metadata
+        acquired = self.store.acquire_lease(
+            lease_name="test_lease_complex",
+            holder_id="worker_99",
+            metadata={"tags": {"production", "dry_run"}, "mode": QualificationState.OUTREACH_READY},
+        )
+        self.assertTrue(acquired)
+        lease = self.store.get_lease("test_lease_complex")
+        self.assertIsInstance(lease["metadata"]["tags"], list)
+        self.assertEqual(lease["metadata"]["mode"], "OUTREACH_READY")
+        _helpers.encode_value(lease)
+
+    def test_to_firestore_compatible_direct_edges(self):
+        """
+        Unit tests for to_firestore_compatible helper testing edge cases:
+        None, Enums, dataclasses, dicts, lists, sets, date, datetime, UUID, Path, primitives.
+        """
+        import uuid
+        from pathlib import Path
+        from datetime import date, datetime, timezone
+        from google.cloud.firestore_v1 import _helpers
+        from lib.system.firestore_state_store import to_firestore_compatible
+        from lib.types import QualificationState
+
+        u = uuid.uuid4()
+        p = Path("/tmp/dripp/test.log")
+        d = date(2026, 10, 13)
+        dt = datetime(2026, 10, 13, 12, 0, 0, tzinfo=timezone.utc)
+
+        data = {
+            "none_val": None,
+            "enum_val": QualificationState.OUTREACH_READY,
+            "uuid_val": u,
+            "path_val": p,
+            "date_val": d,
+            "datetime_val": dt,
+            "set_val": {3, 1, 2},
+            "tuple_val": ("a", "b"),
+            "nested": {
+                "flag": True,
+                "count": 42,
+                "score": 98.6,
+            },
+        }
+
+        clean = to_firestore_compatible(data)
+        self.assertIsNone(clean["none_val"])
+        self.assertEqual(clean["enum_val"], "OUTREACH_READY")
+        self.assertEqual(clean["uuid_val"], str(u))
+        self.assertEqual(clean["path_val"], str(p))
+        self.assertEqual(clean["date_val"], "2026-10-13")
+        self.assertEqual(clean["datetime_val"], dt)
+        self.assertEqual(clean["set_val"], [1, 2, 3])
+        self.assertEqual(clean["tuple_val"], ["a", "b"])
+        self.assertTrue(clean["nested"]["flag"])
+
+        # Firestore must encode all of this without raising TypeError
+        encoded = _helpers.encode_value(clean)
+        self.assertIsNotNone(encoded)
+
+
 if __name__ == "__main__":
     unittest.main()
 

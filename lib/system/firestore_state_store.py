@@ -18,8 +18,11 @@ Fulfills Phase 12.2.3 Architecture Requirements:
 import os
 import json
 import time
+import uuid
 import logging
-from datetime import datetime, timezone
+from dataclasses import is_dataclass, asdict
+from enum import Enum
+from datetime import datetime, date, timezone
 from typing import Dict, Any, List, Optional, Tuple
 
 logger = logging.getLogger("FirestoreStateStore")
@@ -40,11 +43,93 @@ def _now_epoch() -> float:
     return time.time()
 
 
+def to_firestore_compatible(val: Any) -> Any:
+    """
+    Recursively converts dataclasses, Enums, sets, and nested collections into
+    Firestore-compatible primitives (dict, list, str, int, float, bool, bytes,
+    datetime, None).
+
+    Preserves canonical field names, research evidence, qualification status,
+    IDs, timestamps, and None values without truncation or arbitrary stringification.
+    """
+    if val is None:
+        return None
+
+    # Handle Enums (extract raw value, e.g. "COUNTRY_MATCH")
+    if isinstance(val, Enum):
+        return to_firestore_compatible(val.value)
+
+    # Handle dataclass instances
+    if is_dataclass(val) and not isinstance(val, type):
+        if hasattr(val, "to_dict") and callable(val.to_dict):
+            try:
+                raw_dict = val.to_dict()
+                return to_firestore_compatible(raw_dict)
+            except Exception:
+                pass
+        try:
+            raw_dict = asdict(val)
+            return to_firestore_compatible(raw_dict)
+        except Exception:
+            # Fallback if asdict fails (e.g. uncopyable attributes)
+            raw_dict = {k: getattr(val, k) for k in getattr(val, "__dataclass_fields__", {})}
+            return to_firestore_compatible(raw_dict)
+
+    # Handle objects with custom to_dict()
+    if hasattr(val, "to_dict") and callable(val.to_dict) and not isinstance(val, type):
+        try:
+            return to_firestore_compatible(val.to_dict())
+        except Exception:
+            pass
+
+    # Handle dictionaries / mappings
+    if isinstance(val, dict):
+        return {str(k): to_firestore_compatible(v) for k, v in val.items()}
+
+    # Handle lists, tuples, sets, frozensets (Firestore requires arrays/lists)
+    if isinstance(val, (list, tuple, set, frozenset)):
+        if isinstance(val, (set, frozenset)):
+            try:
+                items = sorted(val, key=lambda x: str(x))
+            except Exception:
+                items = list(val)
+        else:
+            items = val
+        return [to_firestore_compatible(item) for item in items]
+
+    # Handle datetime before date since datetime inherits from date
+    if isinstance(val, datetime):
+        return val
+
+    # Handle date objects (convert to ISO format string)
+    if isinstance(val, date):
+        return val.isoformat()
+
+    # Handle native primitives supported by Firestore
+    if isinstance(val, (bool, int, float, str, bytes)):
+        return val
+
+    # Handle UUIDs and path-like objects
+    if isinstance(val, (uuid.UUID, os.PathLike)):
+        return str(val)
+
+    # Objects with __dict__
+    if hasattr(val, "__dict__") and not isinstance(val, type):
+        return {str(k): to_firestore_compatible(v) for k, v in val.__dict__.items() if not k.startswith("_")}
+
+    return str(val)
+
+
 class FirestoreStateStore:
     """
     Manages operational leases, checkpoints, and job recovery metadata in Firestore.
     Supports both live google-cloud-firestore and deterministic in-memory mock mode.
     """
+
+    @staticmethod
+    def to_firestore_compatible(val: Any) -> Any:
+        """Expose serialization helper as class staticmethod."""
+        return to_firestore_compatible(val)
 
     def __init__(
         self,
@@ -136,6 +221,7 @@ class FirestoreStateStore:
             "ttl_seconds": ttl_seconds,
             "metadata": metadata or {},
         }
+        clean_lease_doc = to_firestore_compatible(lease_doc)
 
         if self._is_live:
             try:
@@ -153,13 +239,13 @@ class FirestoreStateStore:
                         # If active and owned by someone else, fail acquisition
                         if curr_expires > now and curr_holder != holder_id:
                             return False
-                    transaction.set(doc_ref, lease_doc)
+                    transaction.set(doc_ref, clean_lease_doc)
                     return True
 
                 transaction = self._client.transaction()
                 return _tx_acquire(transaction)
             except Exception as e:
-                logger.error("Error acquiring Firestore lease %s: %e", lease_name, e)
+                logger.error("Error acquiring Firestore lease %s: %s", lease_name, e)
                 return False
         else:
             # In-memory mock transactional semantics
@@ -169,7 +255,7 @@ class FirestoreStateStore:
                 curr_holder = existing.get("holder_id")
                 if curr_expires > now and curr_holder != holder_id:
                     return False
-            self._mock_data[COLL_LEASES][lease_name] = lease_doc
+            self._mock_data[COLL_LEASES][lease_name] = clean_lease_doc
             return True
 
     def renew_lease(self, lease_name: str, holder_id: str, ttl_seconds: float = 600.0) -> bool:
@@ -313,14 +399,15 @@ class FirestoreStateStore:
             "last_updated_at": _now_utc(),
             **checkpoint_data,
         }
+        clean_record = to_firestore_compatible(record)
         if self._is_live:
             try:
-                self._client.collection(COLL_CHECKPOINTS).document(run_id).set(record)
+                self._client.collection(COLL_CHECKPOINTS).document(run_id).set(clean_record)
             except Exception as e:
                 logger.error("Error saving checkpoint for %s: %s", run_id, e)
                 raise
         else:
-            self._mock_data[COLL_CHECKPOINTS][run_id] = record
+            self._mock_data[COLL_CHECKPOINTS][run_id] = clean_record
 
     def get_checkpoint(self, run_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -357,14 +444,15 @@ class FirestoreStateStore:
             "updated_at": _now_utc(),
             **run_data,
         }
+        clean_record = to_firestore_compatible(record)
         if self._is_live:
             try:
-                self._client.collection(COLL_RUNS).document(run_id).set(record)
+                self._client.collection(COLL_RUNS).document(run_id).set(clean_record)
             except Exception as e:
                 logger.error("Error saving run record %s: %s", run_id, e)
                 raise
         else:
-            self._mock_data[COLL_RUNS][run_id] = record
+            self._mock_data[COLL_RUNS][run_id] = clean_record
 
     def get_run_record(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Fetches a pipeline run record."""
@@ -407,14 +495,15 @@ class FirestoreStateStore:
             "updated_at": _now_utc(),
             **suppression_data,
         }
+        clean_record = to_firestore_compatible(record)
         if self._is_live:
             try:
-                self._client.collection(COLL_SUPPRESSIONS).document(clean_target).set(record)
+                self._client.collection(COLL_SUPPRESSIONS).document(clean_target).set(clean_record)
             except Exception as e:
                 logger.error("Error saving suppression for %s: %s", clean_target, e)
                 raise
         else:
-            self._mock_data[COLL_SUPPRESSIONS][clean_target] = record
+            self._mock_data[COLL_SUPPRESSIONS][clean_target] = clean_record
 
     def get_suppression(self, target: str) -> Optional[Dict[str, Any]]:
         """Checks if a target is present in Firestore suppressions."""
@@ -447,14 +536,15 @@ class FirestoreStateStore:
             "updated_at": _now_utc(),
             **unsub_data,
         }
+        clean_record = to_firestore_compatible(record)
         if self._is_live:
             try:
-                self._client.collection(COLL_UNSUBSCRIBES).document(clean_token).set(record)
+                self._client.collection(COLL_UNSUBSCRIBES).document(clean_token).set(clean_record)
             except Exception as e:
                 logger.error("Error saving unsubscribe token %s: %s", clean_token, e)
                 raise
         else:
-            self._mock_data[COLL_UNSUBSCRIBES][clean_token] = record
+            self._mock_data[COLL_UNSUBSCRIBES][clean_token] = clean_record
 
     def get_unsubscribe(self, token: str) -> Optional[Dict[str, Any]]:
         """Looks up an unsubscribe token."""
