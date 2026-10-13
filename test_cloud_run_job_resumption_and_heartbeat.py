@@ -230,5 +230,194 @@ class TestCloudRunJobResumptionAndHeartbeat(unittest.TestCase):
         self.assertIsNone(self.mock_store.get_lease(lease_name))
 
 
+class TestCloudRunJobTravelModeAndSafetyInvariants(unittest.TestCase):
+    """
+    Verifies that the Cloud Run runner enforces TRAVEL_MODE=ACTIVE and safety invariants:
+    1. TRAVEL_MODE=ACTIVE is accepted.
+    2. Missing, inactive, or invalid TRAVEL_MODE values abort execution safely (return 1).
+    3. COMMERCIAL_ACTIONS_ENABLED=true or AUTOMATED_EMAIL_ENABLED=true abort execution safely.
+    4. DRY_RUN=TRUE and LEAD_LIMIT=5 are parsed and enforced.
+    """
+
+    def setUp(self):
+        import argparse
+        from lib.system.system_config import SystemConfig
+        self._orig_travel_mode = SystemConfig.TRAVEL_MODE
+        self._orig_comm = SystemConfig.COMMERCIAL_ACTIONS_ENABLED
+        self._orig_email = SystemConfig.AUTOMATED_EMAIL_ENABLED
+
+        self.base_args = argparse.Namespace(
+            country="United Kingdom",
+            cities=["Manchester"],
+            industry="Restaurants",
+            leads=5,
+            batch_size=10,
+            max_multiplier=5,
+            run_id="TEST-RUN-001",
+            dry_run=True,
+            lease_name="test_safety_lease",
+            ttl_seconds=60.0
+        )
+
+    def tearDown(self):
+        from lib.system.system_config import SystemConfig
+        SystemConfig.set_travel_mode(self._orig_travel_mode)
+        SystemConfig.set_commercial_actions(self._orig_comm)
+        SystemConfig.set_automated_email(self._orig_email)
+
+    def test_travel_mode_active_accepted(self):
+        """TRAVEL_MODE=ACTIVE passes safety check and attempts lease acquisition."""
+        import os
+        from unittest.mock import patch
+        from scripts.run_cloud_run_job import run_discovery_task
+
+        env_patch = {
+            "TRAVEL_MODE": "ACTIVE",
+            "COMMERCIAL_ACTIONS_ENABLED": "false",
+            "AUTOMATED_EMAIL_ENABLED": "false",
+            "DRY_RUN": "TRUE",
+            "LEAD_LIMIT": "5"
+        }
+        with patch.dict(os.environ, env_patch), \
+             patch("scripts.run_cloud_run_job.firestore_store.acquire_lease", return_value=False), \
+             patch("scripts.run_cloud_run_job.firestore_store.get_lease", return_value={"holder_id": "other"}):
+            # Returns 0 because active lease collision exits cleanly without failure
+            res = run_discovery_task(self.base_args)
+            self.assertEqual(res, 0)
+
+    def test_travel_mode_missing_rejected(self):
+        """Missing TRAVEL_MODE environment variable (empty or completely unset) aborts with exit code 1."""
+        import os
+        from unittest.mock import patch
+        from scripts.run_cloud_run_job import run_discovery_task
+
+        # Test empty string
+        env_patch = {
+            "TRAVEL_MODE": "",
+            "COMMERCIAL_ACTIONS_ENABLED": "false",
+            "AUTOMATED_EMAIL_ENABLED": "false",
+        }
+        with patch.dict(os.environ, env_patch):
+            res = run_discovery_task(self.base_args)
+            self.assertEqual(res, 1)
+
+        # Test completely unset / deleted key
+        clean_env = dict(os.environ)
+        clean_env.pop("TRAVEL_MODE", None)
+        clean_env["COMMERCIAL_ACTIONS_ENABLED"] = "false"
+        clean_env["AUTOMATED_EMAIL_ENABLED"] = "false"
+        with patch.dict(os.environ, clean_env, clear=True):
+            res = run_discovery_task(self.base_args)
+            self.assertEqual(res, 1)
+
+    def test_travel_mode_inactive_rejected(self):
+        """TRAVEL_MODE=INACTIVE aborts with exit code 1."""
+        import os
+        from unittest.mock import patch
+        from scripts.run_cloud_run_job import run_discovery_task
+
+        env_patch = {
+            "TRAVEL_MODE": "INACTIVE",
+            "COMMERCIAL_ACTIONS_ENABLED": "false",
+            "AUTOMATED_EMAIL_ENABLED": "false",
+        }
+        with patch.dict(os.environ, env_patch):
+            res = run_discovery_task(self.base_args)
+            self.assertEqual(res, 1)
+
+    def test_travel_mode_invalid_value_rejected(self):
+        """Invalid TRAVEL_MODE value (e.g. UNKNOWN, BANANA, FALSE) aborts with exit code 1."""
+        import os
+        from unittest.mock import patch
+        from scripts.run_cloud_run_job import run_discovery_task
+
+        for invalid_val in ["UNKNOWN", "BANANA", "FALSE", "disabled", "0"]:
+            with patch.dict(os.environ, {
+                "TRAVEL_MODE": invalid_val,
+                "COMMERCIAL_ACTIONS_ENABLED": "false",
+                "AUTOMATED_EMAIL_ENABLED": "false",
+            }):
+                res = run_discovery_task(self.base_args)
+                self.assertEqual(res, 1, f"Failed to reject invalid TRAVEL_MODE='{invalid_val}'")
+
+    def test_commercial_actions_enabled_rejected(self):
+        """COMMERCIAL_ACTIONS_ENABLED=true aborts execution even if TRAVEL_MODE is ACTIVE."""
+        import os
+        from unittest.mock import patch
+        from lib.system.system_config import SystemConfig
+        from scripts.run_cloud_run_job import run_discovery_task
+
+        env_patch = {
+            "TRAVEL_MODE": "ACTIVE",
+            "COMMERCIAL_ACTIONS_ENABLED": "true",
+            "AUTOMATED_EMAIL_ENABLED": "false",
+        }
+        with patch.dict(os.environ, env_patch):
+            SystemConfig.set_commercial_actions(True)
+            res = run_discovery_task(self.base_args)
+            self.assertEqual(res, 1)
+        # Restore safe state
+        SystemConfig.set_commercial_actions(False)
+
+    def test_automated_email_enabled_rejected(self):
+        """AUTOMATED_EMAIL_ENABLED=true aborts execution even if TRAVEL_MODE is ACTIVE."""
+        import os
+        from unittest.mock import patch
+        from lib.system.system_config import SystemConfig
+        from scripts.run_cloud_run_job import run_discovery_task
+
+        env_patch = {
+            "TRAVEL_MODE": "ACTIVE",
+            "COMMERCIAL_ACTIONS_ENABLED": "false",
+            "AUTOMATED_EMAIL_ENABLED": "true",
+        }
+        with patch.dict(os.environ, env_patch):
+            SystemConfig.set_automated_email(True)
+            res = run_discovery_task(self.base_args)
+            self.assertEqual(res, 1)
+        # Restore safe state
+        SystemConfig.set_automated_email(False)
+
+    def test_dry_run_and_lead_limit_environment_parsing(self):
+        """parse_args correctly honors DRY_RUN=TRUE and LEAD_LIMIT=5 from environment."""
+        import os
+        import sys
+        from unittest.mock import patch
+        from scripts.run_cloud_run_job import parse_args
+
+        env_patch = {
+            "DRY_RUN": "TRUE",
+            "LEAD_LIMIT": "5",
+            "TRAVEL_MODE": "ACTIVE",
+        }
+        with patch.dict(os.environ, env_patch), patch.object(sys, "argv", ["run_cloud_run_job.py"]):
+            args = parse_args()
+            self.assertEqual(args.leads, 5)
+            self.assertTrue(args.dry_run)
+
+    def test_system_config_travel_mode_active_evaluation(self):
+        """SystemConfig evaluates TRAVEL_MODE=ACTIVE as True and reloads properly."""
+        import os
+        from unittest.mock import patch
+        from lib.system.system_config import SystemConfig
+
+        with patch.dict(os.environ, {"TRAVEL_MODE": "ACTIVE"}):
+            SystemConfig.reload_from_env()
+            self.assertTrue(SystemConfig.TRAVEL_MODE)
+            status = SystemConfig.get_status_dict()
+            self.assertTrue(status.get("travel_mode"))
+
+        with patch.dict(os.environ, {"TRAVEL_MODE": "INACTIVE"}):
+            SystemConfig.reload_from_env()
+            self.assertFalse(SystemConfig.TRAVEL_MODE)
+            status = SystemConfig.get_status_dict()
+            self.assertFalse(status.get("travel_mode"))
+
+        # Restore
+        with patch.dict(os.environ, {"TRAVEL_MODE": "ACTIVE"}):
+            SystemConfig.reload_from_env()
+
+
 if __name__ == "__main__":
     unittest.main()
+

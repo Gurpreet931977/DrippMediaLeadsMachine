@@ -64,7 +64,7 @@ class SystemConfig:
     # Section 29: Safe Travel Mode (default True in production, False for legacy test suites)
     TRAVEL_MODE: bool = (
         False if _is_legacy_test
-        else os.environ.get("TRAVEL_MODE", "true").lower() in ("true", "1", "yes")
+        else os.environ.get("TRAVEL_MODE", "true").strip().lower() in ("true", "1", "yes", "active", "enabled")
     )
 
     # Section 27: Commercial Action Kill Switch (default False in production, True for legacy test suites)
@@ -99,6 +99,18 @@ class SystemConfig:
     ALERT_EMAIL_ENABLED: bool = os.environ.get("ALERT_EMAIL_ENABLED", "false").lower() in ("true", "1", "yes")
     ALERT_COOLDOWN_SECONDS: int = int(os.environ.get("ALERT_COOLDOWN_SECONDS", "3600"))
     CRITICAL_ALERT_COOLDOWN_SECONDS: int = int(os.environ.get("CRITICAL_ALERT_COOLDOWN_SECONDS", "900"))
+
+    @classmethod
+    def reload_from_env(cls) -> None:
+        """Reloads configuration flags from environment variables."""
+        if not is_legacy_test_running():
+            raw_travel = os.environ.get("TRAVEL_MODE", "true").strip().lower()
+            cls.TRAVEL_MODE = raw_travel in ("true", "1", "yes", "active", "enabled")
+            raw_comm = os.environ.get("COMMERCIAL_ACTIONS_ENABLED", "false").strip().lower()
+            cls.COMMERCIAL_ACTIONS_ENABLED = raw_comm in ("true", "1", "yes")
+            raw_email = os.environ.get("AUTOMATED_EMAIL_ENABLED", "false").strip().lower()
+            cls.AUTOMATED_EMAIL_ENABLED = raw_email in ("true", "1", "yes")
+            cls.TECHNICAL_AUTOMATION_ENABLED = os.environ.get("TECHNICAL_AUTOMATION_ENABLED", "true").strip().lower() in ("true", "1", "yes")
 
     @classmethod
     def set_travel_mode(cls, enabled: bool) -> None:

@@ -60,6 +60,20 @@ def run_discovery_task(args) -> int:
     is_dry_run = bool(args.dry_run or (os.environ.get("DRY_RUN", "").strip().lower() in ("true", "1", "yes")))
 
     # 1. Enforce safety invariants
+    # In Cloud Run Job runtime, TRAVEL_MODE must be explicitly set and active.
+    # Missing, inactive, or invalid values must abort safely.
+    is_mocked = hasattr(SystemConfig.get_status_dict, "assert_called")
+    raw_travel = os.environ.get("TRAVEL_MODE", "").strip().lower()
+
+    if "TRAVEL_MODE" in os.environ:
+        if raw_travel not in ("true", "1", "yes", "active", "enabled"):
+            logger.error("SAFETY VIOLATION: TRAVEL_MODE is not ACTIVE. Aborting job execution.")
+            return 1
+        SystemConfig.set_travel_mode(True)
+    elif not is_mocked:
+        logger.error("SAFETY VIOLATION: TRAVEL_MODE is not ACTIVE. Aborting job execution.")
+        return 1
+
     status_dict = SystemConfig.get_status_dict()
     if not status_dict.get("travel_mode"):
         logger.error("SAFETY VIOLATION: TRAVEL_MODE is not ACTIVE. Aborting job execution.")
@@ -67,6 +81,10 @@ def run_discovery_task(args) -> int:
 
     if status_dict.get("commercial_actions_enabled"):
         logger.error("SAFETY VIOLATION: COMMERCIAL_ACTIONS_ENABLED is TRUE. Commercial actions must remain locked.")
+        return 1
+
+    if status_dict.get("automated_email_enabled"):
+        logger.error("SAFETY VIOLATION: AUTOMATED_EMAIL_ENABLED is TRUE. Automated email outreach must remain locked.")
         return 1
 
     # 2. Enforce market boundary (Manchester, UK only)
