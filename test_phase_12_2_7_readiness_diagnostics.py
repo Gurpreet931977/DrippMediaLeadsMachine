@@ -122,19 +122,32 @@ class TestPhase1227ReadinessDiagnostics(unittest.TestCase):
         self.assertEqual(gate["status"], "PASS")
         self.assertEqual(gate["evidence"]["status"], "PASS")
 
-    def test_backup_health_passes_locally_with_valid_snapshot_but_retains_durability_evidence(self):
-        """6. A valid local snapshot allows local backup verification while preserving durable cloud flag."""
+    def test_backup_health_requires_durable_storage_on_cloud_run(self):
+        """6. Cloud Run requires durable cloud backup; local snapshot passes only in local development."""
         bootstrap_storage_baseline(data_dir=self.tmp_dir, sync_from_sheets_if_available=False)
         bm = BackupManager(data_dir=self.tmp_dir)
         bm.create_backup(label="test_baseline")
 
-        with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
-            gate = self.auditor.check_backup_health()
-            self.assertEqual(gate["status"], "PASS")
-            self.assertEqual(gate["evidence"]["valid_successful_backups"], 1)
-            # Must remain truthful: local snapshot is in ephemeral container
-            self.assertTrue(gate["evidence"]["ephemeral_environment"])
-            self.assertFalse(gate["evidence"]["durable_cloud_backup_configured"])
+        # In local development: local snapshot with manifest passes
+        with patch.dict(os.environ, {}, clear=True):
+            gate_local = self.auditor.check_backup_health()
+            self.assertEqual(gate_local["status"], "PASS")
+            self.assertFalse(gate_local["evidence"]["durable_cloud_backup_configured"])
+
+        # On Cloud Run without durable cloud storage: FAILS
+        with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api", "GCS_BACKUP_BUCKET": ""}):
+            gate_cloud = self.auditor.check_backup_health()
+            self.assertEqual(gate_cloud["status"], "FAIL")
+            self.assertTrue(gate_cloud["evidence"]["ephemeral_environment"])
+            self.assertFalse(gate_cloud["evidence"]["durable_cloud_backup_configured"])
+            self.assertIn("remediation", gate_cloud["evidence"])
+
+        # On Cloud Run WITH durable GCS bucket configured: PASSES
+        with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api", "GCS_BACKUP_BUCKET": "dripp-leads-backups-test"}):
+            gate_durable = self.auditor.check_backup_health()
+            self.assertEqual(gate_durable["status"], "PASS")
+            self.assertTrue(gate_durable["evidence"]["durable_cloud_backup_configured"])
+            self.assertEqual(gate_durable["evidence"]["durable_destination"], "gs://dripp-leads-backups-test")
 
     def test_operator_session_status_contract(self):
         """7. /api/operator/session returns session_id, expires_at, and remaining_seconds for valid session tokens."""
@@ -154,20 +167,45 @@ class TestPhase1227ReadinessDiagnostics(unittest.TestCase):
         self.assertGreater(data["remaining_seconds"], 7100)
         self.assertIn("session_id", data)
 
-    def test_secret_hygiene_passes_in_container_environment_when_gitignore_omitted(self):
-        """8. In container runtime (Cloud Run), omitted .gitignore passes with packaging note."""
-        with patch("scripts.security_secret_scan.check_gitignore", return_value=["Missing .gitignore file!"]):
-            # In non-container local development: fails
-            with patch.dict(os.environ, {}, clear=True):
-                gate_local = self.auditor.check_secret_hygiene()
-                self.assertEqual(gate_local["status"], "FAIL")
+    def test_secret_hygiene_in_clean_container_environment(self):
+        """8. In container runtime without .git, clean filesystem passes without relying on .gitignore file."""
+        with patch("os.path.exists", side_effect=lambda p: False if p.endswith(".git") else os.path.exists(p)):
+            with patch("scripts.security_secret_scan.check_prohibited_files", return_value=[]):
+                with patch("scripts.security_secret_scan.scan_runtime_files", return_value=[]):
+                    with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
+                        gate = self.auditor.check_secret_hygiene()
+                        self.assertEqual(gate["status"], "PASS")
+                        self.assertEqual(gate["evidence"]["vcs_context"], "container_runtime")
+                        self.assertTrue(gate["evidence"]["credentials_excluded"])
 
-            # In Cloud Run container: passes
-            with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
-                gate_cloud = self.auditor.check_secret_hygiene()
-                self.assertEqual(gate_cloud["status"], "PASS")
-                self.assertTrue(gate_cloud["evidence"]["credentials_excluded"])
-                self.assertIn("container_packaging_note", gate_cloud["evidence"])
+    def test_secret_hygiene_never_bypassed_in_container_when_secret_detected(self):
+        """9. In container runtime (Cloud Run), simulated secret pattern strictly triggers FAIL."""
+        with patch("os.path.exists", side_effect=lambda p: False if p.endswith(".git") else os.path.exists(p)):
+            mock_secret_hits = [{
+                "file": "server.py",
+                "line": 42,
+                "secret_type": "Simulated Live Key",
+                "masked_value": "simu***(32 chars)",
+            }]
+            with patch("scripts.security_secret_scan.check_prohibited_files", return_value=[]):
+                with patch("scripts.security_secret_scan.scan_runtime_files", return_value=mock_secret_hits):
+                    with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
+                        gate = self.auditor.check_secret_hygiene()
+                        self.assertEqual(gate["status"], "FAIL")
+                        self.assertTrue(gate["blocking"])
+                        self.assertFalse(gate["evidence"]["credentials_excluded"])
+                        self.assertGreater(gate["evidence"]["secret_findings_count"], 0)
+
+    def test_secret_hygiene_fails_in_container_when_prohibited_credential_file_exists(self):
+        """10. In container runtime (Cloud Run), presence of .env or key file strictly triggers FAIL."""
+        with patch("os.path.exists", side_effect=lambda p: False if p.endswith(".git") else os.path.exists(p)):
+            with patch("scripts.security_secret_scan.check_prohibited_files", return_value=[".env"]):
+                with patch("scripts.security_secret_scan.scan_runtime_files", return_value=[]):
+                    with patch.dict(os.environ, {"K_SERVICE": "dripp-leads-api"}):
+                        gate = self.auditor.check_secret_hygiene()
+                        self.assertEqual(gate["status"], "FAIL")
+                        self.assertTrue(gate["blocking"])
+                        self.assertIn(".env", gate["evidence"]["prohibited_files_detected"])
 
 
 if __name__ == "__main__":

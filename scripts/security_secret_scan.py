@@ -101,8 +101,9 @@ def get_git_tracked_files() -> List[str]:
         return tracked
 
 
-def scan_file(filepath: str) -> List[Dict[str, Any]]:
-    full_path = os.path.join(PROJECT_ROOT, filepath)
+def scan_file(filepath: str, root_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+    base = os.path.abspath(root_dir or PROJECT_ROOT)
+    full_path = os.path.join(base, filepath)
     if not os.path.isfile(full_path):
         return []
 
@@ -141,6 +142,86 @@ def scan_file(filepath: str) -> List[Dict[str, Any]]:
             })
 
     return matches
+
+
+PROHIBITED_CONTAINER_FILENAMES = {
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.staging",
+    "credentials.json",
+    "secrets.json",
+    "poised-eye-509816-a4-5444ff3f8520.json",
+}
+
+PROHIBITED_EXTENSIONS = {
+    ".pem",
+    ".key",
+    ".p12",
+    ".pfx",
+}
+
+
+def check_prohibited_files(root_dir: Optional[str] = None) -> List[str]:
+    """
+    Checks if prohibited secret, credential, or private key files exist on the active filesystem.
+    Skips development virtual environments, git internals, and node_modules.
+    """
+    base = os.path.abspath(root_dir or PROJECT_ROOT)
+    violations = []
+    for root, dirs, files in os.walk(base):
+        # Exclude development/venv directories
+        dirs[:] = [d for d in dirs if d not in [".git", ".venv", "node_modules", "__pycache__"]]
+        for f in files:
+            # Check exact prohibited filename
+            if f in PROHIBITED_CONTAINER_FILENAMES or (f.startswith(".env.") and not f.endswith(".example")):
+                rel = os.path.relpath(os.path.join(root, f), base)
+                violations.append(rel)
+                continue
+            # Check service account key patterns
+            if f.endswith(".json") and ("service_account" in f or "poised-eye-" in f) and "mock" not in f:
+                rel = os.path.relpath(os.path.join(root, f), base)
+                violations.append(rel)
+                continue
+            # Check private key extensions
+            ext = os.path.splitext(f)[1].lower()
+            if ext in PROHIBITED_EXTENSIONS:
+                rel = os.path.relpath(os.path.join(root, f), base)
+                violations.append(rel)
+                continue
+            if f in ["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"]:
+                rel = os.path.relpath(os.path.join(root, f), base)
+                violations.append(rel)
+    return violations
+
+
+def scan_runtime_files(root_dir: Optional[str] = None, max_files: int = 500) -> List[Dict[str, Any]]:
+    """
+    Scans active codebase files (Python, JSON, YAML, shell) for unredacted secret patterns.
+    """
+    base = os.path.abspath(root_dir or PROJECT_ROOT)
+    findings = []
+    scanned_count = 0
+
+    scannable_exts = {".py", ".json", ".yaml", ".yml", ".sh", ".toml", ".ini", ".cfg", ".md"}
+
+    for root, dirs, files in os.walk(base):
+        dirs[:] = [d for d in dirs if d not in [".git", ".venv", "node_modules", "__pycache__", "backups", "data_backup_sweep"]]
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            if ext not in scannable_exts and f not in ["Dockerfile"]:
+                continue
+            rel_path = os.path.relpath(os.path.join(root, f), base)
+            hits = scan_file(rel_path, root_dir=base)
+            if hits:
+                findings.extend(hits)
+            scanned_count += 1
+            if scanned_count >= max_files:
+                break
+        if scanned_count >= max_files:
+            break
+
+    return findings
 
 
 def run_security_scan() -> Dict[str, Any]:

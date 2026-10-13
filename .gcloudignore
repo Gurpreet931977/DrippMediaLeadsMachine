@@ -1,12 +1,80 @@
-.git/
-.venv/
-node_modules/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.DS_Store
+# Inherit all rules from .gitignore
+#!include:.gitignore
+
+# Explicitly exclude all environment files and secret keys
+.env
+.env.*
+*.env
+secrets.json
+secrets/
+credentials.json
+credentials/
+poised-eye-*.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+
+# Local Runtime & Persistent Application State
+data/
+backups/
+data_backup_sweep/
+data_backup*/
+scratch/
+artifacts/
+reports/
+
+# Databases & local stores
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs & debugging
+*.log
+logs/
+npm-debug.log*
+
+# Caches & build artifacts
+.cache/
+caches/
+*.cache
+.pytest_cache/
 .coverage
 htmlcov/
-.pytest_cache/
-! .gitignore
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+dist/
+build/
+*.egg-info/
+
+# VCS metadata
+.git/
+.github/
+
+# OS and IDE files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.tmp
+*.temp
+
+# Scraper binaries
+bin/gosom*
+gosom_bin/
+
+# Preserve necessary runtime configs
+!package.json
+!tsconfig.json
