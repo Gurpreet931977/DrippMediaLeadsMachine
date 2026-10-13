@@ -40,9 +40,11 @@ class TestHybridCreatorEvidenceImports(unittest.TestCase):
             to_dict=lambda: {"creator_evidence_count": 1},
         )
 
-        with patch.object(CreatorEvidenceValidator, "should_search_creator_evidence", return_value=(True, "test")), \\
-             patch.object(CreatorEvidenceValidator, "evaluate_content_item", return_value=object()), \\
-             patch.object(CreatorEvidenceValidator, "summarize_evidence", return_value=summary):
+        with (
+            patch.object(CreatorEvidenceValidator, "should_search_creator_evidence", return_value=(True, "test")),
+            patch.object(CreatorEvidenceValidator, "evaluate_content_item", return_value=object()),
+            patch.object(CreatorEvidenceValidator, "summarize_evidence", return_value=summary),
+        ):
             result = engine.enrich_candidate_creator_evidence(candidate, city="Manchester")
 
         self.assertIs(result, summary)
