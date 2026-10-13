@@ -25,26 +25,44 @@ DEFAULT_BACKUPS_DIR = os.path.join(DATA_DIR, "backups")
 
 SCHEMA_VERSION = "1.0.0"
 
-# Canonical critical files to snapshot
+# Canonical critical files to snapshot (reconciled across all application state stores)
 CRITICAL_FILES = [
+    # Tier 1 CRM authority caches
     "cache_sheets_leads.json",
     "cache_sheets_research_log.json",
     "cache_sheets_review_queue.json",
+    # Messaging & Outreach History
+    "message_history.json",
+    "contact_history.json",
+    "outreach_outcomes.json",
+    "outcome_tracking.json",
+    "outreach_queue.json",
+    # Suppressions & Unsubscribes
+    "suppression_list.json",
+    "email_suppression.json",
+    "email_unsubscribes.json",
+    # Safety Invariants & Execution Gates
+    "execution_gate.json",
+    "email_emergency_stop.json",
+    "send_locks.json",
+    "email_rate_limits.json",
+    # Campaign & Batch State
+    "campaigns.json",
+    "email_campaigns.json",
+    "controlled_batch_state.json",
+    "lead_timelines.json",
+    # Commercial & Pipeline State
     "commercial_records.json",
     "commercial_events.json",
     "commercial_proposals.json",
     "proposal_packages.json",
-    "message_history.json",
-    "contact_history.json",
-    "outreach_outcomes.json",
-    "campaigns.json",
-    "execution_gate.json",
-    "suppression_list.json",
-    "controlled_batch_state.json",
-    "lead_timelines.json",
     "commercial_pipeline_snapshot.json",
     "proposal_pipeline_snapshot.json",
     "outreach_performance_snapshot.json",
+    "email_analytics.json",
+    # Incident & Diagnostics State
+    "incidents.json",
+    "technical_jobs.json",
 ]
 
 

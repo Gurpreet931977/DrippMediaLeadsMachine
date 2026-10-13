@@ -1,0 +1,77 @@
+{
+  "bucket": {
+    "name": "dripp-leads-backups-poised-eye-509816-a4",
+    "project": "poised-eye-509816-a4",
+    "location": "us-central1",
+    "uniform_bucket_level_access": true,
+    "public_access_prevention": "enforced",
+    "bucket_level_runtime_object_bindings": []
+  },
+  "managed_folders": [
+    {
+      "folder_name": "backups",
+      "folder_path": "backups/",
+      "resource_name": "projects/_/buckets/dripp-leads-backups-poised-eye-509816-a4/managedFolders/backups/",
+      "gcs_uri": "gs://dripp-leads-backups-poised-eye-509816-a4/backups/",
+      "iam_policy": {
+        "bindings": [
+          {
+            "role": "roles/storage.objectCreator",
+            "members": [
+              "serviceAccount:dripp-leads-api@poised-eye-509816-a4.iam.gserviceaccount.com"
+            ]
+          },
+          {
+            "role": "roles/storage.objectViewer",
+            "members": [
+              "serviceAccount:dripp-leads-api@poised-eye-509816-a4.iam.gserviceaccount.com"
+            ]
+          }
+        ]
+      },
+      "granted_permissions": [
+        "storage.objects.create",
+        "storage.objects.get",
+        "storage.objects.list"
+      ],
+      "prohibited_permissions": [
+        "storage.objects.delete",
+        "storage.managedFolders.setIamPolicy",
+        "storage.managedFolders.delete"
+      ]
+    },
+    {
+      "folder_name": "checkpoints",
+      "folder_path": "checkpoints/",
+      "resource_name": "projects/_/buckets/dripp-leads-backups-poised-eye-509816-a4/managedFolders/checkpoints/",
+      "gcs_uri": "gs://dripp-leads-backups-poised-eye-509816-a4/checkpoints/",
+      "iam_policy": {
+        "bindings": [
+          {
+            "role": "roles/storage.objectCreator",
+            "members": [
+              "serviceAccount:dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com"
+            ]
+          },
+          {
+            "role": "roles/storage.objectViewer",
+            "members": [
+              "serviceAccount:dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com"
+            ]
+          }
+        ]
+      },
+      "granted_permissions": [
+        "storage.objects.create",
+        "storage.objects.get",
+        "storage.objects.list"
+      ],
+      "prohibited_permissions": [
+        "storage.objects.delete",
+        "storage.managedFolders.setIamPolicy",
+        "storage.managedFolders.delete"
+      ]
+    }
+  ],
+  "lifecycle_policy_reference": "config/gcs_lifecycle_policy.json"
+}

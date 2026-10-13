@@ -118,6 +118,39 @@ class TestPhase1227DurableRecoveryDrill(unittest.TestCase):
         with open(os.path.join(self.data_dir, "suppression_list.json"), "w", encoding="utf-8") as f:
             json.dump(self.supp_fixture, f)
 
+        # Reconciled Tier 3 state: Email hard bounces & opt-outs
+        self.email_supp_fixture = [
+            {"email": "bounce@invalid-domain.co.uk", "reason": "550 User Unknown", "timestamp": "2026-10-01T10:00:00Z"},
+            {"email": "optout@historicdiner.co.uk", "reason": "UNSUBSCRIBE_LINK", "timestamp": "2026-10-02T11:00:00Z"},
+        ]
+        with open(os.path.join(self.data_dir, "email_suppression.json"), "w", encoding="utf-8") as f:
+            json.dump(self.email_supp_fixture, f)
+
+        # Reconciled Tier 3 state: Email unsubscribes
+        self.unsub_fixture = [
+            {"token": "unsub_tok_abc123", "email": "optout@historicdiner.co.uk", "opted_out_at": "2026-10-02T11:00:00Z"}
+        ]
+        with open(os.path.join(self.data_dir, "email_unsubscribes.json"), "w", encoding="utf-8") as f:
+            json.dump(self.unsub_fixture, f)
+
+        # Reconciled Tier 3 state: Outreach queue with bounce status
+        self.queue_fixture = [
+            {"lead_id": "LEAD-MAN-BBB222", "status": "BOUNCED", "bounce_reason": "Mailbox not found"},
+            {"lead_id": "LEAD-MAN-AAA111", "status": "SENT", "channel": "Email"},
+        ]
+        with open(os.path.join(self.data_dir, "outreach_queue.json"), "w", encoding="utf-8") as f:
+            json.dump(self.queue_fixture, f)
+
+        # Reconciled Tier 3 state: Execution gate & safety invariants
+        self.gate_fixture = {
+            "travel_mode": "ACTIVE",
+            "commercial_actions_enabled": False,
+            "automated_email_enabled": False,
+            "cron_disabled": True,
+        }
+        with open(os.path.join(self.data_dir, "execution_gate.json"), "w", encoding="utf-8") as f:
+            json.dump(self.gate_fixture, f)
+
         # Populate Tier 2 Firestore mock store
         self.fstore = FirestoreStateStore(database_id="drippmedialeads", force_mock=True)
         self.fstore.acquire_lease("discovery_job_runner", "test_worker_1", ttl_seconds=600.0)
@@ -192,6 +225,19 @@ class TestPhase1227DurableRecoveryDrill(unittest.TestCase):
         self.assertTrue(t3_check["protected_outreach_invariants_held"])
         self.assertTrue(t3_check["message_history_intact"])
         self.assertTrue(t3_check["suppression_list_intact"])
+        self.assertGreater(t3_check["suppressed_records_count"], 0)
+        self.assertEqual(t3_check["email_unsubscribes_recovered"], 1)
+        self.assertEqual(t3_check["bounced_records_verified"], 1)
+        self.assertTrue(t3_check["execution_gate_preserved"])
+
+        # Check Post-Restore Safety Sanitization Guarantee
+        post_safety = drill_report["checks"]["post_restore_safety_sanitization"]
+        self.assertTrue(post_safety["pass"])
+        self.assertFalse(post_safety["stale_leases_reactivated"])
+        self.assertFalse(post_safety["stale_send_locks_reactivated"])
+        self.assertTrue(post_safety["commercial_actions_prevented"])
+        self.assertTrue(post_safety["automated_email_prevented"])
+        self.assertTrue(post_safety["travel_mode_enforced"])
 
         # Invariant Guarantee: Original data_dir was NOT overwritten
         with open(os.path.join(self.data_dir, "cache_sheets_leads.json"), "r", encoding="utf-8") as f:
@@ -261,38 +307,80 @@ class TestPhase1227DurableRecoveryDrill(unittest.TestCase):
                 self.assertTrue(gate["evidence"]["durable_cloud_backup_configured"])
                 self.assertEqual(gate["evidence"]["durable_destination"], "gs://dripp-leads-backups-poised-eye-509816-a4")
 
-    def test_non_destructive_iam_role_specification(self):
-        """7. Verifies proposed IAM bindings grant zero destructive delete permissions to routine backup writer."""
-        proposed_api_roles = [
-            "roles/storage.objectCreator",  # storage.objects.create
-            "roles/storage.objectViewer",   # storage.objects.get, storage.objects.list
-        ]
-        # Prohibited destructive permissions
-        prohibited_permissions = [
-            "storage.objects.delete",
-            "storage.objects.setIamPolicy",
-            "storage.buckets.delete",
-        ]
-        # ObjectAdmin is rejected
-        rejected_roles = ["roles/storage.objectAdmin"]
+    def test_managed_folders_iam_policy_specification(self):
+        """7. Verifies Managed Folders IAM specification guarantees prefix separation, least privilege, and zero deletes."""
+        policy_path = os.path.join(PROJECT_ROOT, "config", "gcs_managed_folders_iam_policy.json")
+        self.assertTrue(os.path.exists(policy_path))
 
-        self.assertNotIn("roles/storage.objectAdmin", proposed_api_roles)
-        for rejected in rejected_roles:
-            self.assertNotIn(rejected, proposed_api_roles)
+        with open(policy_path, "r", encoding="utf-8") as f:
+            policy = json.load(f)
 
-    def test_prefix_restricted_iam_condition_specification(self):
-        """8. Verifies IAM condition expression matches strict prefix pattern for discovery job."""
+        # Bucket must enforce Uniform Bucket-Level Access (mandatory for Managed Folders)
+        self.assertTrue(policy["bucket"]["uniform_bucket_level_access"])
+        # Bucket-level runtime bindings must be empty (no unconditioned access)
+        self.assertEqual(len(policy["bucket"]["bucket_level_runtime_object_bindings"]), 0)
+
+        folders = {mf["folder_name"]: mf for mf in policy["managed_folders"]}
+        self.assertIn("backups", folders)
+        self.assertIn("checkpoints", folders)
+
+        # backups/ folder checks
+        b_folder = folders["backups"]
+        self.assertEqual(b_folder["resource_name"], f"projects/_/buckets/{policy['bucket']['name']}/managedFolders/backups/")
+        b_roles = [b["role"] for b in b_folder["iam_policy"]["bindings"]]
+        self.assertIn("roles/storage.objectCreator", b_roles)
+        self.assertIn("roles/storage.objectViewer", b_roles)
+        self.assertNotIn("roles/storage.objectAdmin", b_roles)
+        self.assertNotIn("roles/storage.objectUser", b_roles)
+        self.assertIn("storage.objects.delete", b_folder["prohibited_permissions"])
+
+        # checkpoints/ folder checks
+        c_folder = folders["checkpoints"]
+        self.assertEqual(c_folder["resource_name"], f"projects/_/buckets/{policy['bucket']['name']}/managedFolders/checkpoints/")
+        c_roles = [b["role"] for b in c_folder["iam_policy"]["bindings"]]
+        self.assertIn("roles/storage.objectCreator", c_roles)
+        self.assertIn("roles/storage.objectViewer", c_roles)
+        self.assertNotIn("roles/storage.objectAdmin", c_roles)
+        self.assertNotIn("roles/storage.objectUser", c_roles)
+        self.assertIn("storage.objects.delete", c_folder["prohibited_permissions"])
+
+    def test_managed_folders_positive_and_negative_matrix_enforcement(self):
+        """8. Executes complete 16-vector IAM probe matrix covering positive and negative cross-prefix cases."""
+        from scripts.verify_gcs_iam_isolation import run_iam_verification_matrix, API_SA, DISCOVERY_SA
+
+        report = run_iam_verification_matrix()
+        self.assertTrue(report["all_passed"], "All 16 IAM isolation vectors must pass")
+
+        # Verify specific critical positive and negative vectors
+        by_id = {r["vector_id"]: r for r in report["results"]}
+
+        # API Identity: Positive in backups/, 403 on delete, 403 on checkpoints
+        self.assertEqual(by_id["API_POS_01"]["status"], "PASS")
+        self.assertEqual(by_id["API_POS_01"]["actual_code"], 200)
+        self.assertEqual(by_id["API_POS_03"]["actual_code"], 200)
+        self.assertEqual(by_id["API_NEG_01"]["actual_code"], 403)  # Delete forbidden
+        self.assertEqual(by_id["API_NEG_02"]["actual_code"], 403)  # Cross-prefix write forbidden
+        self.assertEqual(by_id["API_NEG_03"]["actual_code"], 403)  # Cross-prefix read forbidden
+        self.assertEqual(by_id["API_NEG_04"]["actual_code"], 403)  # Cross-prefix list forbidden
+
+        # Discovery Identity: Positive in checkpoints/, 403 on delete, 403 on backups
+        self.assertEqual(by_id["DISC_POS_01"]["status"], "PASS")
+        self.assertEqual(by_id["DISC_POS_01"]["actual_code"], 200)
+        self.assertEqual(by_id["DISC_POS_03"]["actual_code"], 200)
+        self.assertEqual(by_id["DISC_NEG_01"]["actual_code"], 403)  # Delete forbidden
+        self.assertEqual(by_id["DISC_NEG_02"]["actual_code"], 403)  # Cross-prefix write forbidden
+        self.assertEqual(by_id["DISC_NEG_03"]["actual_code"], 403)  # Cross-prefix read forbidden
+        self.assertEqual(by_id["DISC_NEG_04"]["actual_code"], 403)  # Cross-prefix list forbidden
+
+    def test_canonical_gcs_condition_path_formatting(self):
+        """9. Verifies canonical CEL resource-name expression has NO accidental backslash before underscore."""
         bucket_name = "dripp-leads-backups-poised-eye-509816-a4"
-        expected_prefix = f"projects/_/buckets/{bucket_name}/objects/checkpoints/"
-        cel_condition = (
-            'resource.type == "storage.googleapis.com/Object" && '
-            f'resource.name.startsWith("{expected_prefix}")'
-        )
+        canonical_pattern = f"projects/_/buckets/{bucket_name}/objects/checkpoints/"
 
-        # Verify condition syntax
-        self.assertIn("resource.type == \"storage.googleapis.com/Object\"", cel_condition)
-        self.assertIn("checkpoints/", cel_condition)
-        self.assertNotIn("backups/", cel_condition)  # Discovery job must NOT have access to full backups prefix
+        # Ensure no accidental backslash escaped underscore
+        self.assertNotIn(r"projects/\_", canonical_pattern)
+        self.assertIn("projects/_/buckets/", canonical_pattern)
+        self.assertTrue(canonical_pattern.startswith("projects/_/buckets/"))
 
 
 if __name__ == "__main__":
