@@ -44,17 +44,21 @@ def parse_args():
     parser.add_argument("--country", default="United Kingdom", help="Target country (must be United Kingdom)")
     parser.add_argument("--cities", nargs="+", default=["Manchester"], help="Target cities (Manchester only for Phase 12)")
     parser.add_argument("--industry", default="Restaurants", help="Target business niche")
-    parser.add_argument("--leads", type=int, default=5, help="Qualified leads target count")
+    default_leads = int(os.environ.get("LEAD_LIMIT") or os.environ.get("LEADS") or 5)
+    parser.add_argument("--leads", "--lead-limit", "--lead_limit", dest="leads", type=int, default=default_leads, help="Qualified leads target count")
     parser.add_argument("--batch-size", type=int, default=10, help="Batch processing size")
     parser.add_argument("--max-multiplier", type=int, default=5, help="Max discovery search multiplier")
     parser.add_argument("--run-id", default=None, help="Specific run ID (if resuming)")
-    parser.add_argument("--dry-run", action="store_true", help="Bypass Google Sheets CRM writes (shadow mode)")
+    env_dry_run = os.environ.get("DRY_RUN", "false").strip().lower() in ("true", "1", "yes")
+    parser.add_argument("--dry-run", action="store_true", default=env_dry_run, help="Bypass Google Sheets CRM writes (shadow mode)")
     parser.add_argument("--lease-name", default="discovery_job_runner", help="Distributed lease identifier in Firestore")
     parser.add_argument("--ttl-seconds", type=float, default=600.0, help="Lease TTL in seconds")
     return parser.parse_args()
 
 
 def run_discovery_task(args) -> int:
+    is_dry_run = bool(args.dry_run or (os.environ.get("DRY_RUN", "").strip().lower() in ("true", "1", "yes")))
+
     # 1. Enforce safety invariants
     status_dict = SystemConfig.get_status_dict()
     if not status_dict.get("travel_mode"):
@@ -124,7 +128,7 @@ def run_discovery_task(args) -> int:
             "cities": cities,
             "industry": args.industry,
             "qualified_leads_needed": args.leads,
-            "dry_run": args.dry_run,
+            "dry_run": is_dry_run,
             "finished_at": datetime.now(timezone.utc).isoformat(),
             "leads_count": prior_qualified,
             "processed_candidates_count": len(processed_ids),
@@ -143,7 +147,7 @@ def run_discovery_task(args) -> int:
         "cities": cities,
         "industry": args.industry,
         "qualified_leads_needed": args.leads,
-        "dry_run": args.dry_run,
+        "dry_run": is_dry_run,
         "processed_candidates_count": len(processed_ids),
     }
     firestore_store.save_run_record(run_id, initial_record)
@@ -184,7 +188,7 @@ def run_discovery_task(args) -> int:
         discovery_engine = HybridDiscoveryEngine(mode="HYBRID", apify_enabled=False)
         pipeline = LeadGenerationPipeline(
             discovery_provider=discovery_engine,
-            shadow_mode=args.dry_run
+            shadow_mode=is_dry_run
         )
 
         result = pipeline.run(
