@@ -498,5 +498,180 @@ class TestLocationSafetyGuardrails(unittest.TestCase):
         self.assertTrue("LOCATION_MISMATCH" in item.reject_reason or "WRONG_BRANCH" in item.reject_reason)
 
 
+class TestLiveSearchHardeningAndEvidenceIntegrity(unittest.TestCase):
+    """Tests 29 - 35: Live Search Anti-Bot Hardening, Circuit Protection, and Evidence Provenance"""
+
+    def setUp(self):
+        self.provider = WebSearchProvider()
+        self.provider.circuit_breakers["DUCKDUCKGO_FALLBACK"].reset()
+        self.provider.cache_hits = 0
+        self.provider.cache_misses = 0
+
+    @patch("requests.post")
+    def test_29_bot_challenge_detection_immediate_blocked_no_retries(self, mock_post):
+        """29. HTTP 202 / bot challenge returns SEARCH_BLOCKED immediately without burning retries"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 202
+        mock_resp.text = "<html><body><script src=\"anomaly.js\"></script>Select all squares containing a duck: Code 40f7</body></html>"
+        mock_post.return_value = mock_resp
+
+        with patch.object(self.provider, "_get_cache", return_value=None):
+            with patch("time.sleep") as mock_sleep:
+                res = self.provider._search_duckduckgo_fallback("dishoom manchester")
+
+        self.assertEqual(res.outcome, SearchOutcome.SEARCH_BLOCKED)
+        self.assertFalse(res.succeeded)
+        self.assertEqual(res.http_status, 202)
+        self.assertIn("bot detection challenge", res.error)
+        # Verify no wasteful retry sleeps took place against the interactive challenge
+        mock_sleep.assert_not_called()
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch("requests.post")
+    def test_30_circuit_open_prevents_runaway_requests(self, mock_post):
+        """30. When circuit is open, search_web returns SEARCH_CIRCUIT_OPEN immediately without network calls"""
+        cb = self.provider.circuit_breakers["DUCKDUCKGO_FALLBACK"]
+        cb.state = CircuitState.OPEN
+        cb.last_state_change = time.time()  # cooldown active
+
+        with patch.object(self.provider, "_get_cache", return_value=None):
+            res = self.provider.search_web("any query")
+
+        self.assertEqual(res.outcome, SearchOutcome.SEARCH_CIRCUIT_OPEN)
+        self.assertFalse(res.succeeded)
+        self.assertFalse(res.attempted)
+        self.assertEqual(res.circuit_state, "OPEN")
+        mock_post.assert_not_called()
+
+    def test_31_cross_parameter_cache_reuse_normalized_query(self):
+        """31. Normalized cache lookup allows reusing cached results across different num_results"""
+        import tempfile, shutil
+        temp_cache = tempfile.mkdtemp()
+        try:
+            prov = WebSearchProvider(cache_dir=temp_cache)
+            initial_data = [
+                {"title": f"Result {i}", "url": f"https://example.com/{i}", "description": f"Snippet {i}"}
+                for i in range(6)
+            ]
+            res_list = SearchResultList(
+                initial_data,
+                outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS,
+                provider="DUCKDUCKGO_FALLBACK",
+                query="bundobust leeds"
+            )
+            # Cache under num_results=6
+            prov._set_cache("web_bundobust leeds_6_False", res_list, provider="DUCKDUCKGO_FALLBACK", query="bundobust leeds", advanced=False)
+
+            # Query for num_results=3 should hit the normalized query index
+            cached = prov._get_cache("web_bundobust leeds_3_False", query="bundobust leeds", advanced=False)
+            self.assertIsNotNone(cached)
+            self.assertEqual(prov.cache_hits, 1)
+        finally:
+            shutil.rmtree(temp_cache, ignore_errors=True)
+
+    def test_32_failed_search_never_cached(self):
+        """32. Failed search outcomes (BLOCKED, TIMEOUT, CIRCUIT_OPEN) are never persisted to cache"""
+        import tempfile, shutil
+        temp_cache = tempfile.mkdtemp()
+        try:
+            prov = WebSearchProvider(cache_dir=temp_cache)
+            failed_res = SearchResultList(
+                outcome=SearchOutcome.SEARCH_BLOCKED,
+                provider="DUCKDUCKGO_FALLBACK",
+                query="failed query",
+                error="HTTP 202 Bot challenge"
+            )
+            prov._set_cache("web_failed query_5_False", failed_res, provider="DUCKDUCKGO_FALLBACK", query="failed query", advanced=False)
+
+            cached = prov._get_cache("web_failed query_5_False", query="failed query", advanced=False)
+            self.assertIsNone(cached)
+            self.assertEqual(prov.cache_misses, 1)
+        finally:
+            shutil.rmtree(temp_cache, ignore_errors=True)
+
+    def test_33_untrusted_search_social_url_rejected_without_affinity_or_valid_profile(self):
+        """33. Verification rejects post URLs, third-party publishers, and handles without business affinity"""
+        verifier = NoWebsiteVerificationProvider(enable_search=False)
+        biz = DiscoveredBusiness(
+            company_name="Bundobust",
+            category="Restaurant",
+            city="Leeds",
+            target_country="United Kingdom"
+        )
+
+        # 1. Instagram post URL (not a profile)
+        verifier._validate_and_assign_social(biz, "https://www.instagram.com/p/Cz12345ABC/")
+        self.assertEqual(biz.instagram_url, "")
+
+        # 2. Instagram reel URL
+        verifier._validate_and_assign_social(biz, "https://www.instagram.com/reel/Cz12345ABC/")
+        self.assertEqual(biz.instagram_url, "")
+
+        # 3. Third-party city food blogger (themanc / manceats)
+        verifier._validate_and_assign_social(biz, "https://www.instagram.com/themanc/")
+        self.assertEqual(biz.instagram_url, "")
+
+        # 4. Completely unrelated account (no name affinity)
+        verifier._validate_and_assign_social(biz, "https://www.instagram.com/randomsalonuk/")
+        self.assertEqual(biz.instagram_url, "")
+
+        # 5. Legitimate account profile with name affinity
+        verifier._validate_and_assign_social(biz, "https://www.instagram.com/bundobust/")
+        self.assertEqual(biz.instagram_url, "https://www.instagram.com/bundobust/")
+
+    def test_34_review_enricher_social_url_requires_profile_validation(self):
+        """34. ReviewRatingEnricher does not attach social URLs from review source if invalid or media URL"""
+        enricher = ReviewRatingEnricher()
+        from lib.enrichment.review_rating_enricher import ReviewEnrichmentResult
+
+        # Unrelated Facebook watch video URL
+        cand = DiscoveredBusiness(
+            company_name="Bundobust",
+            category="Restaurant",
+            city="Leeds",
+            target_country="United Kingdom"
+        )
+        res_video = ReviewEnrichmentResult(
+            review_count=100,
+            rating=4.5,
+            review_status=ReviewStatus.FOUND.value,
+            review_source_url="https://www.facebook.com/watch/?v=987654321"
+        )
+        with patch.object(enricher, "enrich_business", return_value=res_video):
+            enricher.enrich_candidate(cand)
+        # Verify candidate facebook_url remains unset for video link
+        self.assertNotEqual(cand.facebook_url, "https://www.facebook.com/watch/?v=987654321")
+        self.assertEqual(cand.facebook_url, "")
+
+        # Valid business Facebook page with affinity
+        res_valid = ReviewEnrichmentResult(
+            review_count=150,
+            rating=4.7,
+            review_status=ReviewStatus.FOUND.value,
+            review_source_url="https://www.facebook.com/bundobustleeds/"
+        )
+        with patch.object(enricher, "enrich_business", return_value=res_valid):
+            enricher.enrich_candidate(cand)
+        self.assertEqual(cand.facebook_url, "https://www.facebook.com/bundobustleeds/")
+
+    @patch("requests.post")
+    def test_35_bounded_retry_and_backoff_on_503(self, mock_post):
+        """35. Transient HTTP 503 retries up to max_retries with bounded backoff and records failure"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 503
+        mock_post.return_value = mock_resp
+
+        with patch.object(self.provider, "_get_cache", return_value=None):
+            with patch.object(self.provider.ddg_rate_limiter, "wait_if_needed"):
+                with patch("time.sleep") as mock_sleep:
+                    res = self.provider._search_duckduckgo_fallback("test 503 query", max_retries=2)
+
+        self.assertEqual(res.outcome, SearchOutcome.SEARCH_FAILED)
+        self.assertEqual(res.http_status, 503)
+        self.assertEqual(mock_post.call_count, 3)  # initial + 2 retries
+        self.assertEqual(mock_sleep.call_count, 2)
+        self.assertEqual(res.retries, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

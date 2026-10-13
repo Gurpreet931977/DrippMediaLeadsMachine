@@ -149,8 +149,10 @@ class ProviderCircuitBreaker:
         cooldown_seconds: float = 30.0
     ):
         self.provider = provider
-        self.failure_threshold = failure_threshold
-        self.cooldown_seconds = cooldown_seconds
+        env_th = os.getenv("SEARCH_FAILURE_THRESHOLD")
+        self.failure_threshold = int(env_th) if (env_th and failure_threshold == 2) else failure_threshold
+        env_cd = os.getenv("SEARCH_CIRCUIT_COOLDOWN_SECONDS")
+        self.cooldown_seconds = float(env_cd) if (env_cd and cooldown_seconds == 30.0) else cooldown_seconds
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.opened_at: Optional[str] = None
@@ -351,20 +353,27 @@ class WebSearchProvider(DiscoveryProvider):
         os.makedirs(self.cache_dir, exist_ok=True)
         ttl_env = os.getenv("WEB_SEARCH_CACHE_TTL_SECONDS")
         self.cache_ttl = cache_ttl_seconds if cache_ttl_seconds is not None else (int(ttl_env) if ttl_env else 365 * 86400)
-        self.cooldown_seconds = cooldown_seconds
-        self.failure_threshold = failure_threshold
+        env_th = os.getenv("SEARCH_FAILURE_THRESHOLD")
+        effective_threshold = int(env_th) if (env_th and failure_threshold == 2) else failure_threshold
+        env_cd = os.getenv("SEARCH_CIRCUIT_COOLDOWN_SECONDS")
+        effective_cooldown = float(env_cd) if (env_cd and cooldown_seconds == 30.0) else cooldown_seconds
+
+        self.cooldown_seconds = effective_cooldown
+        self.failure_threshold = effective_threshold
 
         # Dedicated per-provider circuit breakers with independent state
         self.circuit_breakers: Dict[str, ProviderCircuitBreaker] = {
-            "TAVILY": ProviderCircuitBreaker("TAVILY", failure_threshold=failure_threshold, cooldown_seconds=cooldown_seconds),
-            "BRAVE": ProviderCircuitBreaker("BRAVE", failure_threshold=failure_threshold, cooldown_seconds=cooldown_seconds),
-            "SEARXNG": ProviderCircuitBreaker("SEARXNG", failure_threshold=failure_threshold, cooldown_seconds=cooldown_seconds),
-            "DUCKDUCKGO_FALLBACK": ProviderCircuitBreaker("DUCKDUCKGO_FALLBACK", failure_threshold=failure_threshold, cooldown_seconds=cooldown_seconds)
+            "TAVILY": ProviderCircuitBreaker("TAVILY", failure_threshold=effective_threshold, cooldown_seconds=effective_cooldown),
+            "BRAVE": ProviderCircuitBreaker("BRAVE", failure_threshold=effective_threshold, cooldown_seconds=effective_cooldown),
+            "SEARXNG": ProviderCircuitBreaker("SEARXNG", failure_threshold=effective_threshold, cooldown_seconds=effective_cooldown),
+            "DUCKDUCKGO_FALLBACK": ProviderCircuitBreaker("DUCKDUCKGO_FALLBACK", failure_threshold=effective_threshold, cooldown_seconds=effective_cooldown)
         }
 
         self.ddg_rate_limiter = DuckDuckGoRateLimiter()
         self.cache_hits: int = 0
         self.cache_misses: int = 0
+        self._query_cache_index: Dict[str, str] = {}
+        self._index_existing_cache()
 
         self.quota_budget = None
 
@@ -474,7 +483,40 @@ class WebSearchProvider(DiscoveryProvider):
         """Probes local SearXNG instance without using third-party public instances."""
         return self.check_searxng_health() == "CONNECTED"
 
-    def _get_cache(self, key: str) -> Optional[Dict[str, Any]]:
+    @staticmethod
+    def _normalize_query_key(query: str, advanced: bool = False) -> str:
+        clean = re.sub(r'["\']', '', query.strip().lower())
+        clean = " ".join(clean.split())
+        return f"norm_{clean}_{advanced}"
+
+    def _index_existing_cache(self):
+        """Indexes existing cache files by normalized query key for cross-parameter cache reuse."""
+        if not os.path.isdir(self.cache_dir):
+            return
+        try:
+            for fname in os.listdir(self.cache_dir):
+                if not fname.endswith(".json"):
+                    continue
+                fpath = os.path.join(self.cache_dir, fname)
+                try:
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        entry = json.load(f)
+                    k = entry.get("key", "")
+                    if k:
+                        m = re.match(r"^web_(.*)_(\d+)_(True|False)$", k, re.IGNORECASE)
+                        if m:
+                            raw_q = m.group(1)
+                            adv = m.group(3).lower() == "true"
+                            norm_k = self._normalize_query_key(raw_q, adv)
+                            if norm_k not in self._query_cache_index:
+                                self._query_cache_index[norm_k] = fpath
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    def _get_cache(self, key: str, query: str = "", advanced: bool = False) -> Optional[Dict[str, Any]]:
+        # 1. Exact direct key lookup
         cache_file = os.path.join(self.cache_dir, f"{hashlib.md5(key.encode()).hexdigest()}.json")
         if os.path.exists(cache_file):
             try:
@@ -485,21 +527,49 @@ class WebSearchProvider(DiscoveryProvider):
                     return entry
             except Exception:
                 pass
+
+        # 2. Normalized query key lookup for cross-parameter cache reuse
+        if query:
+            norm_k = self._normalize_query_key(query, advanced)
+            indexed_path = self._query_cache_index.get(norm_k)
+            if indexed_path and os.path.exists(indexed_path):
+                try:
+                    with open(indexed_path, "r", encoding="utf-8") as f:
+                        entry = json.load(f)
+                    if time.time() - entry.get("timestamp", 0) < self.cache_ttl:
+                        self.cache_hits += 1
+                        return entry
+                except Exception:
+                    pass
+
         self.cache_misses += 1
         return None
 
-    def _set_cache(self, key: str, results: Any, provider: str = ""):
+    def _set_cache(self, key: str, results: Any, provider: str = "", query: str = "", advanced: bool = False):
         """
         CRITICAL SAFETY INVARIANT: A provider/network failure must NEVER be persisted
         as a successful query with zero results.
         """
         succeeded = getattr(results, "succeeded", True if results else False)
-        if not succeeded and not results:
+        outcome_val = getattr(results, "outcome", None)
+        out_name = outcome_val.value if hasattr(outcome_val, "value") else str(outcome_val or "")
+        search_failed_states = {
+            "SEARCH_FAILED",
+            "SEARCH_BLOCKED",
+            "SEARCH_CIRCUIT_OPEN",
+            "SEARCH_PROVIDER_UNAVAILABLE",
+            "SEARCH_TIMEOUT",
+            "PROVIDER_NOT_CONFIGURED",
+            "PROVIDER_FAILED",
+            "PROVIDER_TIMEOUT",
+            "PROVIDER_UNAVAILABLE",
+            "QUOTA_EXCEEDED"
+        }
+        if not succeeded or out_name in search_failed_states:
             return
 
         cache_file = os.path.join(self.cache_dir, f"{hashlib.md5(key.encode()).hexdigest()}.json")
         try:
-            outcome_val = getattr(results, "outcome", None)
             if outcome_val is None:
                 outcome_str = SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS.value if results else SearchOutcome.SEARCH_SUCCEEDED_EMPTY.value
             elif isinstance(outcome_val, Enum):
@@ -516,6 +586,9 @@ class WebSearchProvider(DiscoveryProvider):
                     "provider": prov_str,
                     "data": list(results)
                 }, f)
+            if query:
+                norm_k = self._normalize_query_key(query, advanced)
+                self._query_cache_index[norm_k] = cache_file
         except Exception:
             pass
 
@@ -931,7 +1004,7 @@ class WebSearchProvider(DiscoveryProvider):
                 latency=latency
             )
 
-    def _search_duckduckgo_fallback(self, query: str, num_results: int = 5) -> SearchResultList:
+    def _search_duckduckgo_fallback(self, query: str, num_results: int = 5, max_retries: Optional[int] = None) -> SearchResultList:
         """
         Lightweight HTTP fallback search using DuckDuckGo Lite.
         Public, free, no API key required.
@@ -957,11 +1030,13 @@ class WebSearchProvider(DiscoveryProvider):
         }
 
         # Configurable retry policy
-        max_retries = int(os.getenv("SEARCH_MAX_RETRIES", "2"))
+        if max_retries is None:
+            max_retries = int(os.getenv("SEARCH_MAX_RETRIES", "2"))
         initial_backoff = float(os.getenv("SEARCH_INITIAL_BACKOFF", "1.0"))
         backoff_factor = float(os.getenv("SEARCH_BACKOFF_FACTOR", "2.0"))
         max_backoff = float(os.getenv("SEARCH_MAX_BACKOFF", "8.0"))
 
+        is_bot_challenge = False
         last_error = ""
         last_status = None
         attempt = 0
@@ -1020,8 +1095,21 @@ class WebSearchProvider(DiscoveryProvider):
                         latency=total_latency
                     )
 
-                elif resp.status_code in [202, 403, 429, 500, 502, 503, 504]:
-                    # Transient error or challenge - eligible for retry
+                is_bot_challenge = (
+                    resp.status_code == 202
+                    or "anomaly.js" in resp.text
+                    or "Select all squares containing a duck" in resp.text
+                    or "confirm this search was made by a human" in resp.text
+                    or (resp.status_code != 200 and "challenge" in resp.text.lower())
+                )
+
+                if is_bot_challenge or resp.status_code == 403:
+                    # Non-bypassable anti-bot challenge or 403 access denial - do not burn retries
+                    last_error = f"HTTP {resp.status_code} DuckDuckGo bot detection challenge" if is_bot_challenge else "HTTP 403 Forbidden"
+                    break
+
+                elif resp.status_code in [429, 500, 502, 503, 504]:
+                    # Transient server error or rate limit - eligible for bounded backoff retry
                     last_error = f"HTTP {resp.status_code}"
                     if attempt < max_retries:
                         attempt += 1
@@ -1056,13 +1144,15 @@ class WebSearchProvider(DiscoveryProvider):
                 last_error = str(ex)
                 break
 
-        # If retries exhausted or permanent failure
+        # If retries exhausted or challenge hit
         cb.record_failure(error_msg=last_error, latency=total_latency)
         self.record_call(latency=total_latency, error=True)
         self._sync_stats()
 
         outcome = SearchOutcome.SEARCH_TIMEOUT if "Timeout" in last_error else (
-            SearchOutcome.SEARCH_BLOCKED if (last_status in [202, 403, 429] or "403" in last_error or "202" in last_error) else SearchOutcome.SEARCH_FAILED
+            SearchOutcome.SEARCH_BLOCKED if (
+                is_bot_challenge or last_status in [202, 403, 429] or "403" in last_error or "202" in last_error or "challenge" in last_error.lower()
+            ) else SearchOutcome.SEARCH_FAILED
         )
         return SearchResultList(
             outcome=outcome,
@@ -1086,7 +1176,7 @@ class WebSearchProvider(DiscoveryProvider):
         Caches query results to avoid redundant calls.
         """
         cache_key = f"web_{query.strip().lower()}_{num_results}_{advanced}"
-        cached_entry = self._get_cache(cache_key)
+        cached_entry = self._get_cache(cache_key, query=query, advanced=advanced)
         if cached_entry is not None:
             # Reconstruct SearchResultList with is_cached=True from cache entry
             if isinstance(cached_entry, dict):
@@ -1103,6 +1193,9 @@ class WebSearchProvider(DiscoveryProvider):
 
             if hasattr(outcome_val, "value"):
                 outcome_val = outcome_val.value
+
+            if num_results and len(data) > num_results:
+                data = data[:num_results]
 
             if prov in self.circuit_breakers:
                 cb = self.circuit_breakers[prov]
@@ -1129,7 +1222,7 @@ class WebSearchProvider(DiscoveryProvider):
             if not isinstance(res, SearchResultList):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="TAVILY", query=query)
             if res.succeeded and len(res) > 0:
-                self._set_cache(cache_key, res, provider="TAVILY")
+                self._set_cache(cache_key, res, provider="TAVILY", query=query, advanced=advanced)
                 self._sync_stats()
                 return res
             last_result = res
@@ -1141,7 +1234,7 @@ class WebSearchProvider(DiscoveryProvider):
             if not isinstance(res, SearchResultList):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="BRAVE", query=query)
             if res.succeeded and len(res) > 0:
-                self._set_cache(cache_key, res, provider="BRAVE")
+                self._set_cache(cache_key, res, provider="BRAVE", query=query, advanced=advanced)
                 self._sync_stats()
                 return res
             last_result = res
@@ -1154,7 +1247,7 @@ class WebSearchProvider(DiscoveryProvider):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="SEARXNG", query=query)
             if res.succeeded:
                 # Cache successful queries (both WITH_RESULTS and EMPTY)
-                self._set_cache(cache_key, res, provider="SEARXNG")
+                self._set_cache(cache_key, res, provider="SEARXNG", query=query, advanced=advanced)
                 self._sync_stats()
                 return res
             last_result = res
@@ -1177,7 +1270,7 @@ class WebSearchProvider(DiscoveryProvider):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="DUCKDUCKGO_FALLBACK", query=query)
             if res.succeeded:
                 # Cache successful queries (both WITH_RESULTS and EMPTY)
-                self._set_cache(cache_key, res, provider="DUCKDUCKGO_FALLBACK")
+                self._set_cache(cache_key, res, provider="DUCKDUCKGO_FALLBACK", query=query, advanced=advanced)
                 self._sync_stats()
                 return res
             last_result = res

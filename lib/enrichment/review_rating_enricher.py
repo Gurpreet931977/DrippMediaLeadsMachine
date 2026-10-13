@@ -835,9 +835,24 @@ class ReviewRatingEnricher:
 
             if res.review_source_url:
                 s_url_lower = res.review_source_url.lower()
-                if "facebook.com" in s_url_lower and not candidate.facebook_url:
-                    candidate.facebook_url = res.review_source_url
-                elif "instagram.com" in s_url_lower and not candidate.instagram_url:
-                    candidate.instagram_url = res.review_source_url
+                from lib.validation.social_validator import SocialIdentityValidator, THIRD_PARTY_BLOGGER_PATTERNS
+                platform = "facebook" if "facebook.com" in s_url_lower else ("instagram" if "instagram.com" in s_url_lower else None)
+                if platform:
+                    clean_url, handle, is_profile, _ = SocialIdentityValidator.extract_profile_url(res.review_source_url, platform)
+                    if is_profile and handle:
+                        norm_handle = re.sub(r'[^a-z0-9]', '', handle.lower())
+                        norm_name = re.sub(r'[^a-z0-9]', '', candidate.company_name.lower())
+                        name_tokens = [w for w in re.findall(r'[a-z0-9]+', candidate.company_name.lower()) if len(w) > 2 and w not in ["the", "and", "ltd", "bar", "restaurant", "kitchen", "cafe", "food"]]
+                        is_third_party = any(re.search(pat, norm_handle) for pat in THIRD_PARTY_BLOGGER_PATTERNS)
+                        matched_affinity = (not is_third_party) and (
+                            any(t in norm_handle for t in name_tokens) or
+                            (norm_name and norm_name in norm_handle) or
+                            (norm_handle and norm_handle in norm_name)
+                        )
+                        if matched_affinity:
+                            if platform == "facebook" and not candidate.facebook_url:
+                                candidate.facebook_url = clean_url
+                            elif platform == "instagram" and not candidate.instagram_url:
+                                candidate.instagram_url = clean_url
 
         return candidate

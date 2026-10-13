@@ -42,6 +42,47 @@ class NoWebsiteVerificationProvider:
         clean = re.sub(r'[^a-zA-Z0-9\s]', '', name).lower()
         return "-".join(clean.split())
 
+    def _validate_and_assign_social(self, business: DiscoveredBusiness, raw_url: str, platform_hint: Optional[str] = None):
+        """
+        Enforces evidence provenance (Requirement 6):
+        Does NOT assign social URLs to a candidate profile merely because a link
+        was discovered in search results. Rejects posts, reels, video URLs,
+        third-party media/food publishers, and handles lacking business name affinity.
+        """
+        if not raw_url:
+            return
+        from lib.validation.social_validator import SocialIdentityValidator, THIRD_PARTY_BLOGGER_PATTERNS
+        plat = platform_hint or ("instagram" if "instagram.com" in raw_url.lower() else ("facebook" if "facebook.com" in raw_url.lower() else ("tiktok" if "tiktok.com" in raw_url.lower() else "")))
+        if not plat:
+            return
+        clean_url, handle, is_profile, reject_reason = SocialIdentityValidator.extract_profile_url(raw_url, plat)
+        if not is_profile or not handle:
+            return
+
+        norm_handle = re.sub(r'[^a-z0-9]', '', handle.lower())
+        norm_name = re.sub(r'[^a-z0-9]', '', business.company_name.lower())
+        name_tokens = [w for w in re.findall(r'[a-z0-9]+', business.company_name.lower()) if len(w) > 2 and w not in ["the", "and", "ltd", "bar", "restaurant", "kitchen", "cafe", "food"]]
+        
+        is_third_party = any(re.search(pat, norm_handle) for pat in THIRD_PARTY_BLOGGER_PATTERNS)
+        if is_third_party and not any(t in norm_name for t in ["themanc", "manceats"]):
+            return
+
+        matched_affinity = (
+            any(t in norm_handle for t in name_tokens) or
+            (norm_name and norm_name in norm_handle) or
+            (norm_handle and norm_handle in norm_name)
+        )
+        if not matched_affinity:
+            return
+
+        if "instagram" in plat and not business.instagram_url:
+            business.instagram_url = clean_url
+        elif "facebook" in plat and not business.facebook_url:
+            business.facebook_url = clean_url
+        elif "tiktok" in plat and not business.tiktok_url:
+            business.tiktok_url = clean_url
+
+
     def _is_matching_domain(self, domain: str, business_name: str, city: str = "") -> bool:
         """
         Precise check to determine if a discovered web domain is an official domain for the business.
@@ -205,6 +246,11 @@ class NoWebsiteVerificationProvider:
                         outcome=getattr(s_res, "outcome", SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if raw_items else SearchOutcome.SEARCH_SUCCEEDED_EMPTY),
                         provider=getattr(s_res, "provider", "WEB_SEARCH_FALLBACK"),
                         query=q,
+                        error=getattr(s_res, "error", ""),
+                        http_status=getattr(s_res, "http_status", None),
+                        circuit_state=getattr(s_res, "circuit_state", "CLOSED"),
+                        is_cached=getattr(s_res, "is_cached", False),
+                        retries=getattr(s_res, "retries", 0),
                         latency=getattr(s_res, "latency", 0.0)
                     )
                 return results_map
@@ -296,13 +342,10 @@ class NoWebsiteVerificationProvider:
                 "evidence": evidence
             }
 
-        # If platform URL was in the website field, preserve it
+        # If platform URL was in the website field, preserve it after validation
         if det_result.get("is_platform"):
             p_url = det_result.get("extracted_platform_url")
-            if "instagram.com" in p_url and not business.instagram_url:
-                business.instagram_url = p_url
-            elif "facebook.com" in p_url and not business.facebook_url:
-                business.facebook_url = p_url
+            self._validate_and_assign_social(business, p_url, det_result.get("platform_type"))
 
         # CHECK B: Public Search Check
         search_query = f"{business.company_name} {business.city}"
@@ -329,12 +372,7 @@ class NoWebsiteVerificationProvider:
             is_plat, p_type = self.detector.is_platform_url(u)
             if is_plat:
                 social_found.append(u)
-                if "instagram.com" in u and not business.instagram_url:
-                    business.instagram_url = u
-                elif "facebook.com" in u and not business.facebook_url:
-                    business.facebook_url = u
-                elif "tiktok.com" in u and not business.tiktok_url:
-                    business.tiktok_url = u
+                self._validate_and_assign_social(business, u, p_type)
                 continue
             
             # Check if domain matches business name
