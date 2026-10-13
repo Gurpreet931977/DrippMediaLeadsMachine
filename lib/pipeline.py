@@ -1,4 +1,9 @@
 import re
+
+
+def _format_optional_metric(value: Any) -> str:
+    """Render missing evidence as UNKNOWN; preserve a genuine numeric zero."""
+    return "UNKNOWN" if value is None else str(value)
 import json
 import uuid
 import time
@@ -419,7 +424,7 @@ class LeadGenerationPipeline:
                     emit_log(f"\n[Candidate {stats['valid_candidates_researched']}/{max_valid_research}] '{biz.company_name}' ({biz.city})")
                     emit_log(f"  • Address: {biz.address or 'N/A'}")
                     emit_log(f"  • Phone: {biz.phone or 'N/A'}")
-                    emit_log(f"  • Reviews: {biz.review_count or 0} (Rating: {biz.rating or 'N/A'})")
+                    emit_log(f"  • Reviews: {_format_optional_metric(biz.review_count)} (Rating: {_format_optional_metric(biz.rating)})")
 
                     # Fast detection on raw website field
                     det_result = self.detector.detect_website(biz.raw_website)
@@ -885,7 +890,7 @@ class LeadGenerationPipeline:
                             operational_evidence=operational_evidence,
                             evidence_freshness=evidence_freshness,
                             multiple_locations="Yes" if q_signals.get("multiple_locations") else "No",
-                            business_activity_signal=f"Reviews: {biz.review_count or 0}, Rating: {biz.rating or 0}",
+                            business_activity_signal=f"Reviews: {_format_optional_metric(biz.review_count)}, Rating: {_format_optional_metric(biz.rating)}",
                             qualification_signals=qual_signals_str,
                             lead_score=q_score,
                             priority=q_priority,
@@ -996,7 +1001,7 @@ class LeadGenerationPipeline:
                             operational_evidence=operational_evidence,
                             evidence_freshness=evidence_freshness,
                             multiple_locations="Yes" if q_signals.get("multiple_locations") else "No",
-                            business_activity_signal=f"Reviews: {biz.review_count or 0}, Rating: {biz.rating or 0}",
+                            business_activity_signal=f"Reviews: {_format_optional_metric(biz.review_count)}, Rating: {_format_optional_metric(biz.rating)}",
                             qualification_signals=qual_signals_str,
                             lead_score=q_score,
                             priority=Priority.MANUAL_REVIEW.value,
@@ -1065,7 +1070,7 @@ class LeadGenerationPipeline:
                     elif q_state == QualificationState.RESEARCH_ONLY.value:
                         # RESEARCH_ONLY CANDIDATE (RESEARCH_LOG)
                         stats["research_only"] += 1
-                        emit_log(f"  [Research Only] Candidate '{biz.company_name}' ({biz.review_count or 0} reviews, {biz.rating or 0}★) -> Logged to RESEARCH_LOG ({q_reason})")
+                        emit_log(f"  [Research Only] Candidate '{biz.company_name}' ({_format_optional_metric(biz.review_count)} reviews, {_format_optional_metric(biz.rating)}★) -> Logged to RESEARCH_LOG ({q_reason})")
                         res_entry = ResearchLogEntry(
                             research_id=f"RES-{uuid.uuid4().hex[:6].upper()}",
                             company_name=biz.company_name,
