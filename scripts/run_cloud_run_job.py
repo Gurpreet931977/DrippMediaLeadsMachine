@@ -35,8 +35,37 @@ from lib.discovery.hybrid import HybridDiscoveryEngine
 from lib.system.firestore_state_store import firestore_store
 from lib.system.system_config import SystemConfig
 
+from lib.enrichment.gosom_fallback import (
+    GosomFallbackConfig,
+    GosomReviewFreshnessFallback,
+    LimitedProductionGosomSafetyWrapper,
+)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("CloudRunJob")
+
+
+def create_gosom_fallback_from_env():
+    """
+    Build the optional freshness fallback only when explicitly enabled.
+    Hard production caps remain enforced even if environment values are higher.
+    """
+    config = GosomFallbackConfig.from_env()
+    kill_switch_active = (
+        config.kill_switch_active
+        or os.environ.get("GOSOM_FALLBACK_KILL_SWITCH", "false").strip().lower()
+        in ("true", "1", "yes")
+    )
+    if not config.enabled or kill_switch_active:
+        return None
+
+    fallback = GosomReviewFreshnessFallback(config=config)
+    return LimitedProductionGosomSafetyWrapper(
+        fallback=fallback,
+        max_cohort_size=5,
+        max_calls_per_run=5,
+        max_calls_per_day=10,
+    )
 
 
 def parse_args():
@@ -205,8 +234,20 @@ def run_discovery_task(args) -> int:
 
     try:
         discovery_engine = HybridDiscoveryEngine(mode="HYBRID", apify_enabled=False)
+        gosom_fallback = create_gosom_fallback_from_env()
+        if gosom_fallback is None:
+            logger.info(
+                "GOSOM freshness fallback disabled (feature flag off or kill switch active); "
+                "no scraper calls will run."
+            )
+        else:
+            logger.info(
+                "GOSOM freshness fallback enabled with hard caps: "
+                "5 calls/run, 10 calls/day, cohort size 5."
+            )
         pipeline = LeadGenerationPipeline(
             discovery_provider=discovery_engine,
+            gosom_fallback=gosom_fallback,
             shadow_mode=is_dry_run
         )
 

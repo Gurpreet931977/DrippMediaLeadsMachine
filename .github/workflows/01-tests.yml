@@ -81,6 +81,8 @@ jobs:
       - name: "Run Production Hardening & Core Regression Suites"
         run: |
           pytest -v \
+            test_cloud_run_gosom_wiring.py \
+            test_pipeline_gosom_freshness_metadata.py \
             test_production_preflight.py \
             test_phase_10_1_production_hardening.py \
             test_phase_10_2_automated_email.py \

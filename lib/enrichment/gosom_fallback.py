@@ -1206,6 +1206,20 @@ class LimitedProductionGosomSafetyWrapper:
                 shadow_mode=shadow_mode
             )
 
+        # Do not spend the bounded production cohort on candidates that fail
+        # the strict eligibility gate. Otherwise the first five ordinary OSM
+        # candidates can exhaust the cohort before any eligible candidate arrives.
+        is_eligible, _ = self.fallback.is_candidate_eligible(candidate, crm_pool)
+        if not is_eligible:
+            return self.fallback.enrich_candidate(
+                candidate=candidate,
+                existing_reviews=existing_reviews,
+                crm_pool=crm_pool,
+                preloaded_places=preloaded_places,
+                as_of=as_of,
+                shadow_mode=shadow_mode,
+            )
+
         cand_id = str(candidate.get("source_id") or candidate.get("place_id") or candidate.get("company_name") or candidate.get("business_name") or "")
         if cand_id not in self.processed_candidate_identifiers:
             if len(self.processed_candidate_identifiers) >= self.max_cohort_size:

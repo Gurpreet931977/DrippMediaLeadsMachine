@@ -21,8 +21,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy codebase
+# Copy codebase. The source upload excludes scratch/, so install the pinned
+# optional review-freshness scraper inside the image rather than expecting a local binary.
 COPY . .
+RUN python scripts/setup_gosom.py && \
+    test -x /app/scratch/google_maps_scraper
 
 # Create non-root application user and persistent data directories
 RUN groupadd -g 1000 appgroup && \

@@ -4,6 +4,20 @@ import re
 def _format_optional_metric(value) -> str:
     """Render missing evidence as UNKNOWN; preserve a genuine numeric zero."""
     return "UNKNOWN" if value is None else str(value)
+
+
+def _candidate_review_freshness(business) -> str:
+    """Prefer the review enrichment result over a stale/default model attribute."""
+    raw_data = getattr(business, "raw_data", None)
+    if isinstance(raw_data, dict):
+        enrichment = raw_data.get("review_enrichment")
+        if isinstance(enrichment, dict):
+            freshness = enrichment.get("review_freshness")
+            if isinstance(freshness, str) and freshness.strip():
+                return freshness.strip().upper()
+
+    freshness = getattr(business, "review_freshness", None)
+    return str(freshness).strip().upper() if freshness else "UNKNOWN"
 import json
 import uuid
 import time
@@ -728,6 +742,7 @@ class LeadGenerationPipeline:
                     if self.gosom_fallback is not None:
                         c_lat = getattr(biz, "latitude", None) if getattr(biz, "latitude", None) is not None else getattr(biz, "lat", None)
                         c_lon = getattr(biz, "longitude", None) if getattr(biz, "longitude", None) is not None else getattr(biz, "lon", None)
+                        candidate_review_freshness = _candidate_review_freshness(biz)
                         cand_meta = {
                             "company_name": biz.company_name,
                             "business_name": biz.company_name,
@@ -741,7 +756,7 @@ class LeadGenerationPipeline:
                             "category": biz.category or industry,
                             "review_count": biz.review_count,
                             "rating": biz.rating,
-                            "review_freshness": getattr(biz, "review_freshness", "UNKNOWN") or "UNKNOWN",
+                            "review_freshness": candidate_review_freshness,
                             "qualification_state": audit.get("qualification_state"),
                             "operational_status": audit.get("operational_status"),
                         }
@@ -759,7 +774,7 @@ class LeadGenerationPipeline:
                                         rating=float(biz.rating) if biz.rating is not None else None,
                                         review_count=biz.review_count,
                                         evidence_date=biz.latest_review_date,
-                                        freshness=getattr(biz, "review_freshness", "UNKNOWN")
+                                        freshness=candidate_review_freshness
                                     )
                                 )
 
