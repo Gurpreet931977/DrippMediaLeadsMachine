@@ -77,6 +77,26 @@ class TestReviewEnrichmentSearchCompleteness(unittest.TestCase):
         self.assertEqual(result.review_count, 95)
         self.assertEqual(result.rating, 4.5)
 
+    def test_search_stops_after_low_review_count_instead_of_spending_second_query(self):
+        adapter = self.make_adapter()
+        low_count_result = [{
+            "title": "The Test Bistro, Manchester - Reviews",
+            "snippet": "The Test Bistro in Manchester has accumulated over 35 reviews from local diners.",
+            "result_url": "https://www.facebook.com/thetestbistro",
+            "provider": "Tavily",
+        }]
+        with patch("lib.country_adapters.get_country_adapter", return_value=adapter):
+            self.enricher.web.search_web = Mock(return_value=low_count_result)
+            result = self.enricher.enrich_business(
+                business_name="The Test Bistro",
+                city="Manchester",
+                country="United Kingdom",
+            )
+
+        self.assertEqual(self.enricher.web.search_web.call_count, 1)
+        self.assertEqual(result.review_count, 35)
+        self.assertIsNone(result.rating)
+
 
 if __name__ == "__main__":
     unittest.main()
