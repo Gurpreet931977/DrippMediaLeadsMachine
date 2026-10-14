@@ -702,22 +702,33 @@ class ReviewRatingEnricher:
                 out_name = out_val.value if hasattr(out_val, "value") else str(out_val or "")
                 attempted_outcomes.append(out_name)
                 results_to_process.extend(res)
-                # Break early only if review evidence was extracted from the results so far
-                has_extracted_evidence = any(
-                    self.extract_evidence_from_snippet(
-                        snippet=r.get("snippet", ""),
-                        title=r.get("title", ""),
-                        url=r.get("result_url", ""),
+                # Keep the second targeted query available when the first only
+                # yields a partial metric (for example, review count without rating).
+                # Qualification thresholds are unchanged; this only improves evidence
+                # completeness and stops early once one identity-validated result has
+                # both review_count and rating.
+                has_complete_review_metrics = False
+                for search_result in res:
+                    evidence = self.extract_evidence_from_snippet(
+                        snippet=search_result.get("snippet", ""),
+                        title=search_result.get("title", ""),
+                        url=search_result.get("result_url", ""),
                         business_name=business_name,
                         city=city,
                         street=street,
                         postcode=postcode,
                         country=country,
-                        provider=r.get("provider") or r.get("search_provider", "")
-                    ) is not None
-                    for r in res
-                )
-                if has_extracted_evidence:
+                        provider=search_result.get("provider") or search_result.get("search_provider", "")
+                    )
+                    if (
+                        evidence is not None
+                        and not evidence.reject_reason
+                        and evidence.review_count is not None
+                        and evidence.rating is not None
+                    ):
+                        has_complete_review_metrics = True
+                        break
+                if has_complete_review_metrics:
                     break
 
             # If all attempted queries failed
