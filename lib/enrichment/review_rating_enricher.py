@@ -708,6 +708,8 @@ class ReviewRatingEnricher:
                 # completeness and stops early once one identity-validated result has
                 # both review_count and rating.
                 has_complete_review_metrics = False
+                has_valid_evidence = False
+                has_qualifying_partial_metrics = False
                 for search_result in res:
                     evidence = self.extract_evidence_from_snippet(
                         snippet=search_result.get("snippet", ""),
@@ -720,15 +722,28 @@ class ReviewRatingEnricher:
                         country=country,
                         provider=search_result.get("provider") or search_result.get("search_provider", "")
                     )
-                    if (
-                        evidence is not None
-                        and not evidence.reject_reason
-                        and evidence.review_count is not None
-                        and evidence.rating is not None
-                    ):
+                    if evidence is None or evidence.reject_reason:
+                        continue
+
+                    has_valid_evidence = True
+                    has_count = evidence.review_count is not None
+                    has_rating = evidence.rating is not None
+                    if has_count and has_rating:
                         has_complete_review_metrics = True
                         break
+
+                    # Only spend the second query when the partial evidence could
+                    # plausibly meet existing review thresholds. Avoid extra searches
+                    # for low review counts or known sub-threshold ratings.
+                    if (
+                        (has_count and evidence.review_count >= 50 and not has_rating)
+                        or (has_rating and evidence.rating >= 4.0 and not has_count)
+                    ):
+                        has_qualifying_partial_metrics = True
+
                 if has_complete_review_metrics:
+                    break
+                if has_valid_evidence and not has_qualifying_partial_metrics:
                     break
 
             # If all attempted queries failed
