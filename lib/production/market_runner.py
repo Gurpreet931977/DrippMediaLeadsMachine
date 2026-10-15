@@ -73,6 +73,115 @@ from lib.crm.reconciliation import crm_write_lock
 from lib.sheets.google_sheets import GoogleSheetsStorageProvider
 
 
+def _business_review_freshness(biz: DiscoveredBusiness) -> str:
+    """Determine freshness from the candidate's current evidence date."""
+    raw = getattr(biz, "raw_data", None)
+    enrichment = raw.get("review_enrichment", {}) if isinstance(raw, dict) else {}
+    date_value = getattr(biz, "latest_review_date", None)
+    if not date_value and isinstance(enrichment, dict):
+        date_value = enrichment.get("review_evidence_date")
+    return OperationalValidator.evaluate_freshness(str(date_value or ""))
+
+
+def _has_complete_current_review_evidence(biz: DiscoveredBusiness) -> bool:
+    """Only skip additional research when count, rating and freshness are adequate."""
+    try:
+        count = float(getattr(biz, "review_count", None))
+        rating = float(getattr(biz, "rating", None))
+    except (TypeError, ValueError):
+        return False
+
+    if count <= 0 or not (0 < rating <= 5):
+        return False
+
+    return _business_review_freshness(biz) in {
+        EvidenceFreshness.RECENT.value,
+        EvidenceFreshness.RECENT_ENOUGH.value,
+    }
+
+
+def _apply_recovered_review_evidence(biz: DiscoveredBusiness, result: Any) -> None:
+    """Merge recovered metrics without downgrading better-dated evidence."""
+    if result is None:
+        return
+
+    count = getattr(result, "recovered_review_count", None)
+    rating = getattr(result, "recovered_rating", None)
+    recovered_date = getattr(result, "recovered_date", None)
+    current_date = getattr(biz, "latest_review_date", None)
+
+    rank = {
+        EvidenceFreshness.UNKNOWN.value: 0,
+        EvidenceFreshness.STALE.value: 1,
+        EvidenceFreshness.RECENT_ENOUGH.value: 2,
+        EvidenceFreshness.RECENT.value: 3,
+    }
+
+    replace_existing_evidence = False
+    replace_date = False
+
+    if recovered_date:
+        if not current_date:
+            replace_existing_evidence = True
+            replace_date = True
+        else:
+            new_fresh = OperationalValidator.evaluate_freshness(str(recovered_date))
+            old_fresh = OperationalValidator.evaluate_freshness(str(current_date))
+            new_rank = rank.get(new_fresh, 0)
+            old_rank = rank.get(old_fresh, 0)
+
+            replace_existing_evidence = new_rank > old_rank
+            if new_rank == old_rank:
+                old_dt = OperationalValidator.parse_evidence_date(str(current_date))
+                new_dt = OperationalValidator.parse_evidence_date(str(recovered_date))
+                replace_existing_evidence = bool(
+                    old_dt and new_dt and new_dt > old_dt
+                )
+            replace_date = replace_existing_evidence
+
+    def valid_count(value: Any) -> bool:
+        try:
+            number = float(value)
+            return 0 < number < float("inf")
+        except (TypeError, ValueError):
+            return False
+
+    def valid_rating(value: Any) -> bool:
+        try:
+            return 0 < float(value) <= 5
+        except (TypeError, ValueError):
+            return False
+
+    current_count = getattr(biz, "review_count", None)
+    current_rating = getattr(biz, "rating", None)
+
+    # Fill missing/invalid metrics, or replace them only when the recovered
+    # evidence is better dated. Never let stale recovery overwrite valid data.
+    if valid_count(count) and (
+        not valid_count(current_count) or replace_existing_evidence
+    ):
+        biz.review_count = count
+
+    if valid_rating(rating) and (
+        not valid_rating(current_rating) or replace_existing_evidence
+    ):
+        biz.rating = rating
+
+    if recovered_date and replace_date:
+        biz.latest_review_date = recovered_date
+
+    raw = getattr(biz, "raw_data", None)
+    if not isinstance(raw, dict):
+        raw = {}
+
+    serializer = getattr(result, "to_dict", None)
+    if callable(serializer):
+        details = serializer()
+        if isinstance(details, dict):
+            raw["review_recovery"] = details
+    biz.raw_data = raw
+
+
 class RunState(str, Enum):
     CREATED = "CREATED"
     RUNNING = "RUNNING"
@@ -881,35 +990,54 @@ class MarketRunner:
             biz.raw_data["research_telemetry"] = telem.to_dict()
             return telem
 
-        # 5. Check if candidate already has verified review count and rating
-        already_has_reviews = (biz.review_count is not None and (biz.review_count or 0) > 0 and biz.rating is not None)
+        # 5. Research again if review evidence is incomplete, stale or undated.
+        already_has_reviews = _has_complete_current_review_evidence(biz)
         enrich_res = None
         rec_res = None
         start_research_time = time.time()
 
         if not already_has_reviews:
-            # Consume Quota & Execute Research
             self.quota.consume("search", 1)
 
-            # Stage 1: ReviewRatingEnricher
+            # Stage 1: targeted review enrichment
             try:
                 biz = self.review_enricher.enrich_candidate(biz)
-                enrich_res = getattr(biz, "raw_data", {}).get("review_enrichment")
+                raw = getattr(biz, "raw_data", {})
+                enrich_res = raw.get("review_enrichment") if isinstance(raw, dict) else None
             except Exception as ex:
                 log(f"  [Research Warning] enrich_candidate exception for '{cname}': {ex}")
 
-            # Stage 2: ReviewEvidenceRecoveryLayer (if reviews still missing or missing date)
-            if biz.review_count is None or not getattr(biz, "latest_review_date", None):
+            # Recover from independent sources unless Stage 1 established
+            # complete and current review evidence.
+            if not _has_complete_current_review_evidence(biz):
                 try:
-                    rec_res = self.review_recovery.recover_candidate(cand_dict)
-                    if rec_res and rec_res.recovered_review_count is not None:
-                        biz.review_count = rec_res.recovered_review_count
-                        biz.rating = rec_res.recovered_rating
-                        if rec_res.recovered_date:
-                            biz.latest_review_date = rec_res.recovered_date
-                        if not hasattr(biz, "raw_data") or not isinstance(biz.raw_data, dict):
-                            biz.raw_data = {}
-                        biz.raw_data["review_recovery"] = rec_res.to_dict()
+                    recovery_candidate = dict(cand_dict or {})
+                    recovery_candidate.update({
+                        "company_name": biz.company_name,
+                        "city": biz.city or self.market_config.city,
+                        "review_count": biz.review_count,
+                        "rating": biz.rating,
+                        "latest_review_date": getattr(biz, "latest_review_date", None),
+                        "review_freshness": _business_review_freshness(biz),
+                    })
+
+                    for attr, key in (
+                        ("address", "address"),
+                        ("phone", "phone"),
+                        ("raw_website", "initial_website"),
+                        ("facebook_url", "facebook_url"),
+                        ("instagram_url", "instagram_url"),
+                    ):
+                        value = getattr(biz, attr, None)
+                        if value:
+                            recovery_candidate[key] = value
+
+                    rec_res = self.review_recovery.recover_candidate(recovery_candidate)
+                    _apply_recovered_review_evidence(biz, rec_res)
+
+                    raw = getattr(biz, "raw_data", {})
+                    if isinstance(raw, dict):
+                        enrich_res = raw.get("review_enrichment", enrich_res)
                 except Exception as rec_ex:
                     log(f"  [Recovery Warning] recover_candidate exception for '{cname}': {rec_ex}")
 

@@ -133,21 +133,56 @@ class ProposalManager:
             atomic_write_json(self.proposals_path, proposals)
 
     def load_packages(self) -> Dict[str, Any]:
-        if not os.path.exists(self.packages_path):
-            return {
-                "packages": {
-                    "STARTER": {"price": 750.0, "currency": "GBP", "scope": ["Responsive website", "Location"]},
-                    "STANDARD": {"price": 1250.0, "currency": "GBP", "scope": ["Responsive website", "Gallery"]},
-                    "PREMIUM": {"price": 1950.0, "currency": "GBP", "scope": ["Responsive website", "CMS"]},
-                    "CUSTOM": {"price": 0.0, "currency": "GBP", "scope": []},
-                }
+        default_config = {
+            "packages": {
+                "STARTER": {
+                    "price": 750.0,
+                    "currency": "GBP",
+                    "scope": ["Responsive website", "Location"],
+                },
+                "STANDARD": {
+                    "price": 1250.0,
+                    "currency": "GBP",
+                    "scope": ["Responsive website", "Gallery"],
+                },
+                "PREMIUM": {
+                    "price": 1950.0,
+                    "currency": "GBP",
+                    "scope": ["Responsive website", "CMS"],
+                },
+                "CUSTOM": {
+                    "price": 0.0,
+                    "currency": "GBP",
+                    "scope": [],
+                },
             }
+        }
+
+        if not os.path.exists(self.packages_path):
+            return default_config
+
         try:
             with open(self.packages_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                loaded = json.load(f)
         except Exception as e:
-            logger.error(f"Error loading packages from {self.packages_path}: {e}")
-            return {"packages": {}}
+            logger.error(
+                f"Error loading packages from {self.packages_path}: {e}. "
+                "Using built-in package defaults."
+            )
+            return default_config
+
+        if (
+            not isinstance(loaded, dict)
+            or not isinstance(loaded.get("packages"), dict)
+        ):
+            logger.error(
+                f"Invalid package configuration in {self.packages_path}: "
+                "expected an object containing a packages object. "
+                "Using built-in package defaults."
+            )
+            return default_config
+
+        return loaded
 
     def load_leads(self) -> List[Dict[str, Any]]:
         if not os.path.exists(self.leads_path):

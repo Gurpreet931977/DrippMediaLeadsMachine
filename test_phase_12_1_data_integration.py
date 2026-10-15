@@ -89,8 +89,12 @@ class TestBackendAPIAndCORS(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
-    def test_leads_endpoint_returns_rich_metadata(self):
+    @patch("server.GoogleSheetsStorageProvider.fetch_all_leads")
+    def test_leads_endpoint_returns_rich_metadata(self, mock_fetch):
         """6. /api/leads returns source, tab, spreadsheet_id, and ISO timestamp."""
+        mock_fetch.return_value = [
+            {"lead_id": f"TEST-LEAD-{i}"} for i in range(7)
+        ]
         resp = self.client.get("/api/leads")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -101,8 +105,12 @@ class TestBackendAPIAndCORS(unittest.TestCase):
         self.assertGreaterEqual(data["count"], 7)
         self.assertIn("timestamp", data)
 
-    def test_review_queue_endpoint_returns_metadata(self):
+    @patch("server.GoogleSheetsStorageProvider.fetch_review_queue")
+    def test_review_queue_endpoint_returns_metadata(self, mock_fetch):
         """7. /api/review-queue returns REVIEW_QUEUE records and metadata."""
+        mock_fetch.return_value = [
+            {"candidate_id": f"TEST-CANDIDATE-{i}"} for i in range(40)
+        ]
         resp = self.client.get("/api/review-queue")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -111,8 +119,12 @@ class TestBackendAPIAndCORS(unittest.TestCase):
         self.assertEqual(data["tab"], "REVIEW_QUEUE")
         self.assertGreaterEqual(data["count"], 40)
 
-    def test_research_log_endpoint_returns_metadata(self):
+    @patch("server.GoogleSheetsStorageProvider.fetch_research_log")
+    def test_research_log_endpoint_returns_metadata(self, mock_fetch):
         """8. /api/research-log returns RESEARCH_LOG records and metadata."""
+        mock_fetch.return_value = [
+            {"company_name": f"Test Business {i}"} for i in range(200)
+        ]
         resp = self.client.get("/api/research-log")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()

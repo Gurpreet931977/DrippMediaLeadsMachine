@@ -28,6 +28,7 @@ import unittest
 from fastapi.testclient import TestClient
 
 from server import app
+from commercial_test_fixtures import seed_commercial_test_fixtures
 from lib.commercial.models import (
     CommercialStage,
     WebsitePipelineStage,
@@ -65,19 +66,13 @@ class TestPost97CommercialWorkflow(unittest.TestCase):
         self.commercial_events_path = os.path.join(self.test_dir, "commercial_events.json")
         self.snapshot_path = os.path.join(self.test_dir, "commercial_pipeline_snapshot.json")
 
-        # Copy production base files
-        prod_data_dir = os.path.join(os.path.dirname(__file__), "data")
-        for fn, dst in [
-            ("cache_sheets_leads.json", self.leads_path),
-            ("outreach_outcomes.json", self.outcomes_path),
-            ("lead_timelines.json", self.timelines_path),
-        ]:
-            src = os.path.join(prod_data_dir, fn)
-            if os.path.exists(src):
-                shutil.copyfile(src, dst)
-            else:
-                with open(dst, "w") as f:
-                    json.dump([], f)
+        seed_commercial_test_fixtures(
+            leads_path=self.leads_path,
+            outcomes_path=self.outcomes_path,
+            commercial_records_path=self.commercial_records_path,
+            timelines_path=self.timelines_path,
+            commercial_events_path=self.commercial_events_path,
+        )
 
         self.manager = CommercialPipelineManager(
             leads_path=self.leads_path,
@@ -548,7 +543,14 @@ class TestPost97CommercialWorkflow(unittest.TestCase):
 
     def test_37_api_commercial_next_actions_endpoint(self):
         """Test GET /api/commercial/next-actions endpoint."""
-        res = self.client.get("/api/commercial/next-actions")
+        from unittest.mock import patch
+
+        # Keep the API request inside this test's temporary fixture dataset.
+        with patch(
+            "lib.commercial.commercial_pipeline_manager.CommercialPipelineManager",
+            return_value=self.manager,
+        ):
+            res = self.client.get("/api/commercial/next-actions")
         self.assertEqual(res.status_code, 200)
         json_data = res.json()
         self.assertEqual(json_data["status"], "ok")

@@ -40,6 +40,7 @@ import unittest
 from fastapi.testclient import TestClient
 
 from server import app
+from commercial_test_fixtures import seed_commercial_test_fixtures
 from lib.commercial.models import (
     CommercialStage,
     OutcomeProvenance,
@@ -73,21 +74,24 @@ class TestPhase10ProposalClosing(unittest.TestCase):
         self.proposals_path = os.path.join(self.test_dir, "proposals.json")
         self.snapshot_path = os.path.join(self.test_dir, "proposal_pipeline_snapshot.json")
 
-        prod_data_dir = os.path.join(os.path.dirname(__file__), "data")
-        for fn, dst in [
-            ("cache_sheets_leads.json", self.leads_path),
-            ("outreach_outcomes.json", self.outcomes_path),
-            ("lead_timelines.json", self.timelines_path),
-            ("commercial_records.json", self.commercial_records_path),
-            ("commercial_events.json", self.commercial_events_path),
-            ("proposal_packages.json", self.packages_path),
-        ]:
-            src = os.path.join(prod_data_dir, fn)
-            if os.path.exists(src):
-                shutil.copyfile(src, dst)
-            else:
-                with open(dst, "w") as f:
-                    json.dump([] if fn.endswith("s.json") else {}, f)
+        seed_commercial_test_fixtures(
+            leads_path=self.leads_path,
+            outcomes_path=self.outcomes_path,
+            commercial_records_path=self.commercial_records_path,
+            timelines_path=self.timelines_path,
+            commercial_events_path=self.commercial_events_path,
+            packages_path=self.packages_path,
+        )
+
+        # Bootstrap canonical commercial records in this test's own temp dir.
+        CommercialPipelineManager(
+            leads_path=self.leads_path,
+            outcomes_path=self.outcomes_path,
+            timelines_path=self.timelines_path,
+            commercial_records_path=self.commercial_records_path,
+            commercial_events_path=self.commercial_events_path,
+            snapshot_path=self.snapshot_path,
+        )
 
         # Proposals file starts empty
         # Set environment variables for FastAPI client isolation
