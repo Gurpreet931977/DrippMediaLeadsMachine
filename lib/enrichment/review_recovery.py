@@ -199,8 +199,8 @@ class ReviewEvidenceRecoveryLayer:
             "phone": cand_phone
         }
         disc_dict = {
-            "company_name": discovered_name or cand_name,
-            "city": discovered_city or cand_city or "Manchester",
+            "company_name": discovered_name or "",
+            "city": discovered_city or "",
             "street": discovered_street,
             "postcode": discovered_postcode,
             "phone": discovered_phone
@@ -225,14 +225,14 @@ class ReviewEvidenceRecoveryLayer:
             return False, conf, f"IDENTITY_CONFLICT ({conflict})"
 
         # If candidate lacks street/address/phone, fallback to name similarity + city corroboration
-        if conf < 0.70 and not cand_street and not cand_postcode and not cand_phone:
-            name_score, name_reasons, name_compatible = self.matcher.compute_name_similarity(cand_name, discovered_name or cand_name)
+        if conf < 0.70 and (discovered_name or "").strip() and not cand_street and not cand_postcode and not cand_phone:
+            name_score, name_reasons, name_compatible = self.matcher.compute_name_similarity(cand_name, discovered_name)
             if name_score >= 0.85 and name_compatible and cand_city_norm in combined:
                 conf = max(conf, name_score * 0.95)
 
         # If name tokens in snippet/title don't match, penalize
-        clean_cand = re.sub(r'[^a-z0-9]', '', cand_name.lower())
-        clean_disc = re.sub(r'[^a-z0-9]', '', (discovered_name or snippet).lower())
+        clean_cand = re.sub(r'[^a-z0-9]', '', cand_name.lower().replace('&', ' and '))
+        clean_disc = re.sub(r'[^a-z0-9]', '', f'{discovered_name or ""} {snippet or ""}'.lower().replace('&', ' and '))
         if clean_cand not in clean_disc:
             # Check individual tokens
             cand_tokens = [t for t in cand_name.lower().split() if len(t) > 2]

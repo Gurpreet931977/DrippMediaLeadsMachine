@@ -18,6 +18,7 @@ import os
 import re
 import time
 import logging
+from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional, Tuple
 from dotenv import load_dotenv
 
@@ -361,13 +362,12 @@ class HybridDiscoveryEngine(DiscoveryProvider):
     def get_query_rounds(self, city: str, country: str, industry: str) -> List[List[str]]:
         """Returns discovery rounds across available query families."""
         return [
-            # Round 1: OpenStreetMap broad primary dining
-            [f"OSM {industry} in {city}, {country}", f"OSM bistros in {city}, {country}"],
-            # Round 2: OSM cafes, bars & neighborhood spots
-            [f"OSM cafes in {city}, {country}", f"OSM pubs & bars in {city}, {country}"],
-            # Round 3: Foursquare / Web search independent eateries
-            [f"Web 'independent {industry.lower()}' in {city}", f"Web 'family {industry.lower()}' {city}"],
-            # Round 4: Fast food, street food, takeaways
+            [f"Web 'independent {industry.lower()}' in {city}",
+             f"Web 'family-run {industry.lower()}' {city}"],
+            [f"OSM {industry} in {city}, {country}",
+             f"OSM bistros in {city}, {country}"],
+            [f"OSM cafes in {city}, {country}",
+             f"OSM pubs & bars in {city}, {country}"],
             [f"OSM fast food & takeaways in {city}, {country}"]
         ]
 
@@ -444,11 +444,180 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                 else:
                     pool[canon_id] = cand
 
-        # Step 3: Web Search enrichment (if needed or on later rounds)
-        # Use web search only to improve verification or discover independent spots
-        if len(pool) < limit and round_number >= 2:
-            web_results = self.web_search.search_businesses(city=city, country=country, industry=industry, limit=10)
-            self.transparency_stats["by_source"]["WEB_SEARCH"] += len(web_results)
+        # Step 3: Enrich candidates from direct social-profile search results.
+        targets = [
+            c for c in pool.values()
+            if not c.instagram_url or not c.facebook_url
+        ][:10]
+
+        if targets:
+            try:
+                web_results = self.web_search.search_businesses(
+                    city=city,
+                    country=country,
+                    industry=f"independent {industry}" if round_number == 1 else industry,
+                    limit=min(30, len(targets) * 3),
+                    candidate_names=[c.company_name for c in targets],
+                )
+            except TypeError as exc:
+                if "candidate_names" not in str(exc):
+                    raise
+                web_results = self.web_search.search_businesses(
+                    city=city, country=country, industry=f"independent {industry}" if round_number == 1 else industry,
+                    limit=min(30, len(targets) * 3),
+                )
+            except Exception as exc:
+                logger.warning("[HybridDiscovery] Web search error: %s", exc)
+                web_results = []
+
+            reserved = {
+                "p", "reel", "reels", "stories", "explore", "accounts",
+                "directory", "locations", "tags", "tv", "watch", "posts",
+                "events", "groups", "share", "login", "search",
+                "marketplace", "profile.php", "pages",
+            }
+            source_ids = set()
+            matched_ids = set()
+
+            for hit in web_results:
+                if isinstance(hit, DiscoveredBusiness):
+                    canon = self._canonical_identity(
+                        hit.company_name, hit.city, hit.target_country
+                    )
+                    if canon in pool:
+                        duplicates_in_round += 1
+                        pool[canon] = self.merge_candidates(pool[canon], hit)
+                    else:
+                        pool[canon] = hit
+                    source_ids.add(canon)
+                    continue
+
+                if not isinstance(hit, dict):
+                    continue
+
+                url = str(hit.get("result_url") or hit.get("url") or "").strip()
+                if not url:
+                    continue
+
+                try:
+                    parsed = urlparse(url)
+                    host = (parsed.hostname or "").lower()
+                    if host.startswith("www."):
+                        host = host[4:]
+                    parts = [p for p in parsed.path.strip("/").split("/") if p]
+                except Exception:
+                    continue
+
+                if (host == "instagram.com" and len(parts) == 1
+                        and parts[0].lower() not in reserved):
+                    platform = "instagram"
+                elif (host == "facebook.com" and len(parts) == 1
+                        and parts[0].lower() not in reserved):
+                    platform = "facebook"
+                else:
+                    continue
+
+                # Match identity against search text, not the handle alone.
+                searchable = re.sub(
+                    r"[^a-z0-9]+", "",
+                    " ".join([
+                        str(hit.get("title") or ""),
+                        str(hit.get("snippet") or ""),
+                    ]).lower().replace("&", " and "),
+                )
+
+                matches = []
+                result_text = " ".join([
+                    str(hit.get("title") or ""),
+                    str(hit.get("snippet") or ""),
+                ])
+                query_searchable = re.sub(
+                    r"[^a-z0-9]+", "",
+                    str(hit.get("query") or "").lower().replace("&", " and "),
+                )
+                known_places = (
+                    "london", "birmingham", "liverpool", "leeds", "bristol",
+                    "sheffield", "nottingham", "leicester", "coventry",
+                    "newcastle", "oxford", "cambridge", "brighton", "edinburgh",
+                    "glasgow", "cardiff", "belfast", "southampton", "portsmouth",
+                    "exeter", "derby", "norwich", "bath", "wolverhampton",
+                    "blackpool", "preston", "bothell", "seattle",
+                )
+
+                for canon, candidate in pool.items():
+                    name = re.sub(
+                        r"[^a-z0-9]+", "",
+                        (candidate.company_name or "").lower().replace("&", " and "),
+                    )
+                    if len(name) < 5 or name not in searchable:
+                        continue
+                    # When the provider supplies a query, keep its result
+                    # associated with the business that was actually searched.
+                    if query_searchable and name not in query_searchable:
+                        continue
+
+                    city = re.sub(
+                        r"[^a-z0-9]+", "",
+                        str(candidate.city or "").split(",")[0].lower(),
+                    )
+                    conflicting_places = [
+                        place for place in known_places
+                        if place != city and place not in name
+                        and re.search(
+                            rf"(?<![a-z]){re.escape(place)}(?![a-z])",
+                            result_text, flags=re.IGNORECASE,
+                        )
+                    ]
+                    if conflicting_places:
+                        continue
+
+                    matches.append((canon, candidate))
+
+                # Do not associate ambiguous profiles with a business.
+                if len(matches) != 1:
+                    continue
+
+                canon, candidate = matches[0]
+                matched_ids.add(canon)
+
+                if not isinstance(candidate.raw_data, dict):
+                    candidate.raw_data = {}
+                evidence = candidate.raw_data.setdefault("web_search_evidence", [])
+                if not any(
+                    isinstance(item, dict) and item.get("url") == url
+                    for item in evidence
+                ) and len(evidence) < 5:
+                    evidence.append({
+                        "url": url,
+                        "title": str(hit.get("title") or ""),
+                        "snippet": str(hit.get("snippet") or ""),
+                        "query": str(hit.get("query") or ""),
+                        "search_provider": str(hit.get("search_provider") or ""),
+                        "matched_platform": platform,
+                    })
+
+                if not isinstance(candidate.evidence_sources, dict):
+                    candidate.evidence_sources = {}
+
+                if platform == "instagram" and not candidate.instagram_url:
+                    candidate.instagram_url = url
+                    candidate.evidence_sources.setdefault("instagram", "WEB_SEARCH")
+                    candidate.social_status = SocialStatus.SOCIAL_FOUND.value
+                elif platform == "facebook" and not candidate.facebook_url:
+                    candidate.facebook_url = url
+                    candidate.evidence_sources.setdefault("facebook", "WEB_SEARCH")
+                    candidate.social_status = SocialStatus.SOCIAL_FOUND.value
+
+                # Discovery is not verification of account ownership.
+                candidate.social_ownership_status = "UNVERIFIED"
+                candidate.raw_data["social_ownership_status"] = "UNVERIFIED"
+
+            source_ids.update(matched_ids)
+            self.transparency_stats["by_source"]["WEB_SEARCH"] += len(source_ids)
+            self.transparency_stats["web_search_evidence_matches"] = (
+                self.transparency_stats.get("web_search_evidence_matches", 0)
+                + len(matched_ids)
+            )
 
         # Step 4: Optional Apify fallback ONLY if explicitly enabled
         if self.apify and self.apify_enabled and self.mode == DiscoveryMode.HYBRID and len(pool) < (limit // 2):

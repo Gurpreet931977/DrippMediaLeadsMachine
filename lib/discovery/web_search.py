@@ -1318,17 +1318,66 @@ class WebSearchProvider(DiscoveryProvider):
         Discovery query generator using diverse query families.
         Surfaces independent restaurants without websites.
         """
-        queries = [
-            f'"independent {industry.lower()}" {city}',
-            f'"family {industry.lower()}" {city}',
-            f'"{industry.lower()}" "{city}" "no website"',
-            f'"{industry.lower()}" {city} food creator',
-            f'"{industry.lower()}" {city} Instagram review'
-        ]
+        industry_term = re.sub(
+            r"^(?:(?:independent|family[- ]run)\s+)+",
+            "",
+            (industry or "").strip(),
+            flags=re.IGNORECASE,
+        ).strip().lower() or "restaurants"
+
+        names = kwargs.get("candidate_names") or kwargs.get("business_names") or []
+        names = list(dict.fromkeys(
+            str(name).strip().replace('"', "")
+            for name in names if str(name).strip()
+        ))[:10]
+
+        if names:
+            # Search businesses individually to avoid broad OR-query noise.
+            queries = [
+                f'site:instagram.com OR site:facebook.com "{name}" "{city}"'
+                for name in names
+            ]
+        else:
+            queries = [
+                f'site:instagram.com "{city}" "{industry_term}"',
+                f'site:facebook.com "{city}" "{industry_term}"',
+            ]
+
+        result_limit = max(0, int(limit))
+        if result_limit == 0:
+            return []
+
+        # Keep candidate searches useful while bounding each provider response.
+        per_query_limit = min(
+            5 if names else 10,
+            max(1, (result_limit + len(queries) - 1) // len(queries)),
+        )
+        result_batches = []
+        for query in queries:
+            rows = self.search_web(query, num_results=per_query_limit)
+            result_batches.append(list(rows or []))
+
+        # Round-robin results so early candidates cannot consume the whole limit.
         all_results = []
-        for q in queries[:2]: # Broad free web discovery
-            res = self.search_web(q, num_results=min(limit, 10))
-            all_results.extend(res)
+        seen_urls = set()
+        max_depth = max((len(batch) for batch in result_batches), default=0)
+        for depth in range(max_depth):
+            for batch in result_batches:
+                if depth >= len(batch):
+                    continue
+                item = batch[depth]
+                if isinstance(item, dict):
+                    url = str(
+                        item.get("result_url") or item.get("url") or ""
+                    ).strip()
+                    key = url.rstrip("/").lower()
+                    if key and key in seen_urls:
+                        continue
+                    if key:
+                        seen_urls.add(key)
+                all_results.append(item)
+                if len(all_results) >= result_limit:
+                    return all_results
         return all_results
 
     def search_social_references(
