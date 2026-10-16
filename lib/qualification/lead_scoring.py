@@ -411,9 +411,13 @@ class LeadScoringProvider:
                 priority = Priority.MANUAL_REVIEW.value
 
             # Check 0B: Stale Review Data -> Cannot be treated as current verified traction
-            elif review_enrich.get("review_freshness") == "STALE":
+            elif review_enrich.get(
+                "effective_review_freshness",
+                review_enrich.get("review_freshness"),
+            ) == "STALE":
                 qualification_state = QualificationState.MANUAL_REVIEW.value
-                qualification_reason = f"Manual Review: Review data is stale ({review_enrich.get('review_evidence_date', 'historic')}). Current operational traction unverified."
+                evidence_date = (review_enrich.get("effective_review_evidence_date") or review_enrich.get("review_evidence_date", "historic"))
+                qualification_reason = f"Manual Review: Review data is stale ({evidence_date}). Current operational traction unverified."
                 priority = Priority.MANUAL_REVIEW.value
 
             # Check 0C: Missing / Unknown Review Data -> RESEARCH_ONLY (Differentiated per Phase 11.1)

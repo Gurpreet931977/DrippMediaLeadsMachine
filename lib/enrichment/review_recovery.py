@@ -1018,16 +1018,56 @@ class ReviewEvidenceRecoveryLayer:
         # Determine effective counts and ratings (never overwrite stronger values)
         eff_rc = orig_rc
         eff_rat = orig_rat
-        if best_item:
-            if eff_rc is None and best_item.review_count is not None:
-                eff_rc = best_item.review_count
-            elif best_item.confidence == ReviewConfidence.HIGH.value and best_item.review_count is not None:
-                eff_rc = best_item.review_count
 
-            if eff_rat is None and best_item.rating is not None:
-                eff_rat = best_item.rating
-            elif best_item.confidence == ReviewConfidence.HIGH.value and best_item.rating is not None:
-                eff_rat = best_item.rating
+        # Counts and ratings can come from different accepted evidence records.
+        # Keep the existing freshness selection below for the evidence date.
+        def metric_priority(item):
+            confidence = str(getattr(item, "confidence", "")).upper()
+            freshness = str(getattr(item, "freshness", "")).upper()
+            confidence_score = {
+                "HIGH": 100,
+                "MEDIUM": 50,
+                "LOW": 10,
+            }.get(confidence, 0)
+            freshness_score = {
+                "RECENT": 30,
+                "RECENT_ENOUGH": 20,
+                "UNKNOWN": 10,
+                "STALE": -40,
+            }.get(freshness, 0)
+            return (
+                confidence_score + freshness_score,
+                str(getattr(item, "evidence_date", "") or ""),
+            )
+
+        count_items = [
+            item for item in recovered_items
+            if getattr(item, "review_count", None) is not None
+        ]
+        rating_items = [
+            item for item in recovered_items
+            if getattr(item, "rating", None) is not None
+        ]
+        count_item = max(count_items, key=metric_priority) if count_items else None
+        rating_item = max(rating_items, key=metric_priority) if rating_items else None
+
+        if count_item is not None:
+            if eff_rc is None:
+                eff_rc = count_item.review_count
+            elif (
+                str(getattr(count_item, "confidence", "")).upper() == "HIGH"
+                and count_item.review_count is not None
+            ):
+                eff_rc = count_item.review_count
+
+        if rating_item is not None:
+            if eff_rat is None:
+                eff_rat = rating_item.rating
+            elif (
+                str(getattr(rating_item, "confidence", "")).upper() == "HIGH"
+                and rating_item.rating is not None
+            ):
+                eff_rat = rating_item.rating
 
         eff_freshness = ReviewFreshness.UNKNOWN.value
         eff_date = None

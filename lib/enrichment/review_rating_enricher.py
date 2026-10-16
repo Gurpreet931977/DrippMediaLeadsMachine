@@ -606,12 +606,32 @@ class ReviewRatingEnricher:
 
         best = max(valid_items, key=score_item)
 
+        # Select each metric from the strongest accepted evidence carrying it.
+        # detect_conflicts() has already rejected material cross-source conflicts.
+        count_items = [it for it in valid_items if it.review_count is not None]
+        rating_items = [it for it in valid_items if it.rating is not None]
+        best_count = max(count_items, key=score_item) if count_items else best
+        best_rating = max(rating_items, key=score_item) if rating_items else best
+
+        merged_evidence = best.evidence_text
+        if (
+            best_count is not best_rating
+            and best_count.review_count is not None
+            and best_rating.rating is not None
+        ):
+            merged_evidence = (
+                f"Complementary metrics selected after conflict checks: "
+                f"review count from {best_count.source}; "
+                f"rating from {best_rating.source}. "
+                f"{best.evidence_text or ''}"
+            ).strip()
+
         return ReviewEnrichmentResult(
-            review_count=best.review_count,
-            rating=best.rating,
+            review_count=best_count.review_count,
+            rating=best_rating.rating,
             review_source=best.source,
             review_source_url=best.source_url,
-            review_evidence=best.evidence_text,
+            review_evidence=merged_evidence,
             review_evidence_date=best.evidence_date,
             review_confidence=best.confidence,
             review_freshness=best.freshness,

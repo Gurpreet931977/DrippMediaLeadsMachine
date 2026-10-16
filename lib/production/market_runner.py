@@ -101,14 +101,43 @@ def _has_complete_current_review_evidence(biz: DiscoveredBusiness) -> bool:
 
 
 def _apply_recovered_review_evidence(biz: DiscoveredBusiness, result: Any) -> None:
-    """Merge recovered metrics without downgrading better-dated evidence."""
+    """Merge accepted review evidence without erasing conflicts or provenance."""
     if result is None:
+        return
+
+    serializer = getattr(result, "to_dict", None)
+    details = serializer() if callable(serializer) else {}
+    if not isinstance(details, dict):
+        details = {}
+    status = getattr(result, "status", None) or details.get("status")
+
+    raw = getattr(biz, "raw_data", None)
+    raw = raw if isinstance(raw, dict) else {}
+    enrichment_value = raw.get("review_enrichment", {})
+    enrichment = dict(enrichment_value) if isinstance(enrichment_value, dict) else {}
+
+    if details:
+        raw["review_recovery"] = details
+
+    # Conflict and identity rejection always win over recovered metrics.
+    conflict = (
+        str(enrichment.get("review_confidence", "")).upper() == "CONFLICT"
+        or str(enrichment.get("review_status", "")).upper()
+        in {"CONFLICT_REQUIRES_REVIEW", "REJECTED_CONFLICT"}
+        or status in {"REJECTED_CONFLICT", "REJECTED_IDENTITY_MISMATCH"}
+    )
+    if conflict:
+        biz.raw_data = raw
         return
 
     count = getattr(result, "recovered_review_count", None)
     rating = getattr(result, "recovered_rating", None)
     recovered_date = getattr(result, "recovered_date", None)
-    current_date = getattr(biz, "latest_review_date", None)
+    current_date = (
+        getattr(biz, "latest_review_date", None)
+        or enrichment.get("effective_review_evidence_date")
+        or enrichment.get("review_evidence_date")
+    )
 
     rank = {
         EvidenceFreshness.UNKNOWN.value: 0,
@@ -116,28 +145,24 @@ def _apply_recovered_review_evidence(biz: DiscoveredBusiness, result: Any) -> No
         EvidenceFreshness.RECENT_ENOUGH.value: 2,
         EvidenceFreshness.RECENT.value: 3,
     }
-
-    replace_existing_evidence = False
+    replace_existing = False
     replace_date = False
 
     if recovered_date:
         if not current_date:
-            replace_existing_evidence = True
+            replace_existing = True
             replace_date = True
         else:
             new_fresh = OperationalValidator.evaluate_freshness(str(recovered_date))
             old_fresh = OperationalValidator.evaluate_freshness(str(current_date))
             new_rank = rank.get(new_fresh, 0)
             old_rank = rank.get(old_fresh, 0)
-
-            replace_existing_evidence = new_rank > old_rank
+            replace_existing = new_rank > old_rank
             if new_rank == old_rank:
                 old_dt = OperationalValidator.parse_evidence_date(str(current_date))
                 new_dt = OperationalValidator.parse_evidence_date(str(recovered_date))
-                replace_existing_evidence = bool(
-                    old_dt and new_dt and new_dt > old_dt
-                )
-            replace_date = replace_existing_evidence
+                replace_existing = bool(old_dt and new_dt and new_dt > old_dt)
+            replace_date = replace_existing
 
     def valid_count(value: Any) -> bool:
         try:
@@ -148,37 +173,43 @@ def _apply_recovered_review_evidence(biz: DiscoveredBusiness, result: Any) -> No
 
     def valid_rating(value: Any) -> bool:
         try:
-            return 0 < float(value) <= 5
+            number = float(value)
+            return 0 < number <= 5
         except (TypeError, ValueError):
             return False
 
-    current_count = getattr(biz, "review_count", None)
-    current_rating = getattr(biz, "rating", None)
-
-    # Fill missing/invalid metrics, or replace them only when the recovered
-    # evidence is better dated. Never let stale recovery overwrite valid data.
     if valid_count(count) and (
-        not valid_count(current_count) or replace_existing_evidence
+        not valid_count(getattr(biz, "review_count", None)) or replace_existing
     ):
         biz.review_count = count
 
     if valid_rating(rating) and (
-        not valid_rating(current_rating) or replace_existing_evidence
+        not valid_rating(getattr(biz, "rating", None)) or replace_existing
     ):
         biz.rating = rating
 
     if recovered_date and replace_date:
         biz.latest_review_date = recovered_date
 
-    raw = getattr(biz, "raw_data", None)
-    if not isinstance(raw, dict):
-        raw = {}
+    # Keep provider fields unchanged for audit; qualification reads effective fields.
+    if status in {"RECOVERED_RECENT", "RECOVERED_STALE"}:
+        effective_date = (
+            getattr(biz, "latest_review_date", None)
+            or enrichment.get("effective_review_evidence_date")
+            or enrichment.get("review_evidence_date")
+        )
+        if effective_date:
+            enrichment["effective_review_evidence_date"] = effective_date
+            enrichment["effective_review_freshness"] = (
+                OperationalValidator.evaluate_freshness(str(effective_date))
+            )
+            if valid_count(getattr(biz, "review_count", None)):
+                enrichment["effective_review_count"] = biz.review_count
+            if valid_rating(getattr(biz, "rating", None)):
+                enrichment["effective_review_rating"] = biz.rating
+            enrichment["recovery_status"] = status
+            raw["review_enrichment"] = enrichment
 
-    serializer = getattr(result, "to_dict", None)
-    if callable(serializer):
-        details = serializer()
-        if isinstance(details, dict):
-            raw["review_recovery"] = details
     biz.raw_data = raw
 
 

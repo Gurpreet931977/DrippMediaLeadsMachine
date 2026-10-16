@@ -121,5 +121,51 @@ class ReviewResearchTriggerTests(unittest.TestCase):
         self.assertEqual(biz.latest_review_date, today)
 
 
+    def test_recovered_current_evidence_updates_effective_freshness(self):
+        old = (datetime.now() - timedelta(days=240)).date().isoformat()
+        today = datetime.now().date().isoformat()
+        biz = self.make_business(count=45, rating=4.0, date=old, raw_data={
+            "review_enrichment": {
+                "review_evidence_date": old, "review_freshness": "STALE",
+                "review_status": "FOUND", "review_confidence": "MEDIUM",
+            }
+        })
+        result = SimpleNamespace(
+            status="RECOVERED_RECENT", recovered_review_count=130,
+            recovered_rating=4.6, recovered_date=today,
+            to_dict=lambda: {"status": "RECOVERED_RECENT"},
+        )
+        _apply_recovered_review_evidence(biz, result)
+        meta = biz.raw_data["review_enrichment"]
+        self.assertEqual(biz.review_count, 130)
+        self.assertEqual(biz.rating, 4.6)
+        self.assertEqual(meta["review_freshness"], "STALE")
+        self.assertEqual(meta["effective_review_evidence_date"], today)
+        self.assertNotEqual(meta["effective_review_freshness"], "STALE")
+
+    def test_explicit_conflict_blocks_recovered_metrics(self):
+        old = (datetime.now() - timedelta(days=240)).date().isoformat()
+        today = datetime.now().date().isoformat()
+        biz = self.make_business(count=45, rating=3.8, date=old, raw_data={
+            "review_enrichment": {
+                "review_evidence_date": old, "review_freshness": "STALE",
+                "review_status": "CONFLICT_REQUIRES_REVIEW",
+                "review_confidence": "CONFLICT",
+            }
+        })
+        result = SimpleNamespace(
+            status="RECOVERED_RECENT", recovered_review_count=140,
+            recovered_rating=4.8, recovered_date=today,
+            to_dict=lambda: {"status": "RECOVERED_RECENT"},
+        )
+        _apply_recovered_review_evidence(biz, result)
+        self.assertEqual(biz.review_count, 45)
+        self.assertEqual(biz.rating, 3.8)
+        self.assertEqual(biz.latest_review_date, old)
+        self.assertEqual(
+            biz.raw_data["review_enrichment"]["review_confidence"], "CONFLICT"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
