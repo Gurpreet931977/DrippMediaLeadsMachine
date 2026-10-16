@@ -334,6 +334,10 @@ class BusinessIdentityMatcher:
             seq_sim = difflib.SequenceMatcher(None, c_d_str, e_d_str).ratio()
 
             if c_dist_set == e_dist_set:
+                c_extra = set(c_non_stop) - c_dist_set
+                e_extra = set(e_non_stop) - e_dist_set
+                if len(c_dist_set) == 1 and c_extra and e_extra and c_extra.isdisjoint(e_extra):
+                    return 0.0, ["SHARED_SINGLE_DISTINCTIVE_TOKEN_WITH_CONFLICTING_DESCRIPTORS"], False
                 return 1.0, ["EXACT_DISTINCTIVE_NAME_MATCH"], True
 
             if c_dist_set.issubset(e_dist_set) or e_dist_set.issubset(c_dist_set):
@@ -560,7 +564,7 @@ class BusinessIdentityMatcher:
             elif phone_matched:
                 score = max(score, 0.85)
             elif not street_conflict and not pc_conflict and (c_city == e_city) and not c_addr["full_postcode"] and not e_addr["full_postcode"]:
-                score = max(score, 0.60)
+                score = max(score, 0.20)
             else:
                 score = max(score, 0.20)
         else:

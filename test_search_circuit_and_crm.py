@@ -859,21 +859,22 @@ class TestReviewExtractionAndCRMAudit(unittest.TestCase):
         self.assertEqual(res.outcome, IdentityMatchOutcome.NEW_BUSINESS.value)
 
     def test_33_google_sheets_duplicate(self):
-        """Verifies duplicate prevention on real Google Sheets cache data."""
-        with open("data/cache_sheets_leads.json") as f:
-            leads = json.load(f).get("leads", [])
-
-        # Seoul Kimchi is present in real Google Sheets cache
-        seoul_in_sheet = any("Seoul Kimchi" in (l.get("business_name") or l.get("company_name", "")) for l in leads)
-        self.assertTrue(seoul_in_sheet)
-
-        # Re-discovering Seoul Kimchi against the real sheet records must match EXISTING_BUSINESS
+        """Duplicate matching uses deterministic fixture data, not a local live-cache snapshot."""
+        leads = [{
+            "lead_id": "LEAD-MAN-4DB3EF",
+            "business_name": "Seoul Kimchi",
+            "company_name": "Seoul Kimchi",
+            "city": "Manchester",
+            "country": "United Kingdom",
+            "address": "275 Upper Brook St, Manchester M13 0HR, United Kingdom",
+            "phone": "+44 7745 527603",
+        }]
         incoming = {
             "company_name": "Seoul Kimchi",
             "city": "Manchester",
             "country": "United Kingdom",
             "address": "275 Upper Brook St, Manchester M13 0HR, United Kingdom",
-            "phone": "+44 7745 527603"
+            "phone": "+44 7745 527603",
         }
         res = self.matcher.match_candidate(incoming, leads)
         self.assertEqual(res.outcome, IdentityMatchOutcome.EXISTING_BUSINESS.value)
