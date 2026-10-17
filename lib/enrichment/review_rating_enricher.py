@@ -722,22 +722,48 @@ class ReviewRatingEnricher:
                 out_name = out_val.value if hasattr(out_val, "value") else str(out_val or "")
                 attempted_outcomes.append(out_name)
                 results_to_process.extend(res)
-                # Break early only if review evidence was extracted from the results so far
-                has_extracted_evidence = any(
-                    self.extract_evidence_from_snippet(
-                        snippet=r.get("snippet", ""),
-                        title=r.get("title", ""),
-                        url=r.get("result_url", ""),
+                # Keep the second targeted query available when the first only
+                # yields a partial metric (for example, review count without rating).
+                # Qualification thresholds are unchanged; this only improves evidence
+                # completeness and stops early once one identity-validated result has
+                # both review_count and rating.
+                has_complete_review_metrics = False
+                has_valid_evidence = False
+                has_qualifying_partial_metrics = False
+                for search_result in res:
+                    evidence = self.extract_evidence_from_snippet(
+                        snippet=search_result.get("snippet", ""),
+                        title=search_result.get("title", ""),
+                        url=search_result.get("result_url", ""),
                         business_name=business_name,
                         city=city,
                         street=street,
                         postcode=postcode,
                         country=country,
-                        provider=r.get("provider") or r.get("search_provider", "")
-                    ) is not None
-                    for r in res
-                )
-                if has_extracted_evidence:
+                        provider=search_result.get("provider") or search_result.get("search_provider", "")
+                    )
+                    if evidence is None or evidence.reject_reason:
+                        continue
+
+                    has_valid_evidence = True
+                    has_count = evidence.review_count is not None
+                    has_rating = evidence.rating is not None
+                    if has_count and has_rating:
+                        has_complete_review_metrics = True
+                        break
+
+                    # Only spend the second query when the partial evidence could
+                    # plausibly meet existing review thresholds. Avoid extra searches
+                    # for low review counts or known sub-threshold ratings.
+                    if (
+                        (has_count and evidence.review_count >= 50 and not has_rating)
+                        or (has_rating and evidence.rating >= 4.0 and not has_count)
+                    ):
+                        has_qualifying_partial_metrics = True
+
+                if has_complete_review_metrics:
+                    break
+                if has_valid_evidence and not has_qualifying_partial_metrics:
                     break
 
             # If all attempted queries failed
