@@ -150,7 +150,16 @@ class LeadGenerationPipeline:
                 all_research_entries.append(entry)
             c_keys = get_candidate_identifiers(biz)
             completed_candidate_ids.update(c_keys)
-            emit_log(f"  [Checkpoint Updated] Candidate '{biz.company_name}' recorded in checkpoint ({len(completed_candidate_ids)} IDs).")
+            checkpoint_payload = {
+                "checkpoint_update": True,
+                "processed_ids": list(completed_candidate_ids),
+                "stats": dict(stats),
+                "pipeline_run_id": stats.get("pipeline_run_id", ""),
+            }
+            emit_log(
+                f"  [Checkpoint Updated] Candidate '{biz.company_name}' recorded in checkpoint ({len(completed_candidate_ids)} IDs).",
+                checkpoint_payload,
+            )
 
         start_time = time.time()
         max_valid_research = requested_qualified_leads * max_research_multiplier
@@ -581,7 +590,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
                         continue
 
                     elif v_status == VerificationStatus.WEBSITE_BROKEN.value:
@@ -645,7 +654,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
                         continue
 
                     elif v_status == VerificationStatus.WEBSITE_UNCLEAR.value:
@@ -709,7 +718,7 @@ class LeadGenerationPipeline:
                             source_url=biz.google_maps_url,
                             date_researched=datetime.now().strftime("%Y-%m-%d")
                         )
-                        all_research_entries.append(res_entry)
+                        record_candidate_completed(biz, res_entry)
                         continue
 
                     # Confirmed NO WEBSITE!
