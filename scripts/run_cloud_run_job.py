@@ -261,6 +261,7 @@ def run_discovery_task(args) -> int:
             "pipeline_run_id": result.get("stats", {}).get("pipeline_run_id", ""),
             "stats": result.get("stats", {}),
             "elapsed_seconds": result.get("elapsed_seconds", 0),
+            "processed_candidates_count": result.get("stats", {}).get("valid_candidates_researched", 0),
             "leads_count": total_leads_count,
             "review_queue_count": len(result.get("review_queue", [])),
             "research_entries_count": len(result.get("research_entries", [])),
