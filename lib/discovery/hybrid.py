@@ -291,7 +291,12 @@ class HybridDiscoveryEngine(DiscoveryProvider):
 
         evidence_items = []
         for item in search_items:
-            ev_item = CreatorEvidenceValidator.evaluate_content_item(item, biz_dict)
+            post_data = dict(item) if isinstance(item, dict) else {}
+            if not post_data.get("caption") and post_data.get("snippet"):
+                post_data["caption"] = post_data["snippet"]
+            if not post_data.get("content_url") and post_data.get("result_url"):
+                post_data["content_url"] = post_data["result_url"]
+            ev_item = CreatorEvidenceValidator.evaluate_content_item(post_data or item, biz_dict)
             evidence_items.append(ev_item)
 
         summary = CreatorEvidenceValidator.summarize_evidence(evidence_items, biz_dict)
@@ -316,25 +321,43 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                 c_stats["candidate_official_handles"] += len(summary.discovered_official_handles)
                 for disc in summary.discovered_official_handles:
                     cand_handle = disc.get("candidate_handle")
-                    if cand_handle and not candidate.instagram_url:
-                        # Candidate handle discovered from creator reference
-                        # Must be independently verified before setting VERIFIED
-                        is_valid, v_handle, v_url, v_reason = SocialIdentityValidator.validate_instagram(
-                            cand_handle,
-                            candidate.company_name,
-                            candidate.city or city
-                        )
-                        if is_valid and v_url:
+                    is_verified = (
+                        disc.get("validation_status") == "VERIFIED"
+                        or disc.get("social_ownership_status") == "VERIFIED"
+                    )
+                    v_url = disc.get("verified_url") or disc.get("profile_url")
+                    if is_verified and v_url:
+                        if not candidate.instagram_url and "instagram" in v_url.lower():
                             candidate.instagram_url = v_url
-                            candidate.social_status = SocialStatus.SOCIAL_FOUND.value
-                            candidate.raw_data["candidate_official_account"] = cand_handle
-                            candidate.raw_data["social_ownership_status"] = "VERIFIED"
-                            c_stats["independently_verified_official_handles"] += 1
-                        else:
-                            candidate.raw_data["candidate_official_account"] = cand_handle
-                            candidate.raw_data["social_ownership_status"] = "UNVERIFIED"
+                        elif not candidate.facebook_url and "facebook" in v_url.lower():
+                            candidate.facebook_url = v_url
+                        candidate.social_status = SocialStatus.SOCIAL_FOUND.value
+                        candidate.raw_data["candidate_official_account"] = cand_handle
+                        candidate.raw_data["social_ownership_status"] = "VERIFIED"
+                        c_stats["independently_verified_official_handles"] += 1
+                    else:
+                        candidate.raw_data["candidate_official_account"] = cand_handle
+                        candidate.raw_data["social_ownership_status"] = "UNVERIFIED"
 
         return summary
+
+    def discover_from_web_search(
+        self,
+        city: str,
+        country: str,
+        industry: str,
+        limit: int = 40
+    ) -> List[DiscoveredBusiness]:
+        """
+        Independent web-search discovery fallback when primary providers fail.
+        Uses WebSearchProvider.discover_businesses to surface candidate businesses.
+        """
+        return self.web_search.discover_businesses(
+            city=city,
+            country=country,
+            industry=industry,
+            limit=limit
+        )
 
     def search_businesses(
         self,
@@ -444,7 +467,32 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                 else:
                     pool[canon_id] = cand
 
-        # Step 3: Enrich candidates from direct social-profile search results.
+        # Step 3: Web Search Discovery & Enrichment
+        # A) Primary failure fallback: When primary OSM encounters an outage,
+        # invoke independent WebSearch discovery fallback to surface candidate businesses.
+        web_fallback_error = None
+        if osm_error is not None and len(pool) < limit:
+            try:
+                web_candidates = self.discover_from_web_search(
+                    city=city,
+                    country=country,
+                    industry=industry,
+                    limit=limit - len(pool)
+                )
+                for cand in web_candidates:
+                    self.transparency_stats["businesses_discovered_total"] += 1
+                    self.transparency_stats["by_source"]["WEB_SEARCH"] += 1
+                    canon_id = self._canonical_identity(cand.company_name, cand.city, cand.target_country)
+                    if canon_id in pool:
+                        duplicates_in_round += 1
+                        pool[canon_id] = self.merge_candidates(pool[canon_id], cand)
+                    else:
+                        pool[canon_id] = cand
+            except Exception as e:
+                web_fallback_error = e
+                logger.error(f"[HybridDiscovery] Web search discovery fallback failed: {e}")
+
+        # B) Enrich candidates from direct social-profile search results.
         targets = [
             c for c in pool.values()
             if not c.instagram_url or not c.facebook_url
@@ -638,7 +686,16 @@ class HybridDiscoveryEngine(DiscoveryProvider):
 
         # If pool is empty AND primary provider encountered an outage, do NOT report a false empty success
         if not pool and osm_error is not None:
-            err_msg = f"Discovery provider outage: Primary OSM discovery failed ({osm_error}) and no secondary candidates available."
+            if web_fallback_error is not None:
+                err_msg = (
+                    f"Discovery provider outage: Primary OSM discovery failed ({osm_error}) "
+                    f"and web-search fallback failed ({web_fallback_error})."
+                )
+            else:
+                err_msg = (
+                    f"Discovery provider outage: Primary OSM discovery failed ({osm_error}) "
+                    f"and web-search fallback returned no valid candidates."
+                )
             logger.error(f"[HybridDiscovery] {err_msg}")
             raise RuntimeError(err_msg) from osm_error
 

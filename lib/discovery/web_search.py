@@ -24,8 +24,11 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 import requests
 from urllib.parse import quote_plus
-
 from lib.discovery.base import DiscoveryProvider
+from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
+from lib.validation.country_validator import CountryValidator
+from lib.discovery.boundary_validator import CityBoundaryValidator
+from lib.discovery.address_normalizer import AddressNormalizer, UK_POSTCODE_REGEX
 
 import random
 from enum import Enum
@@ -329,6 +332,301 @@ class ProviderCircuitBreaker:
             "retry_successes": self.retry_successes,
             "retry_failures": self.retry_failures
         }
+
+
+_DEFAULT_COUNTRY_VALIDATOR: Optional[CountryValidator] = None
+_DEFAULT_BOUNDARY_VALIDATOR: Optional[CityBoundaryValidator] = None
+
+def _get_default_country_validator() -> CountryValidator:
+    global _DEFAULT_COUNTRY_VALIDATOR
+    if _DEFAULT_COUNTRY_VALIDATOR is None:
+        _DEFAULT_COUNTRY_VALIDATOR = CountryValidator()
+    return _DEFAULT_COUNTRY_VALIDATOR
+
+def _get_default_boundary_validator() -> CityBoundaryValidator:
+    global _DEFAULT_BOUNDARY_VALIDATOR
+    if _DEFAULT_BOUNDARY_VALIDATOR is None:
+        _DEFAULT_BOUNDARY_VALIDATOR = CityBoundaryValidator()
+    return _DEFAULT_BOUNDARY_VALIDATOR
+
+
+def convert_search_result_to_candidate(
+    result: Dict[str, Any],
+    city: str,
+    country: str,
+    industry: str,
+    country_validator: Optional[CountryValidator] = None,
+    boundary_validator: Optional[CityBoundaryValidator] = None
+) -> Optional[DiscoveredBusiness]:
+    """
+    Converts a valid search result dictionary into a candidate DiscoveredBusiness record
+    only when sufficient business identity and target-location evidence exist.
+    Reuses existing validation and deduplication models.
+    """
+    if isinstance(result, DiscoveredBusiness):
+        return result
+
+    if not isinstance(result, dict):
+        return None
+
+    title = (result.get("title") or "").strip()
+    snippet = (result.get("snippet") or result.get("content") or "").strip()
+    raw_url = (result.get("result_url") or result.get("url") or "").strip()
+    query = (result.get("query") or "").strip()
+
+    if not title:
+        return None
+
+    # 1. Reject forums, social aggregators, directories, news, and listicle sites
+    DISALLOWED_DISCOVERY_HOSTS = [
+        "reddit.com", "quora.com", "wikipedia.org", "tripadvisor.com",
+        "tripadvisor.co.uk", "yelp.com", "yelp.co.uk", "opentable.co.uk",
+        "opentable.com", "timeout.com", "theguardian.com", "bbc.co.uk",
+        "manchestereveningnews.co.uk", "eater.com", "cntraveller.com",
+        "visitmanchester.com", "confidentialguides.com", "squaremeal.co.uk",
+        "happycow.net", "trevors.org", "linkedin.com", "youtube.com",
+        "x.com", "twitter.com"
+    ]
+    raw_url_lower = raw_url.lower()
+    if any(host in raw_url_lower for host in DISALLOWED_DISCOVERY_HOSTS):
+        return None
+
+    # Reject forum questions and discussion titles
+    if "?" in title:
+        return None
+
+    # 1b. Reject listicles, directories, roundups, articles
+    LISTICLE_PATTERNS = [
+        r'\b(?:top|best)\s+\d+\b',
+        r'\b\d+\s+(?:of\s+the\s+)?(?:best|top|greatest|favourite|favorite|must-visit)\b',
+        r'\b(?:the\s+)?(?:best|top|greatest)\s+(?:\w+\s+){0,3}(?:restaurants|cafes|bistros|places|spots|bars|pubs|eats|food)\b',
+        r'\bguide\s+to\b',
+        r'\bplaces\s+to\s+eat\b',
+        r'\bwhere\s+to\s+eat\b',
+        r'\bcheap\s+eats\b',
+        r'\broundup\b',
+        r'\bdirectory\b',
+        r'\blist\s+of\b',
+        r'\bthe 10 best\b',
+        r'\bthe best \w+ in\b',
+        r'\bthings\s+to\s+do\b',
+        r'\bwhat\s+to\s+do\b',
+        r'\bfood\s+guide\b',
+        r'\brestaurant\s+guide\b',
+        r'\brestaurant\s+awards\b',
+        r'\boptions\s+for\b',
+        r'\brecommendations\b',
+        r'\bindie\s+in\s+the\s+city\b',
+        r'\bsuppliers?\b',
+        r'\blink\s+to\b',
+        r'\bno\s+website\b',
+        r'\bfamily\s+friendly\s+restaurants?\b'
+    ]
+    for pat in LISTICLE_PATTERNS:
+        if re.search(pat, title, re.IGNORECASE):
+            return None
+
+    # 2. Extract and clean business name
+    clean_title = re.sub(r'^(?:welcome to|home\s*[-|:]|about\s*[-|:]|about us\s*[-|:])\s*', '', title, flags=re.IGNORECASE).strip()
+    clean_title = re.sub(r'\s*\(@[a-zA-Z0-9._-]+\)', '', clean_title)
+    clean_title = re.sub(r'\s*•\s*Instagram.*$', '', clean_title, flags=re.IGNORECASE)
+    clean_title = re.sub(r'\s*[-|•]\s*Facebook.*$', '', clean_title, flags=re.IGNORECASE)
+    clean_title = re.sub(r'\s*[-|•]\s*Tripadvisor.*$', '', clean_title, flags=re.IGNORECASE)
+    clean_title = re.sub(r'\s*[-|•]\s*Yelp.*$', '', clean_title, flags=re.IGNORECASE)
+
+    parts = [p.strip() for p in re.split(r'\s+[-|:•–—]\s+', clean_title) if p.strip()]
+    if not parts:
+        return None
+
+    name_candidate = parts[0]
+    if name_candidate.lower() in ["home", "welcome", "about", "about us", "menu", "contact", "contact us"] and len(parts) > 1:
+        name_candidate = parts[1]
+
+    cleaned_name = name_candidate.strip(" \"'()[]{}.,-")
+    city_pat = rf'\b{re.escape(city)}\b'
+    stripped_city_name = re.sub(city_pat, '', cleaned_name, flags=re.IGNORECASE).strip(" \"'()[]{}.,-")
+    if len(stripped_city_name) >= 3 and re.search(r'[a-zA-Z]', stripped_city_name):
+        if stripped_city_name.lower() not in ["independent", "family", "the", "restaurant", "cafe", "bar", "bistro", "pub", "grill"]:
+            company_name = stripped_city_name
+        else:
+            company_name = cleaned_name
+    else:
+        company_name = cleaned_name
+
+    company_name = re.sub(r'\s+', ' ', company_name).strip()
+
+    # 3. Identity validation
+    if len(company_name) < 3 or len(company_name) > 70:
+        return None
+    if not re.search(r'[a-zA-Z]', company_name):
+        return None
+
+    low_name = company_name.lower()
+    GENERIC_NAME_BLACKLIST = {
+        "restaurant", "restaurants", "cafe", "cafes", "bistro", "bistros",
+        "bar", "bars", "pub", "pubs", "food", "dining", "eatery", "eateries",
+        "fast food", "takeaway", "takeaways", "grill", "kitchen", "diner",
+        "home", "welcome", "about us", "contact us", "menu", "reviews",
+        "independent restaurant", "family restaurant", "italian restaurant",
+        "best restaurants", "best independent restaurants", "places to eat",
+        "tripadvisor", "yelp", "instagram", "facebook", "deliveroo", "ubereats",
+        "just eat", "just-eat", "opentable", "wikipedia", "timeout", "michelin"
+    }
+    if low_name in GENERIC_NAME_BLACKLIST:
+        return None
+    if low_name.startswith(("best ", "top ", "the best ", "independent ", "family ", "list of ", "guide to ")):
+        return None
+    if re.search(r'\b(?:restaurants?|cafes?|bistros?|bars?|pubs?|places|eateries|suppliers?)\b', low_name) and \
+       re.search(r'\b(?:best|top|independent|family|guide|options|favourite|favorite|friendly)\b', low_name):
+        return None
+
+    if low_name in [
+        f"{industry.lower()} in {city.lower()}",
+        f"{industry.lower()} {city.lower()}",
+        f"independent {industry.lower()} {city.lower()}",
+        f"independent {industry.lower()}"
+    ]:
+        return None
+
+    # 4. Target-Location Evidence Verification
+    combined_text = f"{title} {snippet} {raw_url}".lower()
+    city_lower = city.lower()
+
+    has_city_mention = city_lower in combined_text
+    postcode_match = UK_POSTCODE_REGEX.search(f"{title} {snippet}")
+    extracted_postcode = postcode_match.group(1).upper() if postcode_match else ""
+
+    MANCHESTER_AREAS = [
+        "ancoats", "didsbury", "chorlton", "deansgate", "northern quarter",
+        "spinningfields", "castlefield", "rusholme", "fallowfield", "salford",
+        "trafford", "wythenshawe", "cheetham", "prestwich", "piccadilly",
+        "oxford road", "peter street", "king street", "cross street", "arndale"
+    ]
+    has_area_mention = any(a in combined_text for a in MANCHESTER_AREAS) if city_lower == "manchester" else False
+
+    if not (has_city_mention or extracted_postcode or has_area_mention):
+        return None
+
+    # Parse address components
+    addr_profile = AddressNormalizer.parse_address_string(
+        address=snippet,
+        city=city,
+        country=country,
+        company_name=company_name
+    )
+    street = addr_profile.street or ""
+    house_number = addr_profile.house_number or ""
+    postcode = extracted_postcode or addr_profile.postcode or ""
+    full_address = addr_profile.normalized_address or f"{city}, {country}"
+
+    phone = ""
+    phone_m = re.search(r'\b(?:(?:\+44\s?\(0\)\s?|\+44\s?|0)(?:1\d{1,3}|2\d{1,2}|3\d{2}|7\d{3})\s?\d{3,4}\s?\d{3,4})\b', snippet)
+    if phone_m:
+        phone = phone_m.group(0).strip()
+
+    # 5. Target Country Validation
+    cv = country_validator or _get_default_country_validator()
+    observed_text = f"{addr_profile.normalized_address or ''} {snippet}".strip()
+    c_status, det_country, reg, pcode, c_evidence = cv.validate(
+        target_country=country,
+        address=observed_text or full_address,
+        phone=phone,
+        raw_data={"title": title, "snippet": snippet, "url": raw_url}
+    )
+    if c_status != CountryStatus.COUNTRY_MATCH.value:
+        return None
+
+    # 6. City Boundary Validation
+    bv = boundary_validator or _get_default_boundary_validator()
+    b_res = bv.validate_candidate(
+        city=city,
+        country=country,
+        lat=None,
+        lon=None,
+        address=full_address,
+        detected_city=addr_profile.city or city
+    )
+    if not b_res.city_match:
+        return None
+
+    # 7. Online presence classification (Website, Instagram, Facebook)
+    raw_website = ""
+    instagram_url = ""
+    facebook_url = ""
+    social_status = SocialStatus.SOCIAL_UNKNOWN.value
+
+    AGGREGATOR_DOMAINS = [
+        "tripadvisor", "yelp", "foursquare", "opentable", "deliveroo",
+        "ubereats", "just-eat", "justeat", "wikipedia", "timeout",
+        "michelin", "goodfoodguide", "happycow", "squaremeal", "booking.com",
+        "trivago", "expedia", "trustpilot", "reddit.com", "bbc.co.uk",
+        "manchestereveningnews.co.uk", "theguardian.com", "standard.co.uk"
+    ]
+
+    url_lower = raw_url.lower()
+    if "instagram.com/" in url_lower:
+        instagram_url = raw_url
+        social_status = SocialStatus.SOCIAL_FOUND.value
+    elif "facebook.com/" in url_lower:
+        facebook_url = raw_url
+        social_status = SocialStatus.SOCIAL_FOUND.value
+    elif any(dom in url_lower for dom in AGGREGATOR_DOMAINS):
+        raw_website = ""
+    else:
+        raw_website = raw_url
+
+    if not instagram_url:
+        ig_m = re.search(r'https?://(?:www\.)?instagram\.com/[a-zA-Z0-9._-]+/?', snippet)
+        if ig_m:
+            instagram_url = ig_m.group(0)
+            social_status = SocialStatus.SOCIAL_FOUND.value
+
+    if not facebook_url:
+        fb_m = re.search(r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9._-]+/?', snippet)
+        if fb_m:
+            facebook_url = fb_m.group(0)
+            social_status = SocialStatus.SOCIAL_FOUND.value
+
+    return DiscoveredBusiness(
+        company_name=company_name,
+        category=industry,
+        city=city,
+        target_country=country,
+        detected_country=det_country or country,
+        country_status=c_status,
+        country_evidence=c_evidence,
+        region=reg or addr_profile.city or "",
+        postcode=postcode or pcode or "",
+        address=full_address,
+        phone=phone,
+        raw_website=raw_website,
+        google_maps_url="",
+        instagram_url=instagram_url,
+        facebook_url=facebook_url,
+        social_status=social_status,
+        discovery_query=query,
+        discovery_source="WEB_SEARCH",
+        source_id=raw_url,
+        street=street,
+        house_number=house_number,
+        source_confidence="MEDIUM",
+        city_match=b_res.city_match,
+        city_match_reason=b_res.city_match_reason,
+        boundary_source=b_res.boundary_source,
+        boundary_validation_method=b_res.boundary_validation_method,
+        evidence_sources={
+            "name": "WEB_SEARCH",
+            "location": "WEB_SEARCH",
+            "website": "WEB_SEARCH" if raw_website else "NONE",
+            "instagram": "WEB_SEARCH" if instagram_url else "NONE",
+            "facebook": "WEB_SEARCH" if facebook_url else "NONE",
+            "phone": "WEB_SEARCH" if phone else "NONE"
+        },
+        raw_data={
+            **result,
+            "social_ownership_status": "UNVERIFIED"
+        }
+    )
 
 
 class WebSearchProvider(DiscoveryProvider):
@@ -1316,7 +1614,7 @@ class WebSearchProvider(DiscoveryProvider):
     ) -> List[Any]:
         """
         Discovery query generator using diverse query families.
-        Surfaces independent restaurants without websites.
+        Surfaces independent restaurants without websites (raw results for enrichment).
         """
         industry_term = re.sub(
             r"^(?:(?:independent|family[- ]run)\s+)+",
@@ -1379,6 +1677,67 @@ class WebSearchProvider(DiscoveryProvider):
                 if len(all_results) >= result_limit:
                     return all_results
         return all_results
+
+    def discover_businesses(
+        self,
+        city: str,
+        country: str,
+        industry: str,
+        limit: int = 40,
+        **kwargs
+    ) -> List[DiscoveredBusiness]:
+        """
+        Independent web-search discovery fallback when primary providers fail.
+        Queries diverse discovery families and converts valid search results
+        into validated DiscoveredBusiness records with strict location and identity gates.
+        """
+        queries = [
+            f'"independent {industry.lower()}" {city}',
+            f'"{industry.lower()}" "{city}" "no website"',
+            f'"{industry.lower()}" in {city}',
+            f'"family {industry.lower()}" {city}'
+        ]
+        candidates: List[DiscoveredBusiness] = []
+        seen_identities = set()
+        any_query_attempted = False
+        all_failed = True
+        last_error = ""
+
+        for q in queries:
+            if len(candidates) >= limit:
+                break
+            any_query_attempted = True
+            search_res = self.search_web(q, num_results=min(limit, 10))
+            is_succeeded = getattr(search_res, "succeeded", True if isinstance(search_res, list) and not hasattr(search_res, "succeeded") else False)
+            if is_succeeded:
+                all_failed = False
+                for r in search_res:
+                    if isinstance(r, DiscoveredBusiness):
+                        cand = r
+                    else:
+                        cand = convert_search_result_to_candidate(
+                            result=r,
+                            city=city,
+                            country=country,
+                            industry=industry
+                        )
+                    if not cand:
+                        continue
+                    canon_key = f"{re.sub(r'[^a-z0-9]', '', cand.company_name.lower())}@{cand.city.lower()}@{cand.target_country.lower()}"
+                    if canon_key in seen_identities:
+                        continue
+                    seen_identities.add(canon_key)
+                    candidates.append(cand)
+                    if len(candidates) >= limit:
+                        break
+            else:
+                last_error = getattr(search_res, "error", "") or str(getattr(search_res, "outcome", ""))
+
+        if any_query_attempted and all_failed:
+            raise RuntimeError(f"WebSearchProvider unavailable or failed: {last_error or 'all queries failed'}")
+
+        self.metrics.candidates_unique = len(candidates)
+        return candidates
 
     def search_social_references(
         self,
