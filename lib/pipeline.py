@@ -120,8 +120,13 @@ class LeadGenerationPipeline:
                     payload = dict(data or {})
                     if "processed_ids" not in payload:
                         payload["processed_ids"] = list(completed_candidate_ids)
-                    if "stats" not in payload and "stats" in locals():
-                        payload["stats"] = dict(stats)
+                    if "stats" not in payload:
+                        try:
+                            # `stats` belongs to the enclosing run() scope, not emit_log() locals.
+                            # Header messages emitted before stats initialization simply omit it.
+                            payload["stats"] = dict(stats)
+                        except NameError:
+                            pass
                     log_callback(msg, payload)
                 except Exception as ex:
                     print(f"Callback error: {ex}")
