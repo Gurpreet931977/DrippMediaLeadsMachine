@@ -5,7 +5,7 @@ Standalone Execution Entrypoint for Google Cloud Run Jobs.
 
 Executes autonomous discovery tasks separately from HTTP requests with:
 1. Distributed operational lease acquisition in Cloud Firestore (prevents dual-execution collisions).
-2. Resumable checkpointing (resumes interrupted runs without repeating candidates or scraping).
+2. Operational progress checkpoints with safe restart after interruption (no lead rows stored in Firestore).
 3. Authoritative Google Sheets CRM deduplication (LEADS, REVIEW_QUEUE, RESEARCH_LOG).
 4. Strict safety invariant enforcement (TRAVEL_MODE, Commercial Actions Locked, Rule B Frozen).
 5. Safe exit codes (0 for graceful completion or active lease skip, non-zero for fatal failures).
@@ -149,39 +149,23 @@ def run_discovery_task(args) -> int:
         )
         return 0  # Clean exit to avoid Cloud Run retry loop on concurrency lock
 
-    # 4. Check for prior resumable checkpoint in Firestore
+    # 4. Inspect operational checkpoint state.
+    # This Firestore checkpoint intentionally stores IDs and aggregate metrics only,
+    # never lead/research records. Therefore an interrupted run must restart from
+    # scratch instead of skipping candidates whose full outputs were only in memory.
     checkpoint = firestore_store.get_checkpoint(run_id)
     processed_ids: List[str] = []
-    prior_qualified = 0
     if checkpoint:
-        processed_ids = checkpoint.get("processed_ids", [])
-        prior_qualified = checkpoint.get("stats", {}).get("outreach_ready", 0)
-        logger.info(
-            "Found prior checkpoint for run %s. Resuming execution with %d pre-processed candidates (%d already qualified).",
-            run_id, len(processed_ids), prior_qualified
+        old_ids = checkpoint.get("processed_ids", [])
+        old_count = len(old_ids) if isinstance(old_ids, list) else 0
+        logger.warning(
+            "Found an incomplete checkpoint for run %s (%d candidate keys). "
+            "Restarting from scratch because checkpoint storage intentionally excludes lead outputs.",
+            run_id, old_count
         )
+        firestore_store.delete_checkpoint(run_id)
     else:
         logger.info("Starting fresh discovery run %s for %s (%d requested leads)...", run_id, cities, args.leads)
-
-    remaining_leads = max(0, args.leads - prior_qualified) if checkpoint else args.leads
-    if checkpoint and remaining_leads == 0:
-        logger.info("Target qualified leads (%d) already satisfied in prior checkpoint. Marking run complete.", args.leads)
-        firestore_store.save_run_record(run_id, {
-            "run_id": run_id,
-            "execution_id": execution_id,
-            "status": "COMPLETED",
-            "market": f"Manchester, {country}",
-            "country": country,
-            "cities": cities,
-            "industry": args.industry,
-            "qualified_leads_needed": args.leads,
-            "dry_run": is_dry_run,
-            "finished_at": datetime.now(timezone.utc).isoformat(),
-            "leads_count": prior_qualified,
-            "processed_candidates_count": len(processed_ids),
-        })
-        firestore_store.delete_checkpoint(run_id)
-        return 0
 
     now_iso = datetime.now(timezone.utc).isoformat()
     initial_record = {
@@ -196,7 +180,8 @@ def run_discovery_task(args) -> int:
         "industry": args.industry,
         "qualified_leads_needed": args.leads,
         "dry_run": is_dry_run,
-        "processed_candidates_count": len(processed_ids),
+        "processed_candidates_count": 0,
+        "recovery_policy": "RESTART_FROM_SCRATCH_ON_INCOMPLETE_RUN",
     }
     firestore_store.save_run_record(run_id, initial_record)
 
@@ -219,15 +204,19 @@ def run_discovery_task(args) -> int:
     heartbeat_thread = threading.Thread(target=heartbeat_worker, daemon=True, name="LeaseHeartbeatThread")
     heartbeat_thread.start()
 
-    # 7. Progress callback updates checkpoint in Firestore
+    # 7. Persist operational progress only on explicit candidate-completion events.
+    # Full lead/research payloads stay in memory and, outside dry-run, in the authoritative Sheets CRM.
     def job_progress_callback(msg: str, data: Optional[Dict[str, Any]] = None):
-        if data and "processed_ids" in data:
+        if data and data.get("checkpoint_update") is True:
             current_processed = data.get("processed_ids", [])
             firestore_store.save_checkpoint(run_id, {
+                "checkpoint_schema_version": 2,
+                "recovery_policy": "RESTART_FROM_SCRATCH_ON_INCOMPLETE_RUN",
                 "market_id": f"Manchester, {country}",
                 "status": "RUNNING",
                 "processed_ids": current_processed,
                 "stats": data.get("stats", {}),
+                "pipeline_run_id": data.get("pipeline_run_id", ""),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             })
         logger.info("[PROGRESS] %s", msg)
@@ -255,7 +244,7 @@ def run_discovery_task(args) -> int:
             country=country,
             cities=cities,
             industry=args.industry,
-            requested_qualified_leads=remaining_leads,
+            requested_qualified_leads=args.leads,
             batch_size=args.batch_size,
             max_research_multiplier=args.max_multiplier,
             log_callback=job_progress_callback,
@@ -263,13 +252,16 @@ def run_discovery_task(args) -> int:
         )
 
         # 8. Finalize run record and remove checkpoint upon success
-        total_leads_count = prior_qualified + len(result.get("leads", []))
+        total_leads_count = len(result.get("leads", []))
         final_record = {
             **initial_record,
             "status": "COMPLETED",
             "finished_at": datetime.now(timezone.utc).isoformat(),
-            "results": result,
+            # Aggregate counters only; never serialize full lead/research outputs to Firestore.
+            "pipeline_run_id": result.get("stats", {}).get("pipeline_run_id", ""),
             "stats": result.get("stats", {}),
+            "elapsed_seconds": result.get("elapsed_seconds", 0),
+            "processed_candidates_count": result.get("stats", {}).get("valid_candidates_researched", 0),
             "leads_count": total_leads_count,
             "review_queue_count": len(result.get("review_queue", [])),
             "research_entries_count": len(result.get("research_entries", [])),
