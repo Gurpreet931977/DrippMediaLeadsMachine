@@ -27,11 +27,14 @@ import sys
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+from lib.types import DiscoveredBusiness
 
 from lib.system.system_config import (
     SystemConfig,
@@ -46,6 +49,28 @@ from scripts.security_secret_scan import scan_file, check_gitignore, PATTERNS
 from scripts.run_technical_pipeline import assert_safety_invariants, run_pipeline
 from scripts.run_freshness_check import run_freshness
 from sheets_sync import get_sheet_client, get_worksheet
+
+
+def _make_synthetic_candidate() -> DiscoveredBusiness:
+    return DiscoveredBusiness(
+        company_name="Rudy's Pizza Napoletana",
+        category="Restaurant",
+        city="Manchester",
+        target_country="United Kingdom",
+        detected_country="United Kingdom",
+        country_status="COUNTRY_MATCH",
+        address="9 Cotton St, Ancoats, Manchester M4 5BF",
+        postcode="M4 5BF",
+        phone="01618343456",
+        raw_website="",
+        lat=53.4831,
+        lon=-2.2312,
+        discovery_source="FIXTURE",
+        operational_status="ACTIVE_CONFIRMED",
+        review_count=120,
+        rating=4.6,
+        latest_review_date=datetime.now(timezone.utc).date().isoformat(),
+    )
 
 
 class TestGitHubActionsCompatibility(unittest.TestCase):
@@ -105,14 +130,19 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
     def test_05_dry_run_safety(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             bootstrap_storage_baseline(data_dir=tmp_dir)
-            report = run_pipeline(
-                market_id="MANCHESTER_UK",
-                lead_limit=2,
-                dry_run=True,
-                report_path=os.path.join(tmp_dir, "test_report.json"),
-                data_dir=tmp_dir,
-            )
+            with patch(
+                "lib.discovery.osm.OpenStreetMapProvider.search_businesses",
+                return_value=[_make_synthetic_candidate()],
+            ):
+                report = run_pipeline(
+                    market_id="MANCHESTER_UK",
+                    lead_limit=2,
+                    dry_run=True,
+                    report_path=os.path.join(tmp_dir, "test_report.json"),
+                    data_dir=tmp_dir,
+                )
             self.assertTrue(report["dry_run"])
+            self.assertGreater(report["stats"]["processed_count"], 0)
             self.assertEqual(report["stats"]["crm_written_count"], 0)
             self.assertEqual(report["stats"]["outreach_dispatched_count"], 0)
             self.assertEqual(report["travel_mode_active"], True)
@@ -245,13 +275,17 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             bootstrap_storage_baseline(data_dir=tmp_dir)
             report_file = os.path.join(tmp_dir, "custom_report.json")
-            report = run_pipeline(
-                market_id="MANCHESTER_UK",
-                lead_limit=1,
-                dry_run=True,
-                report_path=report_file,
-                data_dir=tmp_dir,
-            )
+            with patch(
+                "lib.discovery.osm.OpenStreetMapProvider.search_businesses",
+                return_value=[_make_synthetic_candidate()],
+            ):
+                report = run_pipeline(
+                    market_id="MANCHESTER_UK",
+                    lead_limit=1,
+                    dry_run=True,
+                    report_path=report_file,
+                    data_dir=tmp_dir,
+                )
             self.assertTrue(os.path.exists(report_file))
             with open(report_file, "r", encoding="utf-8") as rf:
                 loaded = json.load(rf)
@@ -353,7 +387,11 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         engine = HybridDiscoveryEngine(mode=DiscoveryMode.FREE_LOCAL)
         self.assertFalse(engine.apify_enabled)
         self.assertIsNone(engine.apify)
-        health = engine.health_check()
+        with patch(
+            "lib.discovery.osm.OpenStreetMapProvider.health_check",
+            return_value={"provider": "OpenStreetMap", "status": "CONNECTED", "endpoint": "mock://overpass"},
+        ):
+            health = engine.health_check()
         self.assertEqual(health["apify_enabled"], False)
 
     # -------------------------------------------------------------------------
@@ -365,13 +403,17 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         try:
             from scripts.run_technical_pipeline import run_pipeline
             with tempfile.TemporaryDirectory() as tmp_dir:
-                report = run_pipeline(
-                    market_id="MANCHESTER_UK",
-                    lead_limit=1,
-                    dry_run=True,
-                    report_path=os.path.join(tmp_dir, "apify_free_report.json"),
-                    data_dir=tmp_dir,
-                )
+                with patch(
+                    "lib.discovery.osm.OpenStreetMapProvider.search_businesses",
+                    return_value=[_make_synthetic_candidate()],
+                ):
+                    report = run_pipeline(
+                        market_id="MANCHESTER_UK",
+                        lead_limit=1,
+                        dry_run=True,
+                        report_path=os.path.join(tmp_dir, "apify_free_report.json"),
+                        data_dir=tmp_dir,
+                    )
                 self.assertTrue(report["dry_run"])
                 self.assertEqual(report["stats"]["crm_written_count"], 0)
         finally:
