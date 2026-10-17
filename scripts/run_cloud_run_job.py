@@ -5,7 +5,7 @@ Standalone Execution Entrypoint for Google Cloud Run Jobs.
 
 Executes autonomous discovery tasks separately from HTTP requests with:
 1. Distributed operational lease acquisition in Cloud Firestore (prevents dual-execution collisions).
-2. Resumable checkpointing (resumes interrupted runs without repeating candidates or scraping).
+2. Operational progress checkpoints with safe restart after interruption (no lead rows stored in Firestore).
 3. Authoritative Google Sheets CRM deduplication (LEADS, REVIEW_QUEUE, RESEARCH_LOG).
 4. Strict safety invariant enforcement (TRAVEL_MODE, Commercial Actions Locked, Rule B Frozen).
 5. Safe exit codes (0 for graceful completion or active lease skip, non-zero for fatal failures).
