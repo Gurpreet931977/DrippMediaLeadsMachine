@@ -96,6 +96,10 @@ jobs:
             test_search_hardening.py \
             test_uk_entity_contactability.py
 
+      - name: "Run Discovery Resilience & Checkpoint Regression Tests"
+        run: |
+          pytest -v test_osm_overpass_resilience.py
+
       - name: "Upload Verification Artifacts"
         if: always()
         uses: actions/upload-artifact@v4
