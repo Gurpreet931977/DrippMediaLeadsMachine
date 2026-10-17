@@ -18,7 +18,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import requests
 
-from lib.types import DiscoveredBusiness
+from lib.types import DiscoveredBusiness, Lead, ResearchLogEntry
 from lib.discovery.osm import (
     OpenStreetMapProvider,
     OverpassQueryError,
@@ -626,8 +626,109 @@ class TestOSMOverpassResilience(unittest.TestCase):
         ]
         self.assertTrue(checkpoint_events, "Expected a checkpoint callback for the processed fixture")
         self.assertIn("stats", checkpoint_events[-1])
+        self.assertTrue(checkpoint_events[-1].get("checkpoint_update"))
+        self.assertIn("pipeline_run_id", checkpoint_events[-1])
         self.assertEqual(checkpoint_events[-1]["stats"]["country_mismatches"], 1)
         self.assertEqual(checkpoint_events[-1]["stats"]["wrong_country_results"], 1)
+
+    def test_cloud_run_restart_is_safe_and_run_record_contains_metadata_only(self):
+        """Incomplete checkpoints must not skip in-memory outputs, and Firestore run records must not contain lead rows."""
+        mock_store = FirestoreStateStore(force_mock=True)
+        run_id = "RUN-RESTART-METADATA-ONLY-001"
+        mock_store.save_checkpoint(run_id, {
+            "processed_ids": ["bizname:previouscandidate@united kingdom"],
+            "stats": {"outreach_ready": 1},
+            "status": "RUNNING",
+        })
+
+        args = argparse.Namespace(
+            country="United Kingdom",
+            cities=["Manchester"],
+            industry="Restaurants",
+            leads=1,
+            batch_size=10,
+            max_multiplier=5,
+            run_id=run_id,
+            dry_run=True,
+            lease_name="test_restart_metadata_lease",
+            ttl_seconds=60.0,
+        )
+
+        lead = Lead(
+            lead_id="LEAD-TEST-001",
+            company_name="Synthetic Resume Fixture",
+            industry="Restaurants",
+            target_country="United Kingdom",
+            country="United Kingdom",
+            city="Manchester",
+            qualification_state="OUTREACH_READY",
+        )
+        research = ResearchLogEntry(
+            research_id="RES-TEST-001",
+            company_name="Synthetic Resume Fixture",
+            industry="Restaurants",
+            target_country="United Kingdom",
+            detected_country="United Kingdom",
+            country_status="COUNTRY_MATCH",
+            city="Manchester",
+            qualification_state="OUTREACH_READY",
+            qualification_status="QUALIFIED",
+        )
+        pipeline_result = {
+            "leads": [lead],
+            "review_queue": [],
+            "research_entries": [research],
+            "stats": {
+                "pipeline_run_id": "PIPE-MAN-UNIT",
+                "outreach_ready": 1,
+                "manual_review": 0,
+                "saved_to_leads": 0,
+                "saved_to_review_queue": 0,
+                "saved_to_research_log": 0,
+            },
+            "elapsed_seconds": 0.1,
+        }
+        mock_pipeline = MagicMock()
+        mock_pipeline.run.return_value = pipeline_result
+
+        env_patch = {
+            "TRAVEL_MODE": "ACTIVE",
+            "COMMERCIAL_ACTIONS_ENABLED": "false",
+            "AUTOMATED_EMAIL_ENABLED": "false",
+            "CRON": "DISABLED",
+            "DRY_RUN": "TRUE",
+            "LEAD_LIMIT": "1",
+            "APIFY_ENABLED": "false",
+            "GOSOM_REVIEW_FRESHNESS_FALLBACK_ENABLED": "false",
+            "GOSOM_FALLBACK_KILL_SWITCH": "true",
+        }
+        with patch.dict(os.environ, env_patch), \\
+             patch("scripts.run_cloud_run_job.firestore_store", mock_store), \\
+             patch("scripts.run_cloud_run_job.HybridDiscoveryEngine", return_value=MagicMock()), \\
+             patch("scripts.run_cloud_run_job.LeadGenerationPipeline", return_value=mock_pipeline), \\
+             patch("scripts.run_cloud_run_job.SystemConfig.get_status_dict", return_value={
+                 "travel_mode": True,
+                 "commercial_actions_enabled": False,
+                 "automated_email_enabled": False,
+             }):
+            exit_code = run_discovery_task(args)
+
+        self.assertEqual(exit_code, 0)
+        call_kwargs = mock_pipeline.run.call_args.kwargs
+        self.assertEqual(call_kwargs["requested_qualified_leads"], 1)
+        self.assertEqual(call_kwargs["resume_processed_ids"], [])
+        self.assertEqual(call_kwargs["log_callback"].__name__, "job_progress_callback")
+
+        saved = mock_store.get_run_record(run_id)
+        self.assertIsNotNone(saved)
+        self.assertEqual(saved["status"], "COMPLETED")
+        self.assertNotIn("results", saved)
+        self.assertNotIn("Synthetic Resume Fixture", str(saved))
+        self.assertEqual(saved["leads_count"], 1)
+        self.assertEqual(saved["review_queue_count"], 0)
+        self.assertEqual(saved["research_entries_count"], 1)
+        self.assertEqual(saved["recovery_policy"], "RESTART_FROM_SCRATCH_ON_INCOMPLETE_RUN")
+        self.assertIsNone(mock_store.get_checkpoint(run_id))
 
 
 if __name__ == "__main__":
