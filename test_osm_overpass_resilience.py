@@ -702,15 +702,17 @@ class TestOSMOverpassResilience(unittest.TestCase):
             "GOSOM_REVIEW_FRESHNESS_FALLBACK_ENABLED": "false",
             "GOSOM_FALLBACK_KILL_SWITCH": "true",
         }
-        with patch.dict(os.environ, env_patch), \\
-             patch("scripts.run_cloud_run_job.firestore_store", mock_store), \\
-             patch("scripts.run_cloud_run_job.HybridDiscoveryEngine", return_value=MagicMock()), \\
-             patch("scripts.run_cloud_run_job.LeadGenerationPipeline", return_value=mock_pipeline), \\
-             patch("scripts.run_cloud_run_job.SystemConfig.get_status_dict", return_value={
-                 "travel_mode": True,
-                 "commercial_actions_enabled": False,
-                 "automated_email_enabled": False,
-             }):
+        with (
+            patch.dict(os.environ, env_patch),
+            patch("scripts.run_cloud_run_job.firestore_store", mock_store),
+            patch("scripts.run_cloud_run_job.HybridDiscoveryEngine", return_value=MagicMock()),
+            patch("scripts.run_cloud_run_job.LeadGenerationPipeline", return_value=mock_pipeline),
+            patch("scripts.run_cloud_run_job.SystemConfig.get_status_dict", return_value={
+                "travel_mode": True,
+                "commercial_actions_enabled": False,
+                "automated_email_enabled": False,
+            }),
+        ):
             exit_code = run_discovery_task(args)
 
         self.assertEqual(exit_code, 0)
