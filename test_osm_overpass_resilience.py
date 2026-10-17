@@ -589,6 +589,46 @@ class TestOSMOverpassResilience(unittest.TestCase):
             provider = OpenStreetMapProvider(cache_dir=self.test_cache_dir)
             self.assertEqual(provider.timeout, 45)
 
+    def test_checkpoint_callback_captures_current_pipeline_stats(self):
+        """Checkpoint callback must include the live stats dict after it has been initialized."""
+        candidate = DiscoveredBusiness(
+            company_name="Country Mismatch Fixture",
+            category="Restaurant",
+            city="Manchester",
+            target_country="United Kingdom",
+            detected_country="United States",
+            address="Example address in the United States",
+            country_status="COUNTRY_UNCLEAR",
+            discovery_source="FIXTURE",
+        )
+        pipeline = LeadGenerationPipeline(
+            discovery_provider=MagicMock(),
+            shadow_mode=True,
+        )
+        events = []
+
+        with patch.object(
+            pipeline.country_validator,
+            "validate",
+            return_value=("COUNTRY_MISMATCH", "United States", "", "", "fixture mismatch"),
+        ):
+            pipeline.run(
+                country="United Kingdom",
+                cities=["Manchester"],
+                industry="Restaurants",
+                requested_qualified_leads=0,
+                inject_test_candidates=[candidate],
+                log_callback=lambda msg, data=None: events.append((msg, data or {})),
+            )
+
+        checkpoint_events = [
+            payload for msg, payload in events if "[Checkpoint Updated]" in msg
+        ]
+        self.assertTrue(checkpoint_events, "Expected a checkpoint callback for the processed fixture")
+        self.assertIn("stats", checkpoint_events[-1])
+        self.assertEqual(checkpoint_events[-1]["stats"]["country_mismatches"], 1)
+        self.assertEqual(checkpoint_events[-1]["stats"]["wrong_country_results"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
