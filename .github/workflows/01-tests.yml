@@ -95,6 +95,7 @@ jobs:
             test_phase_11_2_tavily_provider.py \
             test_score_decoupling.py \
             test_search_hardening.py \
+            test_search_circuit_and_crm.py \
             test_uk_entity_contactability.py
 
       - name: "Run Discovery Resilience & Checkpoint Regression Tests"
