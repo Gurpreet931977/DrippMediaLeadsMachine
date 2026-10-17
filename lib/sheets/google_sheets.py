@@ -411,7 +411,8 @@ class GoogleSheetsStorageProvider:
         Returns: { normalized_id: (row_index_1_based, row_dict) }
         """
         try:
-            rows = self.leads_worksheet.get_all_records()
+            # Read-only helper: do not use the schema-repairing worksheet property.
+            rows = self.spreadsheet.worksheet("LEADS").get_all_records()
         except Exception:
             return {}
 
@@ -431,7 +432,8 @@ class GoogleSheetsStorageProvider:
         Loads all existing rows from RESEARCH_LOG tab and indexes them by normalized identity.
         """
         try:
-            rows = self.research_worksheet.get_all_records()
+            # Read-only helper: do not create the tab or repair its schema.
+            rows = self.spreadsheet.worksheet("RESEARCH_LOG").get_all_records()
         except Exception:
             return {}
 
@@ -451,7 +453,8 @@ class GoogleSheetsStorageProvider:
         Loads all existing rows from REVIEW_QUEUE tab and indexes them by normalized identity.
         """
         try:
-            rows = self.review_queue_worksheet.get_all_records()
+            # Read-only helper: do not create the tab or repair its schema.
+            rows = self.spreadsheet.worksheet("REVIEW_QUEUE").get_all_records()
         except Exception:
             return {}
 
@@ -742,8 +745,8 @@ class GoogleSheetsStorageProvider:
         Fetches all qualified leads from LEADS tab for dashboard views.
         Normalizes blank outreach_status values to 'NOT_READY' deterministically.
         """
-        self.ensure_leads_columns()
-        records = self.leads_worksheet.get_all_records()
+        # Dashboard reads must never rewrite headers, add columns, or create tabs.
+        records = self.spreadsheet.worksheet("LEADS").get_all_records()
         for r in records:
             r["outreach_status"] = normalize_outreach_status(r.get("outreach_status"))
         return records
@@ -752,19 +755,20 @@ class GoogleSheetsStorageProvider:
         """
         Fetches all manual review candidates from REVIEW_QUEUE tab.
         """
-        self.ensure_review_queue_columns()
-        return self.review_queue_worksheet.get_all_records()
+        # Read the existing tab directly; schema setup belongs to explicit write/setup workflows.
+        return self.spreadsheet.worksheet("REVIEW_QUEUE").get_all_records()
 
     def fetch_research_log(self) -> List[Dict[str, Any]]:
         """
         Fetches all researched businesses from RESEARCH_LOG tab.
         Uses expected_headers to handle trailing empty column headers safely.
         """
-        self.ensure_research_columns()
+        # Read-only path: never invoke schema repair or implicit worksheet creation.
+        worksheet = self.spreadsheet.worksheet("RESEARCH_LOG")
         try:
-            return self.research_worksheet.get_all_records(expected_headers=RESEARCH_LOG_COLUMNS)
+            return worksheet.get_all_records(expected_headers=RESEARCH_LOG_COLUMNS)
         except Exception:
-            rows = self.research_worksheet.get_all_values()
+            rows = worksheet.get_all_values()
             if not rows or len(rows) < 2:
                 return []
             headers = [h.strip() for h in rows[0] if h.strip()]

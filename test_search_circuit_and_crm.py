@@ -405,8 +405,8 @@ class TestGlobalCRMDeduplication(unittest.TestCase):
         res_branch = self.matcher.match_candidate(cand_subway_a, existing_subway_b)
         self.assertEqual(res_branch.outcome, IdentityMatchOutcome.NEW_BUSINESS.value)
 
-    def test_16_possible_duplicate(self):
-        """Partial name similarity without address or phone falls into review queue threshold."""
+    def test_16_name_only_overlap_is_not_enough_to_flag_possible_duplicate(self):
+        """One shared distinctive token without corroborating evidence is a new business."""
         cand = {
             "company_name": "Kimchi Korean Kitchen",
             "city": "Manchester",
@@ -420,9 +420,30 @@ class TestGlobalCRMDeduplication(unittest.TestCase):
         }]
 
         res = self.matcher.match_candidate(cand, existing)
+        self.assertEqual(res.outcome, IdentityMatchOutcome.NEW_BUSINESS.value)
+        self.assertLess(res.confidence, self.matcher.possible_threshold)
+
+    def test_16b_partial_name_with_shared_phone_requires_manual_review(self):
+        """A weak but compatible name overlap plus matching phone is reviewable, not auto-merged."""
+        cand = {
+            "company_name": "Kimchi Korean Grill",
+            "city": "Manchester",
+            "country": "United Kingdom",
+            "phone": "0161 234 0000"
+        }
+        existing = [{
+            "lead_id": "LEAD-MAN-KIM-PHONE",
+            "company_name": "Kimchi Seoul Tokyo Cafe",
+            "city": "Manchester",
+            "country": "United Kingdom",
+            "phone": "0161 234 0000"
+        }]
+
+        res = self.matcher.match_candidate(cand, existing)
         self.assertEqual(res.outcome, IdentityMatchOutcome.POSSIBLE_DUPLICATE.value)
-        self.assertGreaterEqual(res.confidence, 0.50)
-        self.assertLess(res.confidence, 0.85)
+        self.assertEqual(res.matched_lead_id, "LEAD-MAN-KIM-PHONE")
+        self.assertGreaterEqual(res.confidence, self.matcher.possible_threshold)
+        self.assertLess(res.confidence, self.matcher.high_threshold)
 
     def test_17_conflict_detection(self):
         """Conflicting verified official domains or same phone under conflicting business name."""
