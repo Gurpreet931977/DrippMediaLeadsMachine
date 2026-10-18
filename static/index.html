@@ -5036,7 +5036,7 @@
         }
         // Production frontend domains use the same-origin /api proxy configured in vercel.json.
         // This avoids browser CORS and a separate API-subdomain DNS dependency.
-        const productionHosts = ['drippmedia.com', 'www.drippmedia.com', 'dripp-media-leads-machine.vercel.app'];
+        const productionHosts = ['dripp-media-leads-machine.vercel.app'];
         if (productionHosts.includes(window.location.hostname.toLowerCase())) return '';
         // For other remote origins, never silently guess a backend or fall back to localhost.
         return null;
