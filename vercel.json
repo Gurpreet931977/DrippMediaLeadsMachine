@@ -6,6 +6,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://dripp-leads-api-ukng7vge6q-uc.a.run.app/api/:path*"
+    },
+    {
       "source": "/static/(.*)",
       "destination": "/$1"
     },

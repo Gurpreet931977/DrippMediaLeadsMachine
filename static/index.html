@@ -4123,7 +4123,7 @@
                 <strong style="font-size:0.82rem; color:var(--text-main);">Backend API URL</strong>
                 <span id="backendEnvIndicator" style="font-size:0.7rem; font-family:var(--font-mono); color:var(--accent-yellow);">LOCAL / RELATIVE</span>
               </div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">On localhost, defaults to local port 8000. On Vercel / production, enter your hosted FastAPI HTTPS URL (e.g. https://api.drippmedia.com or Render/Railway endpoint).</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">On Dripp Media production domains, leave blank to use the same-origin /api gateway. For a separate backend, enter its hosted FastAPI HTTPS URL.</div>
               <div style="display:flex; gap:0.5rem; width:100%; margin-top:4px;">
                 <input id="inputBackendUrl" type="url" placeholder="http://127.0.0.1:8000 or https://..." class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
               </div>
@@ -5034,8 +5034,11 @@
         if (window.location.port === '8000' || (window.location.hostname === 'localhost' && window.location.port !== '3000')) {
           return '';
         }
-        // On remote origins (e.g. Vercel or custom domain), NEVER silently default to localhost:8000!
-        // Return null to indicate unconfigured state and prevent false-success / silent failure
+        // Production frontend domains use the same-origin /api proxy configured in vercel.json.
+        // This avoids browser CORS and a separate API-subdomain DNS dependency.
+        const productionHosts = ['dripp-media-leads-machine.vercel.app'];
+        if (productionHosts.includes(window.location.hostname.toLowerCase())) return '';
+        // For other remote origins, never silently guess a backend or fall back to localhost.
         return null;
       },
       setBackendUrl: function(url) {
