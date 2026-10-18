@@ -18,6 +18,56 @@ def _candidate_review_freshness(business) -> str:
 
     freshness = getattr(business, "review_freshness", None)
     return str(freshness).strip().upper() if freshness else "UNKNOWN"
+
+
+def _qualification_reason_bucket(state: str, reason: str) -> str:
+    """Return a stable, non-business-identifying bucket for aggregate diagnostics."""
+    text = str(reason or "").strip().lower()
+    if not text:
+        return "missing_reason"
+
+    rules = (
+        ("country mismatch", "country_mismatch"),
+        ("permanently closed", "closed_or_unverified"),
+        ("official website confirmed", "website_exists"),
+        ("listed website is broken", "website_broken"),
+        ("website existence unclear", "website_unclear"),
+        ("website status", "website_status_unresolved"),
+        ("conflicting review/rating data", "review_evidence_conflict"),
+        ("conflicting review evidence", "review_evidence_conflict"),
+        ("review data is stale", "review_evidence_stale"),
+        ("provider not configured", "review_provider_not_configured"),
+        ("provider unavailable", "review_provider_unavailable"),
+        ("provider timed out", "review_provider_timeout"),
+        ("provider failed", "review_provider_failed"),
+        ("quota exceeded", "review_provider_quota_exceeded"),
+        ("evidence extraction failed", "review_evidence_extraction_failed"),
+        ("identity/branch mismatch", "review_identity_mismatch"),
+        ("genuinely no review evidence found", "review_evidence_not_found"),
+        ("review data unknown / missing", "review_data_missing"),
+        ("minimal customer review traction", "review_count_too_low"),
+        ("moderate customer traction", "review_count_below_threshold"),
+        ("low rating", "rating_or_traction_below_threshold"),
+        ("rating unknown / missing", "rating_missing"),
+        ("is below", "rating_below_threshold"),
+        ("commercial signals", "insufficient_commercial_signals"),
+        ("social identity unverified", "social_ownership_unverified"),
+        ("no verified business-owned social presence", "social_ownership_unverified"),
+        ("lacks dual independent corroboration", "operational_evidence_not_corroborated"),
+        ("current operational status unknown", "operational_status_unknown"),
+        ("operational status", "operational_status_not_confirmed"),
+        ("unresolved identity contradiction", "identity_contradiction"),
+    )
+    for phrase, bucket in rules:
+        if phrase in text:
+            return bucket
+
+    state_slug = re.sub(r"[^a-z0-9]+", "_", str(state or "unknown").lower()).strip("_")
+    if state_slug == "outreach_ready" or text.startswith("established "):
+        return "all_hard_gates_passed"
+    return "other"
+
+
 import json
 import uuid
 import time
@@ -836,6 +886,15 @@ class LeadGenerationPipeline:
                     q_priority = audit["priority"]
                     q_state = audit["qualification_state"]
                     q_reason = audit["qualification_reason"]
+
+                    # Persist reason-bucket counts alongside ordinary run metrics. These
+                    # aggregate counters explain funnel drop-off without relaxing any gate
+                    # or storing candidate names/reason text in the run summary.
+                    state_slug = re.sub(r"[^a-z0-9]+", "_", str(q_state or "unknown").lower()).strip("_")
+                    reason_bucket = _qualification_reason_bucket(q_state, q_reason)
+                    diagnostic_key = f"diagnostic__qualification__{state_slug}__{reason_bucket}"
+                    stats[diagnostic_key] = int(stats.get(diagnostic_key, 0)) + 1
+
                     q_signals = audit["signals"]
                     is_outreach_ready = audit["is_outreach_ready"]
                     evidence_obj = audit["evidence"]
@@ -1245,6 +1304,18 @@ class LeadGenerationPipeline:
         emit_log(f"Saved to LEADS:               {stats['saved_to_leads']}")
         emit_log(f"Saved to REVIEW_QUEUE:        {stats['saved_to_review_queue']}")
         emit_log(f"Saved to RESEARCH_LOG:        {stats['saved_to_research_log']}")
+        diagnostic_items = sorted(
+            (key, value)
+            for key, value in stats.items()
+            if key.startswith("diagnostic__qualification__") and isinstance(value, int)
+        )
+        emit_log("[QUALIFICATION DIAGNOSTICS] State / reason-bucket counts:")
+        if diagnostic_items:
+            for key, value in diagnostic_items:
+                emit_log(f"  {key.removeprefix('diagnostic__qualification__')}: {value}")
+        else:
+            emit_log("  No scored candidates produced qualification diagnostics.")
+
         if len(outreach_ready_leads) < requested_qualified_leads:
             emit_log(f"Notice: Only {len(outreach_ready_leads)} outreach-ready leads were found under the current qualification rules.")
         emit_log(f"=======================================================")
