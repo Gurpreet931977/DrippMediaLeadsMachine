@@ -75,12 +75,15 @@ class TestOSMOverpassResilience(unittest.TestCase):
                 return mock_success_resp
             raise requests.exceptions.ConnectionError("Unknown endpoint")
 
-        with patch("requests.post", side_effect=mock_post_side_effect):
+        with patch("time.sleep") as mock_sleep, patch("requests.post", side_effect=mock_post_side_effect) as mock_post:
             result = provider.execute_overpass_query("test_query_timeout")
             self.assertEqual(len(result.get("elements", [])), 1)
             self.assertEqual(result["elements"][0]["tags"]["name"], "Fallback Cafe")
             self.assertEqual(provider.metrics.errors, 0)
             self.assertGreater(provider.metrics.calls, 0)
+            # One request to the timed-out mirror, then immediate failover to mirror two.
+            self.assertEqual(mock_post.call_count, 2)
+            mock_sleep.assert_not_called()
 
     def test_overpass_http_504_gateway_timeout_falls_back_and_succeeds(self):
         """When an endpoint returns HTTP 504 (e.g. lz4 overloaded), it falls back to a healthy mirror."""

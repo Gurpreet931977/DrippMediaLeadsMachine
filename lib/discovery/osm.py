@@ -243,12 +243,13 @@ class OpenStreetMapProvider(DiscoveryProvider):
                     last_error = f"Timeout ({self.timeout}s) from {endpoint}: {t_err}"
                     attempt_errors.append(f"{endpoint} (attempt {attempt}): timeout")
                     logger.warning(
-                        "[OSM] Timeout on %s (attempt %d/%d). %s",
-                        endpoint, attempt, max_attempts_per_endpoint,
-                        "Retrying..." if attempt < max_attempts_per_endpoint else "Failing over to next mirror."
+                        "[OSM] Timeout on %s (attempt %d/%d); failing over immediately to the next mirror.",
+                        endpoint, attempt, max_attempts_per_endpoint
                     )
-                    if attempt < max_attempts_per_endpoint:
-                        time.sleep(1.0)
+                    # An overloaded/slow mirror is unlikely to serve the identical query
+                    # on an immediate retry. Preserve availability by spending the time
+                    # budget on the next independent mirror instead.
+                    break
                 except Exception as ex:
                     last_error = f"Error from {endpoint}: {ex}"
                     attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
