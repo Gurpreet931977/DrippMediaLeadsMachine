@@ -637,6 +637,49 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         # 7. Safety invariant: workflow must NEVER automatically execute the discovery job
         self.assertNotIn("run jobs execute", raw_text, "Deployment workflow must NEVER automatically execute the discovery job")
 
+        # 8. Immutable Tagging: workflow must NOT build or push mutable tags (e.g. latest, short sha)
+        self.assertNotIn(":latest", raw_text, "Deployment workflow must not build or push mutable :latest image tag")
+        self.assertNotIn("short_sha", raw_text, "Deployment workflow must not build or push mutable short_sha image tag")
+
+    # -------------------------------------------------------------------------
+    # 28. CI Guard: GCP Administrator Setup Script Hardening & Security Checks
+    # -------------------------------------------------------------------------
+    def test_28_administrator_setup_script_hardening(self):
+        import subprocess
+
+        setup_script_path = os.path.join(PROJECT_ROOT, "scripts", "setup_gcp_deployment_iam.sh")
+        self.assertTrue(os.path.exists(setup_script_path), "setup_gcp_deployment_iam.sh must exist")
+
+        with open(setup_script_path, "r", encoding="utf-8") as f:
+            script_text = f.read()
+
+        # 1. Repository ID immutable claim must be defined and equal to 1405742084
+        self.assertIn('REPOSITORY_ID="1405742084"', script_text, "Setup script must define immutable REPOSITORY_ID 1405742084")
+
+        # 2. Attribute mapping must map attribute.repository_id=assertion.repository_id
+        self.assertIn("attribute.repository_id=assertion.repository_id", script_text)
+
+        # 3. Workload Identity User role binding must use attribute.repository_id
+        self.assertIn("attribute.repository_id/${REPOSITORY_ID}", script_text)
+
+        # 4. Attribute condition must restrict by repository_id, repository, ref, and job_workflow_ref
+        self.assertIn("assertion.repository_id == '${REPOSITORY_ID}'", script_text)
+        self.assertIn("assertion.job_workflow_ref.startsWith", script_text)
+        self.assertIn(".github/workflows/05-deploy-cloud-run.yml", script_text)
+
+        # 5. Must support both create-oidc and update-oidc for safe idempotency
+        self.assertIn("create-oidc", script_text)
+        self.assertIn("update-oidc", script_text)
+
+        # 6. Must dynamically inspect Cloud Run job for actual runtime service account
+        self.assertIn("gcloud run jobs describe", script_text)
+        self.assertIn("serviceAccountName", script_text)
+        self.assertIn("remove-iam-policy-binding", script_text)
+
+        # 7. Validate bash syntax
+        res = subprocess.run(["bash", "-n", setup_script_path], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, f"Bash syntax check failed: {res.stderr}")
+
 
 if __name__ == "__main__":
     unittest.main()
