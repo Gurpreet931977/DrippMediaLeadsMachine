@@ -94,15 +94,25 @@ class Phase86ReviewRecoveryEngine:
         self.scorer = LeadScoringProvider()
 
     def load_data(self) -> None:
-        """Loads authoritative inputs."""
-        if os.path.exists(self.audit_path):
-            with open(self.audit_path, "r", encoding="utf-8") as f:
-                self.audit_data = json.load(f)
+        """Loads authoritative inputs with fail-fast validation."""
+        if not os.path.exists(self.audit_path):
+            raise FileNotFoundError(f"Required Phase 8.5 audit artifact missing: {self.audit_path}")
 
-        if os.path.exists(self.prospects_path):
-            with open(self.prospects_path, "r", encoding="utf-8") as f:
-                d = json.load(f)
-                self.prospects_data = d.get("commercial_prospects", [])
+        with open(self.audit_path, "r", encoding="utf-8") as f:
+            self.audit_data = json.load(f)
+
+        if not self.audit_data.get("records") or len(self.audit_data["records"]) == 0:
+            raise ValueError(f"Phase 8.5 audit artifact in '{self.audit_path}' contains 0 records. Refusing to proceed.")
+
+        if not os.path.exists(self.prospects_path):
+            raise FileNotFoundError(f"Required Phase 8.5 commercial prospects missing: {self.prospects_path}")
+
+        with open(self.prospects_path, "r", encoding="utf-8") as f:
+            d = json.load(f)
+            self.prospects_data = d.get("commercial_prospects", [])
+
+        if not self.prospects_data or len(self.prospects_data) == 0:
+            raise ValueError(f"Phase 8.5 commercial prospects in '{self.prospects_path}' is empty. Refusing to proceed.")
 
         if os.path.exists(self.review_queue_path):
             with open(self.review_queue_path, "r", encoding="utf-8") as f:
@@ -427,8 +437,14 @@ class Phase86ReviewRecoveryEngine:
         recovery_path: str = "data/phase_8_6_review_evidence_recovery.json",
         results_path: str = "data/phase_8_6_qualification_results.json",
     ) -> Dict[str, Any]:
-        """Saves Phase 8.6 JSON artifacts."""
+        """Saves Phase 8.6 JSON artifacts with fail-fast safety."""
         data = self.run_recovery()
+
+        target_cohort = data.get("target_cohort", [])
+        if not target_cohort or len(target_cohort) != 11:
+            raise ValueError(
+                f"Phase 8.6 safety check failed: expected 11 target cohort businesses, got {len(target_cohort)}. Refusing to overwrite artifacts."
+            )
 
         os.makedirs(os.path.dirname(recovery_path), exist_ok=True)
         with open(recovery_path, "w", encoding="utf-8") as f:

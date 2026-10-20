@@ -89,23 +89,120 @@ class ReconciliationCandidate:
 
 
 @contextmanager
-def crm_write_lock(lock_path: str = "data/.crm_write.lock", timeout_sec: float = 30.0):
+def crm_write_lock(
+    lock_path: str = "data/.crm_write.lock",
+    timeout_sec: float = 30.0,
+    enable_distributed: Optional[bool] = None,
+    state_store: Optional[Any] = None,
+    timeout: Optional[float] = None,
+    lock_dir: Optional[str] = None
+):
     """
-    Cross-process serialization lock to guarantee atomic CRM write operations.
-    Prevents simultaneous pipeline runs from creating race-condition duplicate rows.
+    CRM Write Lock for mutual exclusion during Google Sheets persistence operations.
+
+    CONCURRENCY & SCOPE GUARANTEES:
+    1. Local Scope (Default / Always Active):
+       Uses OS-level advisory file locking via `fcntl.flock` on `lock_path`.
+       Protects threads and processes sharing a common POSIX filesystem on a single host.
+       WARNING: `fcntl.flock` DOES NOT provide distributed serialization across independent
+       Google Cloud Run container instances or separate VM executions because Cloud Run
+       containers run in isolated sandboxes (gVisor) with independent, ephemeral local filesystems.
+
+    2. Distributed Scope (When enabled or running in Cloud Run):
+       When `enable_distributed` is True (or auto-detected via K_SERVICE / CLOUD_RUN_JOB /
+       ENABLE_DISTRIBUTED_LOCK), acquires a distributed operational lease in Google Cloud
+       Firestore ('operational_leases/crm_write_lock') using transactional semantics and TTL.
+       If the lease cannot be acquired within `timeout_sec`, fails closed with TimeoutError.
+
+    3. Deployment Constraint (Fail-Closed Architecture):
+       If distributed locking is not enabled or Firestore is unavailable in a Cloud Run
+       environment, Cloud Run Jobs MUST be deployed with `parallelism: 1` and `task-count: 1`
+       (`max_retries: 0`) to guarantee that at most one container executes at any time.
     """
-    os.makedirs(os.path.dirname(os.path.abspath(lock_path)), exist_ok=True)
-    f = open(lock_path, "w")
+    effective_timeout = timeout if timeout is not None else timeout_sec
+    effective_lock_path = os.path.join(lock_dir, ".crm_write.lock") if lock_dir is not None else lock_path
+
+    os.makedirs(os.path.dirname(os.path.abspath(effective_lock_path)), exist_ok=True)
+    f = open(effective_lock_path, "w")
+    acquired_flock = False
     try:
-        # Acquire non-blocking or blocking exclusive lock
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        acquired_flock = True
+    except Exception:
+        f.close()
+        raise
+
+    is_dist = enable_distributed
+    if is_dist is None:
+        is_dist = (
+            os.getenv("ENABLE_DISTRIBUTED_LOCK", "").strip().lower() in ("true", "1", "yes")
+            or bool(os.getenv("K_SERVICE"))
+            or bool(os.getenv("CLOUD_RUN_JOB"))
+        )
+
+    lease_acquired = False
+    holder_id = None
+    store = None
+
+    if is_dist:
+        import socket
+        import uuid
+        import time
+
+        try:
+            if state_store is not None:
+                store = state_store
+            else:
+                from lib.system.firestore_state_store import FirestoreStateStore
+                store = FirestoreStateStore()
+
+            holder_id = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+            start_t = time.time()
+            while time.time() - start_t < effective_timeout:
+                if store.acquire_lease("crm_write_lock", holder_id=holder_id, ttl_seconds=effective_timeout + 60.0):
+                    lease_acquired = True
+                    break
+                time.sleep(0.2)
+
+            if not lease_acquired:
+                raise TimeoutError(
+                    f"[CRM Concurrency Lock] Failed to acquire distributed Firestore lease 'crm_write_lock' "
+                    f"within {effective_timeout}s timeout. Another Cloud Run container or worker holds the lease. "
+                    "Failing closed to prevent concurrent Google Sheets write collisions."
+                )
+        except TimeoutError:
+            try:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+            f.close()
+            raise
+        except Exception as e:
+            if os.getenv("STRICT_DISTRIBUTED_LOCK", "").strip().lower() in ("true", "1", "yes"):
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                except Exception:
+                    pass
+                f.close()
+                raise RuntimeError(f"[CRM Concurrency Lock] Distributed lease acquisition failed: {e}")
+            else:
+                print(f"[CRM Concurrency Lock Warning] Distributed lease unavailable ({e}); proceeding with local OS lock only.")
+
+    try:
         yield
     finally:
-        try:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-        except Exception:
-            pass
-        f.close()
+        if lease_acquired and store and holder_id:
+            try:
+                store.release_lease("crm_write_lock", holder_id=holder_id)
+            except Exception as e:
+                print(f"[CRM Concurrency Lock Warning] Failed to release distributed lease: {e}")
+
+        if acquired_flock:
+            try:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+            f.close()
 
 
 def col_to_letter(col_num: int) -> str:

@@ -37,9 +37,32 @@ from lib.outreach.phase_8_5_qualification import (
     determine_commercial_fit,
 )
 
-AUDIT_PATH = "data/phase_8_5_qualification_audit.json"
-PROSPECTS_PATH = "data/phase_8_5_commercial_prospects.json"
-POOLS_PATH = "data/phase_8_5_outreach_pool.json"
+import tempfile
+
+_TEMP_DIR = None
+AUDIT_PATH = ""
+PROSPECTS_PATH = ""
+POOLS_PATH = ""
+
+
+def setUpModule():
+    global _TEMP_DIR, AUDIT_PATH, PROSPECTS_PATH, POOLS_PATH
+    _TEMP_DIR = tempfile.TemporaryDirectory()
+    AUDIT_PATH = os.path.join(_TEMP_DIR.name, "phase_8_5_qualification_audit.json")
+    PROSPECTS_PATH = os.path.join(_TEMP_DIR.name, "phase_8_5_commercial_prospects.json")
+    POOLS_PATH = os.path.join(_TEMP_DIR.name, "phase_8_5_outreach_pool.json")
+    engine = Phase85QualificationEngine()
+    engine.save_artifacts(
+        audit_path=AUDIT_PATH,
+        prospects_path=PROSPECTS_PATH,
+        outreach_pool_path=POOLS_PATH,
+    )
+
+
+def tearDownModule():
+    global _TEMP_DIR
+    if _TEMP_DIR is not None:
+        _TEMP_DIR.cleanup()
 
 
 def _load_json(path: str) -> Dict[str, Any]:
@@ -52,8 +75,10 @@ class TestWebsiteOpportunitySeparation(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        engine = Phase85QualificationEngine()
-        cls.audit, cls.prospects, cls.pools = engine.save_artifacts()
+        cls.audit = _load_json(AUDIT_PATH)
+        prospects_json = _load_json(PROSPECTS_PATH)
+        cls.prospects = prospects_json.get("commercial_prospects", prospects_json)
+        cls.pools = _load_json(POOLS_PATH)
 
     def test_01_website_opportunity_does_not_change_qualification(self):
         """1. Website opportunity does not change qualification."""
