@@ -222,7 +222,11 @@ class Phase85QualificationEngine:
                 # The 60 businesses from Phase 8.0 researched on 2026-10-03
                 self.cohort_60 = [e for e in entries if e.get("date_researched") == "2026-10-03"]
 
-        if len(self.cohort_60) != 60:
+        if len(self.cohort_60) == 0:
+            raise ValueError(
+                f"Phase 8.5 qualification failed: expected 60 businesses from cohort (date 2026-10-03 in '{self.research_log_path}'), found 0. Refusing to proceed with empty cohort."
+            )
+        elif len(self.cohort_60) != 60:
             # Fallback to loading directly from phase_8_0_production_lead_run if needed
             logger.warning(f"Expected 60 entries on 2026-10-03, found {len(self.cohort_60)}")
 
@@ -668,8 +672,19 @@ class Phase85QualificationEngine:
         prospects_path: str = "data/phase_8_5_commercial_prospects.json",
         outreach_pool_path: str = "data/phase_8_5_outreach_pool.json",
     ) -> Tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, Any]]:
-        """Runs the assessment and writes JSON artifacts."""
+        """Runs the assessment and writes JSON artifacts with fail-fast safety."""
         audit, prospects, pools = self.run_assessment()
+
+        # Fail-fast safety: do not overwrite production artifacts if outputs are empty
+        if not audit.get("records") or len(audit.get("records", [])) < 60:
+            raise ValueError(
+                f"Phase 8.5 safety check failed: expected at least 60 audit records, got {len(audit.get('records', []))}. Refusing to overwrite artifacts."
+            )
+
+        if not prospects or len(prospects) == 0:
+            raise ValueError(
+                "Phase 8.5 safety check failed: commercial prospects is empty. Refusing to overwrite artifacts."
+            )
 
         os.makedirs(os.path.dirname(audit_path), exist_ok=True)
         with open(audit_path, "w", encoding="utf-8") as f:

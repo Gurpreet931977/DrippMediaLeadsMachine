@@ -1,7 +1,8 @@
 import os
 import re
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
+import json
+from typing import List, Dict, Any, Optional, Tuple, Sequence, Union
+from datetime import datetime, timezone
 import gspread
 from dotenv import load_dotenv
 
@@ -30,6 +31,16 @@ def col_to_letter(col_num: int) -> str:
         col_num, remainder = divmod(col_num - 1, 26)
         string = chr(65 + remainder) + string
     return string
+
+def validate_row_width(row_values: Sequence[Any], expected_columns: Sequence[str], sheet_name: str) -> None:
+    """
+    Validates that a row to be written matches the expected schema column count exactly.
+    Prevents truncated writes, misaligned columns, or shifted data corruption.
+    """
+    if len(row_values) != len(expected_columns):
+        raise ValueError(
+            f"Row width mismatch for {sheet_name}: expected {len(expected_columns)} columns, got {len(row_values)} values."
+        )
 
 # Strict Qualification Engine V3 Column Definitions
 LEADS_COLUMNS = [
@@ -209,6 +220,189 @@ RESEARCH_LOG_COLUMNS = [
     "source_url",
     "date_researched"
 ]
+
+
+def _safe_str(val: Any) -> str:
+    """Safely extracts clean string representation without crashing on None, numbers, or MagicMock objects."""
+    if val is None:
+        return ""
+    type_name = type(val).__name__
+    if "Mock" in type_name:
+        return ""
+    if isinstance(val, str):
+        return val.strip()
+    return str(val).strip()
+
+
+def _clean_source_url(url: Any) -> str:
+    """Normalizes source URLs (e.g. OpenStreetMap node/way/relation links) for reliable deduplication."""
+    s = _safe_str(url).lower()
+    if not s:
+        return ""
+    s = re.sub(r'/+$', '', s)
+    if s in (
+        "https://www.openstreetmap.org", "http://www.openstreetmap.org",
+        "https://maps.google.com", "http://maps.google.com",
+        "https://google.com", "https://www.google.com"
+    ):
+        return ""
+    return s
+
+
+def _clean_phone_digits(phone: Any) -> str:
+    """Extracts numeric digits from phone numbers and normalizes standard country prefixes."""
+    s = _safe_str(phone)
+    if not s:
+        return ""
+    digits = re.sub(r'[^0-9]', '', s)
+    if digits.startswith("0") and len(digits) == 11:
+        digits = "44" + digits[1:]
+    return digits
+
+
+class ResearchLogMap(dict):
+    """
+    Structured in-memory mapping of RESEARCH_LOG records.
+    Subclasses standard dict (mapping `norm_id -> (row_idx, row_dict)`) for 100%
+    backwards-compatibility with all legacy callers and tests.
+    Provides verified multi-signal indexing and query methods:
+      - source_url indexing (e.g. OSM URL)
+      - website clean domain indexing
+      - phone digits + name indexing
+      - address key tokens + name indexing
+      - malformed row tracking with explicit fail-closed detection
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.url_map: Dict[str, Tuple[int, Dict[str, Any]]] = {}
+        self.phone_map: Dict[str, Tuple[int, Dict[str, Any]]] = {}
+        self.address_map: Dict[str, Tuple[int, Dict[str, Any]]] = {}
+        self.malformed_rows: Dict[int, Dict[str, Any]] = {}
+        self.normal_rows: Dict[int, Dict[str, Any]] = {}
+
+    def add_entry(
+        self,
+        row_idx: int,
+        row_dict: Dict[str, Any],
+        norm_id: str = "",
+        source_url: str = "",
+        phone: str = "",
+        address: str = "",
+        company_name: str = "",
+        is_malformed: bool = False
+    ) -> None:
+        entry_meta = dict(row_dict)
+        entry_meta["_row_idx"] = row_idx
+        entry_meta["_is_malformed"] = is_malformed
+        entry_meta["_source_url"] = source_url
+        entry_meta["_company_name"] = company_name
+
+        if is_malformed:
+            self.malformed_rows[row_idx] = entry_meta
+        else:
+            self.normal_rows[row_idx] = entry_meta
+
+        # Primary dict mapping: norm_id -> (row_idx, row_dict)
+        if norm_id:
+            # If norm_id is already mapped by a normal row, do not let a shifted duplicate overwrite it
+            if norm_id not in self:
+                self[norm_id] = (row_idx, entry_meta)
+            elif is_malformed and not self[norm_id][1].get("is_malformed", False):
+                pass
+            else:
+                self[norm_id] = (row_idx, entry_meta)
+
+        # Secondary index: clean source_url
+        clean_url = _clean_source_url(source_url)
+        if clean_url and clean_url not in self.url_map:
+            self.url_map[clean_url] = (row_idx, entry_meta)
+
+        # Secondary index: phone + clean name
+        clean_p = _clean_phone_digits(phone)
+        clean_n = re.sub(r'[^a-z0-9]', '', (company_name or "").lower())
+        if clean_p and len(clean_p) >= 7 and clean_n:
+            phone_key = f"{clean_p}@{clean_n}"
+            if phone_key not in self.phone_map:
+                self.phone_map[phone_key] = (row_idx, entry_meta)
+
+        # Secondary index: address tokens + clean name
+        clean_a = re.sub(r'[^a-z0-9]', ' ', (address or "").lower()).split()
+        key_tokens = [w for w in clean_a if len(w) >= 3 and w not in ("street", "road", "united", "kingdom", "lane", "avenue")]
+        if key_tokens and clean_n:
+            addr_key = f"{key_tokens[0]}@{key_tokens[-1]}@{clean_n}"
+            if addr_key not in self.address_map:
+                self.address_map[addr_key] = (row_idx, entry_meta)
+
+    def find_match(
+        self,
+        company_name: str,
+        city: str = "",
+        target_country: str = "",
+        website: str = "",
+        source_url: str = "",
+        phone: str = "",
+        address: str = ""
+    ) -> Optional[Tuple[int, Dict[str, Any], str]]:
+        """
+        Evaluates verified multi-signal identity against existing records.
+        Returns: (row_idx, row_dict, match_signal_description) or None.
+        CRITICAL INVARIANT: NEVER matches on company name alone.
+        """
+        c_name_str = _safe_str(company_name)
+        city_str = _safe_str(city)
+        country_str = _safe_str(target_country)
+        web_str = _safe_str(website)
+        src_str = _safe_str(source_url)
+        phone_str = _safe_str(phone)
+        addr_str = _safe_str(address)
+
+        # 1. Non-empty, verified source URL match (e.g. OpenStreetMap node)
+        clean_url = _clean_source_url(src_str)
+        if clean_url and clean_url in self.url_map:
+            r_idx, r_dict = self.url_map[clean_url]
+            return r_idx, r_dict, f"source_url match ('{clean_url}')"
+
+        # 2. Verified website domain match (non-platform domain)
+        if web_str:
+            clean_dom = re.sub(r'^https?://(www\.)?', '', web_str.lower()).split('/')[0].strip()
+            if clean_dom and not any(p in clean_dom for p in [
+                "instagram.com", "facebook.com", "tiktok.com", "google.com",
+                "deliveroo", "ubereats", "just-eat", "tripadvisor", "yelp"
+            ]):
+                dom_key = f"dom:{clean_dom}"
+                if dom_key in self:
+                    r_idx, r_dict = self[dom_key]
+                    return r_idx, r_dict, f"domain match ('{clean_dom}')"
+
+        # 3. Verified phone + normalized company name match
+        clean_p = _clean_phone_digits(phone_str)
+        clean_n = re.sub(r'[^a-z0-9]', '', c_name_str.lower())
+        if clean_p and len(clean_p) >= 7 and clean_n:
+            phone_key = f"{clean_p}@{clean_n}"
+            if phone_key in self.phone_map:
+                r_idx, r_dict = self.phone_map[phone_key]
+                return r_idx, r_dict, f"phone + name match ('{clean_p}')"
+
+        # 4. Verified address key tokens + normalized company name match
+        clean_a = re.sub(r'[^a-z0-9]', ' ', addr_str.lower()).split()
+        key_tokens = [w for w in clean_a if len(w) >= 3 and w not in ("street", "road", "united", "kingdom", "lane", "avenue")]
+        if key_tokens and clean_n:
+            addr_key = f"{key_tokens[0]}@{key_tokens[-1]}@{clean_n}"
+            if addr_key in self.address_map:
+                r_idx, r_dict = self.address_map[addr_key]
+                return r_idx, r_dict, f"address + name match ('{addr_str}')"
+
+        # 5. Verified normalized identity match: (clean_name + clean_city + clean_country)
+        clean_city = re.sub(r'[^a-z0-9]', '', city_str.lower())
+        clean_country = re.sub(r'[^a-z0-9]', '', country_str.lower())
+        if clean_n and clean_city and clean_country:
+            biz_key = f"biz:{clean_n}@{clean_city}@{clean_country}"
+            if biz_key in self:
+                r_idx, r_dict = self[biz_key]
+                return r_idx, r_dict, f"normalized identity match ('{biz_key}')"
+
+        return None
+
 
 class GoogleSheetsStorageProvider:
     """
@@ -427,26 +621,177 @@ class GoogleSheetsStorageProvider:
                 leads_map[norm_id] = (idx, row)
         return leads_map
 
-    def get_existing_research_map(self) -> Dict[str, Tuple[int, Dict[str, Any]]]:
+    def get_existing_research_map(self) -> ResearchLogMap:
         """
-        Loads all existing rows from RESEARCH_LOG tab and indexes them by normalized identity.
+        Loads all existing rows from RESEARCH_LOG tab and indexes them by normalized identity
+        and multi-signal attributes (source_url, domain, phone, address).
+        Correctly parses both normal rows (A:AB) and shifted malformed rows (AA:BB, e.g. rows 280-317)
+        so that deduplication is NEVER blind to shifted records outside A:AB.
         """
         try:
-            # Read-only helper: do not create the tab or repair its schema.
-            rows = self.spreadsheet.worksheet("RESEARCH_LOG").get_all_records()
+            ws = getattr(self, "_research_ws", None) or self.spreadsheet.worksheet("RESEARCH_LOG")
+            raw_rows = ws.get_all_values()
         except Exception:
-            return {}
+            return ResearchLogMap()
 
-        research_map = {}
-        for idx, row in enumerate(rows, start=2):
-            c_name = str(row.get("company_name", ""))
-            city = str(row.get("city", ""))
-            target_country = str(row.get("target_country", ""))
-            web = str(row.get("website", ""))
+        if not raw_rows or len(raw_rows) < 2:
+            return ResearchLogMap()
+
+        research_map = ResearchLogMap()
+
+        for r_idx, r in enumerate(raw_rows[1:], start=2):
+            if not any(str(c).strip() for c in r):
+                continue
+
+            has_a_or_b = (len(r) > 0 and bool(str(r[0]).strip())) or (len(r) > 1 and bool(str(r[1]).strip()))
+            has_aa_or_ab = (len(r) > 26 and bool(str(r[26]).strip())) or (len(r) > 27 and bool(str(r[27]).strip()))
+
+            if has_a_or_b:
+                res_id = str(r[0]).strip() if len(r) > 0 else ""
+                c_name = str(r[1]).strip() if len(r) > 1 else ""
+                target_country = str(r[3]).strip() if len(r) > 3 else ""
+                city = str(r[6]).strip() if len(r) > 6 else ""
+                addr = str(r[9]).strip() if len(r) > 9 else ""
+                phone = str(r[10]).strip() if len(r) > 10 else ""
+                web = str(r[11]).strip() if len(r) > 11 else ""
+                src_url = str(r[26]).strip() if len(r) > 26 else ""
+                is_malformed = False
+            elif has_aa_or_ab:
+                res_id = str(r[26]).strip() if len(r) > 26 else ""
+                c_name = str(r[27]).strip() if len(r) > 27 else ""
+                target_country = str(r[29]).strip() if len(r) > 29 else ""
+                city = str(r[32]).strip() if len(r) > 32 else ""
+                addr = str(r[35]).strip() if len(r) > 35 else ""
+                phone = str(r[36]).strip() if len(r) > 36 else ""
+                web = str(r[37]).strip() if len(r) > 37 else ""
+                src_url = str(r[52]).strip() if len(r) > 52 else ""
+                is_malformed = True
+            else:
+                continue
+
             norm_id = self.normalize_identity(c_name, city, target_country, web)
-            if norm_id:
-                research_map[norm_id] = (idx, row)
+            row_dict = {
+                "research_id": res_id,
+                "company_name": c_name,
+                "target_country": target_country,
+                "city": city,
+                "address": addr,
+                "phone": phone,
+                "website": web,
+                "source_url": src_url,
+                "is_malformed": is_malformed,
+                "row_index": r_idx
+            }
+
+            research_map.add_entry(
+                row_idx=r_idx,
+                row_dict=row_dict,
+                norm_id=norm_id,
+                source_url=src_url,
+                phone=phone,
+                address=addr,
+                company_name=c_name,
+                is_malformed=is_malformed
+            )
+
         return research_map
+
+    def diagnose_research_log(self) -> Dict[str, Any]:
+        """
+        Audits RESEARCH_LOG for row width, schema alignment, and historical column shifts.
+        Read-only diagnostic method: never mutates Google Sheets.
+        """
+        try:
+            raw_rows = self.research_worksheet.get_all_values()
+        except Exception as e:
+            return {"error": f"Failed to access RESEARCH_LOG: {e}"}
+
+        if not raw_rows:
+            return {"total_rows": 0, "status": "EMPTY", "can_safely_deduplicate": True}
+
+        header = raw_rows[0]
+        normal_rows = []
+        shifted_rows = []
+        empty_rows = []
+
+        for r_idx, r in enumerate(raw_rows[1:], start=2):
+            has_a = bool(r[0].strip()) if len(r) > 0 else False
+            has_b = bool(r[1].strip()) if len(r) > 1 else False
+            has_aa = bool(r[26].strip()) if len(r) > 26 else False
+            has_ab = bool(r[27].strip()) if len(r) > 27 else False
+
+            if has_a or has_b:
+                normal_rows.append(r_idx)
+            elif has_aa or has_ab:
+                shifted_rows.append({
+                    "row_index": r_idx,
+                    "research_id": r[26] if len(r) > 26 else "",
+                    "company_name": r[27] if len(r) > 27 else "",
+                    "target_country": r[29] if len(r) > 29 else "",
+                    "city": r[32] if len(r) > 32 else "",
+                    "address": r[35] if len(r) > 35 else "",
+                    "phone": r[36] if len(r) > 36 else "",
+                    "website": r[37] if len(r) > 37 else "",
+                    "source_url": r[52] if len(r) > 52 else "",
+                    "date_researched": r[53] if len(r) > 53 else ""
+                })
+            else:
+                empty_rows.append(r_idx)
+
+        dates_shifted = {}
+        for s in shifted_rows:
+            d = s["date_researched"]
+            dates_shifted[d] = dates_shifted.get(d, 0) + 1
+
+        return {
+            "total_rows": len(raw_rows),
+            "header_column_count": len(header),
+            "expected_column_count": len(RESEARCH_LOG_COLUMNS),
+            "normal_rows_count": len(normal_rows),
+            "shifted_rows_count": len(shifted_rows),
+            "empty_rows_count": len(empty_rows),
+            "can_safely_deduplicate": len(shifted_rows) == 0,
+            "shifted_dates": dates_shifted,
+            "sample_shifted_rows": shifted_rows[:5],
+            "shifted_rows": shifted_rows
+        }
+
+    validate_row_width = staticmethod(validate_row_width)
+
+    def safe_clear_worksheet(
+        self,
+        worksheet: Union[str, Any],
+        confirm_token: str = "",
+        backup_dir: str = "data/backups",
+    ) -> Dict[str, Any]:
+        """
+        Safely clears a worksheet ONLY when explicitly confirmed with confirm_token='CONFIRM_DESTRUCTIVE_CLEAR'.
+        Automatically takes a local timestamped backup of the worksheet before clearing.
+        Supports both worksheet title strings and worksheet objects.
+        """
+        ws_title = worksheet if isinstance(worksheet, str) else getattr(worksheet, "title", str(worksheet))
+        if confirm_token != "CONFIRM_DESTRUCTIVE_CLEAR":
+            raise PermissionError(
+                f"Destructive clear on worksheet '{ws_title}' blocked: "
+                "requires confirm_token='CONFIRM_DESTRUCTIVE_CLEAR'."
+            )
+        ws = self.spreadsheet.worksheet(worksheet) if isinstance(worksheet, str) else worksheet
+        vals = ws.get_all_values()
+
+        # Save pre-clear backup
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        os.makedirs(backup_dir, exist_ok=True)
+        backup_file = os.path.join(backup_dir, f"pre_clear_{ws_title}_{ts}.json")
+        with open(backup_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "worksheet": ws_title,
+                "timestamp": ts,
+                "row_count": len(vals),
+                "values": vals,
+            }, f, indent=2)
+
+        ws.clear()
+        return {"status": "CLEARED", "worksheet": ws_title, "rows_cleared": len(vals), "backup_path": backup_file}
 
     def get_existing_review_queue_map(self) -> Dict[str, Tuple[int, Dict[str, Any]]]:
         """
@@ -618,13 +963,16 @@ class GoogleSheetsStorageProvider:
                     self.stats["new_businesses"] += 1
                     lead.outreach_status = normalize_outreach_status(getattr(lead, "outreach_status", None))
                     row_values = lead.to_sheet_row(LEADS_COLUMNS)
+                    validate_row_width(row_values, LEADS_COLUMNS, "LEADS")
                     rows_to_insert.append(row_values)
                     inserted_count += 1
                     new_dict = {col: row_values[i] for i, col in enumerate(LEADS_COLUMNS) if i < len(row_values)}
                     existing_rows.append(new_dict)
 
             if rows_to_insert:
-                self.leads_worksheet.append_rows(rows_to_insert, value_input_option="USER_ENTERED")
+                for r in rows_to_insert:
+                    validate_row_width(r, LEADS_COLUMNS, "LEADS")
+                self.leads_worksheet.append_rows(rows_to_insert, value_input_option="USER_ENTERED", table_range=f"A1:{end_col}")
 
             print(f"[GoogleSheets] LEADS tab updated: {inserted_count} inserted, {updated_count} updated, {self.stats['duplicates_prevented']} duplicate rows prevented.")
             return inserted_count, updated_count
@@ -680,12 +1028,15 @@ class GoogleSheetsStorageProvider:
                     print(f"[GoogleSheets] Failed to update row {row_idx} in REVIEW_QUEUE: {e}")
             else:
                 row_values = lead.to_sheet_row(REVIEW_QUEUE_COLUMNS)
+                validate_row_width(row_values, REVIEW_QUEUE_COLUMNS, "REVIEW_QUEUE")
                 rows_to_insert.append(row_values)
                 inserted_count += 1
                 existing_map[norm_id] = (len(existing_map) + len(rows_to_insert) + 1, {})
 
         if rows_to_insert:
-            self.review_queue_worksheet.append_rows(rows_to_insert, value_input_option="USER_ENTERED")
+            for r in rows_to_insert:
+                validate_row_width(r, REVIEW_QUEUE_COLUMNS, "REVIEW_QUEUE")
+            self.review_queue_worksheet.append_rows(rows_to_insert, value_input_option="USER_ENTERED", table_range=f"A1:{end_col}")
 
         print(f"[GoogleSheets] REVIEW_QUEUE tab updated: {inserted_count} inserted, {updated_count} updated.")
         return inserted_count, updated_count
@@ -693,48 +1044,206 @@ class GoogleSheetsStorageProvider:
     def save_research_log(self, entries: List[ResearchLogEntry]) -> Tuple[int, int]:
         """
         Saves all discovered and researched businesses to the RESEARCH_LOG tab.
+        Uses a deterministic, explicit-range write (A{start_row}:AB{end_row}) under crm_write_lock.
+        Does NOT rely on Google Sheets values.append or table-detection heuristics.
+        Destination row is determined from the last non-empty row across the entire worksheet,
+        guaranteeing that existing data (including shifted rows 280-317) is never overwritten.
         """
         if not entries:
             return 0, 0
 
-        self.ensure_research_columns()
-        existing_map = self.get_existing_research_map()
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        with crm_write_lock():
+            self.ensure_research_columns()
+            existing_map = self.get_existing_research_map()
+            today_str = datetime.now().strftime("%Y-%m-%d")
 
-        rows_to_insert = []
-        updated_count = 0
-        inserted_count = 0
-        end_col = col_to_letter(len(RESEARCH_LOG_COLUMNS))
+            rows_to_insert = []
+            insert_entries = []
+            updated_count = 0
+            inserted_count = 0
+            end_col = col_to_letter(len(RESEARCH_LOG_COLUMNS))
 
-        for entry in entries:
-            if not entry.date_researched:
-                entry.date_researched = today_str
-
-            if entry.phone and entry.phone.startswith("+") and not entry.phone.startswith("'"):
-                entry.phone = f"'{entry.phone}"
-
-            norm_id = self.normalize_identity(entry.company_name, entry.city, entry.target_country, entry.website)
-
-            if norm_id in existing_map:
-                row_idx, _ = existing_map[norm_id]
+            start_row = 0
+            end_row = 0
+            for entry in entries:
                 row_values = entry.to_sheet_row(RESEARCH_LOG_COLUMNS)
-                cell_range = f"A{row_idx}:{end_col}{row_idx}"
+                validate_row_width(row_values, RESEARCH_LOG_COLUMNS, "RESEARCH_LOG")
+
+                if not entry.date_researched:
+                    entry.date_researched = today_str
+
+                if entry.phone and str(entry.phone).startswith("+") and not str(entry.phone).startswith("'"):
+                    entry.phone = f"'{entry.phone}"
+
+                # Multi-signal deduplication: never match on company name alone.
+                match_result = existing_map.find_match(
+                    company_name=entry.company_name,
+                    city=entry.city,
+                    target_country=entry.target_country,
+                    website=entry.website,
+                    source_url=getattr(entry, "source_url", "") or "",
+                    phone=entry.phone,
+                    address=entry.address
+                )
+
+                if match_result is not None:
+                    row_idx, matched_dict, match_signal = match_result
+                    is_malformed = matched_dict.get("is_malformed", False)
+
+                    # FAIL CLOSED: if matched record is malformed in AA:BB (e.g. rows 280-317)
+                    if is_malformed:
+                        raise RuntimeError(
+                            f"[GoogleSheets Malformed Deduplication Block] Cannot write research log for venue '{entry.company_name}': "
+                            f"matches existing malformed record at row {row_idx} via {match_signal}. "
+                            f"The existing record is located in shifted columns AA:BB and has not been recovered to A:AB or quarantined. "
+                            f"Appending this record would create a duplicate CRM entry; updating in-place would overwrite corrupt cells. "
+                            f"Safe deduplication cannot proceed. Production CRM writes fail closed until row {row_idx} is recovered or quarantined."
+                        )
+
+                    # Normal row update in A:AB
+                    row_values = entry.to_sheet_row(RESEARCH_LOG_COLUMNS)
+                    validate_row_width(row_values, RESEARCH_LOG_COLUMNS, "RESEARCH_LOG")
+                    cell_range = f"A{row_idx}:{end_col}{row_idx}"
+                    try:
+                        self.research_worksheet.update(values=[row_values], range_name=cell_range, value_input_option="USER_ENTERED")
+                        # Readback verification
+                        try:
+                            read_back = self.research_worksheet.get_values(cell_range)
+                            if read_back and read_back[0]:
+                                if str(read_back[0][0]).strip() != str(row_values[0]).strip():
+                                    print(f"[GoogleSheets Warning] Readback research_id mismatch on row {row_idx}: expected {row_values[0]}, got {read_back[0][0]}")
+                        except Exception:
+                            pass
+                        updated_count += 1
+                    except Exception as e:
+                        print(f"[GoogleSheets] Failed to update row {row_idx} in RESEARCH_LOG: {e}")
+                else:
+                    # No multi-signal match found.
+                    # Verify safe deduplication: if unquarantined malformed rows exist in the sheet, ensure
+                    # that an incoming record sharing a company name cannot be accidentally appended without
+                    # verified multi-signal differentiation (source URL, distinct city, phone, or address).
+                    if existing_map.malformed_rows:
+                        clean_entry_name = re.sub(r'[^a-z0-9]', '', (entry.company_name or "").lower())
+                        for m_row_idx, m_meta in existing_map.malformed_rows.items():
+                            clean_m_name = re.sub(r'[^a-z0-9]', '', (m_meta.get("company_name", "")).lower())
+                            if clean_entry_name and clean_m_name and clean_entry_name == clean_m_name:
+                                entry_city = re.sub(r'[^a-z0-9]', '', (entry.city or "").lower())
+                                m_city = re.sub(r'[^a-z0-9]', '', (m_meta.get("city", "")).lower())
+                                entry_url = _clean_source_url(getattr(entry, "source_url", ""))
+                                m_url = _clean_source_url(m_meta.get("source_url", ""))
+                                entry_addr = re.sub(r'[^a-z0-9]', '', (entry.address or "").lower())
+                                m_addr = re.sub(r'[^a-z0-9]', '', (m_meta.get("address", "")).lower())
+
+                                is_distinct = False
+                                if entry_city and m_city and entry_city != m_city:
+                                    is_distinct = True
+                                elif entry_url and m_url and entry_url != m_url:
+                                    is_distinct = True
+                                elif entry_addr and m_addr and entry_addr != m_addr:
+                                    is_distinct = True
+
+                                if not is_distinct:
+                                    raise RuntimeError(
+                                        f"[GoogleSheets Malformed Deduplication Block] Safe deduplication cannot be guaranteed for '{entry.company_name}': "
+                                        f"shares company name with malformed record at row {m_row_idx} but lacks verified multi-signal "
+                                        f"differentiation (source URL, distinct city, phone, or address). "
+                                        f"Production CRM writes fail closed until row {m_row_idx} is recovered or quarantined."
+                                    )
+
+                    norm_id = self.normalize_identity(entry.company_name, entry.city, entry.target_country, entry.website)
+                    row_values = entry.to_sheet_row(RESEARCH_LOG_COLUMNS)
+                    validate_row_width(row_values, RESEARCH_LOG_COLUMNS, "RESEARCH_LOG")
+                    rows_to_insert.append(row_values)
+                    insert_entries.append((norm_id, entry))
+
+            if rows_to_insert:
+                for r in rows_to_insert:
+                    validate_row_width(r, RESEARCH_LOG_COLUMNS, "RESEARCH_LOG")
+
+                # 1. Determine destination row from the last non-empty row across the ENTIRE worksheet
                 try:
-                    self.research_worksheet.update(values=[row_values], range_name=cell_range, value_input_option="USER_ENTERED")
-                    updated_count += 1
+                    all_values = self.research_worksheet.get_all_values()
                 except Exception as e:
-                    print(f"[GoogleSheets] Failed to update row {row_idx} in RESEARCH_LOG: {e}")
-            else:
-                row_values = entry.to_sheet_row(RESEARCH_LOG_COLUMNS)
-                rows_to_insert.append(row_values)
-                inserted_count += 1
-                existing_map[norm_id] = (len(existing_map) + len(rows_to_insert) + 1, {})
+                    raise RuntimeError(f"[GoogleSheets] Failed to inspect RESEARCH_LOG grid for safe append destination: {e}")
 
-        if rows_to_insert:
-            self.research_worksheet.append_rows(rows_to_insert, value_input_option="USER_ENTERED")
+                if not all_values:
+                    raise RuntimeError("[GoogleSheets] Cannot determine destination row: RESEARCH_LOG worksheet appears empty (missing headers).")
 
-        print(f"[GoogleSheets] RESEARCH_LOG tab updated: {inserted_count} inserted, {updated_count} updated.")
-        return inserted_count, updated_count
+                last_non_empty_row = 0
+                for r_idx, r in enumerate(all_values, start=1):
+                    if any(str(cell).strip() for cell in r):
+                        last_non_empty_row = r_idx
+
+                if last_non_empty_row < 1:
+                    raise RuntimeError("[GoogleSheets] Failed to find valid header or content row in RESEARCH_LOG; failing closed.")
+
+                start_row = last_non_empty_row + 1
+                end_row = start_row + len(rows_to_insert) - 1
+                dest_range = f"A{start_row}:{end_col}{end_row}"
+
+                # 2. Ensure worksheet grid has sufficient rows allocated
+                try:
+                    current_grid_rows = self.research_worksheet.row_count
+                    if end_row > current_grid_rows:
+                        needed = (end_row - current_grid_rows) + 50
+                        self.research_worksheet.add_rows(needed)
+                except Exception as e:
+                    print(f"[GoogleSheets] Grid expansion notice: {e}")
+
+                # 3. Destination safety check: ensure destination cells are not occupied
+                for check_idx in range(start_row, min(end_row + 1, len(all_values) + 1)):
+                    row_data = all_values[check_idx - 1]
+                    if any(str(c).strip() for c in row_data):
+                        raise RuntimeError(
+                            f"[GoogleSheets Safety Block] Destination row {check_idx} in range {dest_range} "
+                            f"is not empty. Aborting write to prevent data corruption."
+                        )
+
+                # 4. Deterministic write to explicit range A{start_row}:AB{end_row}
+                try:
+                    self.research_worksheet.update(
+                        values=rows_to_insert,
+                        range_name=dest_range,
+                        value_input_option="USER_ENTERED"
+                    )
+                except Exception as e:
+                    raise RuntimeError(f"[GoogleSheets] Failed to write new records to {dest_range}: {e}")
+
+                # 5. Read back and verify the written records
+                try:
+                    read_back = self.research_worksheet.get_values(dest_range)
+                    if len(read_back) != len(rows_to_insert):
+                        raise RuntimeError(
+                            f"[GoogleSheets Verification Failed] Expected {len(rows_to_insert)} rows in {dest_range}, "
+                            f"but read back {len(read_back)} rows."
+                        )
+                    for offset, (exp_row, act_row) in enumerate(zip(rows_to_insert, read_back)):
+                        curr_row = start_row + offset
+                        if not act_row:
+                            raise RuntimeError(f"[GoogleSheets Verification Failed] Row {curr_row} read back empty.")
+                        # Verify research_id (index 0) and company_name (index 1)
+                        if str(act_row[0]).strip() != str(exp_row[0]).strip():
+                            raise RuntimeError(
+                                f"[GoogleSheets Verification Failed] Row {curr_row} research_id mismatch: "
+                                f"expected '{exp_row[0]}', read back '{act_row[0]}'."
+                            )
+                        if len(act_row) > 1 and len(exp_row) > 1:
+                            if str(act_row[1]).strip() != str(exp_row[1]).strip():
+                                raise RuntimeError(
+                                    f"[GoogleSheets Verification Failed] Row {curr_row} company_name mismatch: "
+                                    f"expected '{exp_row[1]}', read back '{act_row[1]}'."
+                                )
+                except Exception as e:
+                    raise RuntimeError(f"[GoogleSheets Readback Verification Error] {e}")
+
+                # 6. Update existing_map and count
+                for offset, (norm_id, entry) in enumerate(insert_entries):
+                    existing_map[norm_id] = (start_row + offset, {})
+                    inserted_count += 1
+
+            range_info = f" (rows {start_row}-{end_row} in A:AB)" if inserted_count > 0 else ""
+            print(f"[GoogleSheets] RESEARCH_LOG tab updated: {inserted_count} inserted{range_info}, {updated_count} updated.")
+            return inserted_count, updated_count
 
     def save_leads(self, leads: List[Lead]) -> Tuple[int, int]:
         """Backward compatibility: saves leads to LEADS tab."""

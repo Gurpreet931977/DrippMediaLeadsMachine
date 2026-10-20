@@ -52,8 +52,26 @@ from lib.enrichment.review_reconciler import (
 )
 from lib.types import SourceFamily
 
-RECOVERY_PATH = "data/phase_8_6_review_evidence_recovery.json"
-RESULTS_PATH = "data/phase_8_6_qualification_results.json"
+import tempfile
+
+_TEMP_DIR = None
+RECOVERY_PATH = ""
+RESULTS_PATH = ""
+
+
+def setUpModule():
+    global _TEMP_DIR, RECOVERY_PATH, RESULTS_PATH
+    _TEMP_DIR = tempfile.TemporaryDirectory()
+    RECOVERY_PATH = os.path.join(_TEMP_DIR.name, "phase_8_6_review_evidence_recovery.json")
+    RESULTS_PATH = os.path.join(_TEMP_DIR.name, "phase_8_6_qualification_results.json")
+    engine = Phase86ReviewRecoveryEngine()
+    engine.save_artifacts(recovery_path=RECOVERY_PATH, results_path=RESULTS_PATH)
+
+
+def tearDownModule():
+    global _TEMP_DIR
+    if _TEMP_DIR is not None:
+        _TEMP_DIR.cleanup()
 
 
 def _load_json(path: str) -> Dict[str, Any]:
@@ -66,8 +84,7 @@ class TestTargetCohortAndDiscovery(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.engine = Phase86ReviewRecoveryEngine()
-        cls.data = cls.engine.save_artifacts()
+        cls.data = _load_json(RECOVERY_PATH)
         cls.targets = cls.data["target_cohort"]
         cls.summary = cls.data["throughput_summary"]
 

@@ -147,6 +147,12 @@ NamedFileLock = FileLock
 
 # Named Lock Helpers for Authoritative Systems
 def crm_write_lock(timeout: float = 10.0, lock_dir: Optional[str] = None) -> FileLock:
+    """
+    Local OS-level advisory file lock for CRM operations using fcntl.flock.
+    Protects threads and processes sharing a single POSIX filesystem on a single host.
+    WARNING: Does NOT provide distributed serialization across independent Cloud Run containers.
+    For cross-container distributed serialization, use the Firestore lease in lib.crm.reconciliation.crm_write_lock.
+    """
     d = lock_dir or DATA_DIR
     return FileLock(os.path.join(d, ".crm_write.lock"), timeout=timeout, reentrant=True)
 

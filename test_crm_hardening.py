@@ -22,8 +22,11 @@ class TestCRMHardening(unittest.TestCase):
         self.mock_review_ws.row_values.return_value = list(REVIEW_QUEUE_COLUMNS)
         self.mock_review_ws.col_count = len(REVIEW_QUEUE_COLUMNS) + 10
         self.mock_research_ws.get_all_records.return_value = []
+        self.mock_research_ws.get_all_values.return_value = [list(RESEARCH_LOG_COLUMNS)]
         self.mock_research_ws.row_values.return_value = list(RESEARCH_LOG_COLUMNS)
         self.mock_research_ws.col_count = len(RESEARCH_LOG_COLUMNS) + 10
+        self.mock_research_ws.row_count = 100
+        self.mock_research_ws.get_values.return_value = []
 
     # 1. save_qualified_leads_rejects_non_outreach_ready
     def test_save_qualified_leads_rejects_non_outreach_ready(self):
@@ -372,11 +375,21 @@ class TestCRMHardening(unittest.TestCase):
                 qualification_status="EXCLUDED"
             )
         ]
+        def mock_get_values(range_name):
+            return [
+                ["RES-001", "Manual Review Place"],
+                ["RES-002", "Research Only Place"],
+                ["RES-003", "Excluded Place"]
+            ]
+        self.mock_research_ws.get_values.side_effect = mock_get_values
+
         inserted, updated = self.provider.save_research_log(entries)
         self.assertEqual(inserted, 3)
         self.assertEqual(updated, 0)
-        self.mock_research_ws.append_rows.assert_called_once()
-        rows_added = self.mock_research_ws.append_rows.call_args[0][0]
+        self.mock_research_ws.update.assert_called_once()
+        _, kwargs = self.mock_research_ws.update.call_args
+        self.assertEqual(kwargs.get("range_name"), "A2:AB4")
+        rows_added = kwargs.get("values")
         self.assertEqual(len(rows_added), 3)
 
 if __name__ == "__main__":

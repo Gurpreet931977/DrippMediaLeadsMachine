@@ -249,7 +249,7 @@ class TestCRMReconciliation(unittest.TestCase):
         def mock_get_all_records():
             return list(shared_sheet_records)
 
-        def mock_append_rows(rows, value_input_option=None):
+        def mock_append_rows(rows, value_input_option=None, **kwargs):
             for r in rows:
                 shared_sheet_records.append({col: r[i] for i, col in enumerate(LEADS_COLUMNS) if i < len(r)})
 

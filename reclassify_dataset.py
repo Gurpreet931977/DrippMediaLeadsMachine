@@ -57,6 +57,28 @@ def parse_float(val, default=0.0):
         return default
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Reclassify Current Dataset Script for Qualification Engine V2")
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        default=False,
+        help="Apply reclassification changes to live Google Sheets. When omitted, runs in safe read-only dry-run mode."
+    )
+    parser.add_argument(
+        "--confirm-destructive-clear",
+        action="store_true",
+        default=False,
+        help="Mandatory secondary safety confirmation required alongside --apply to clear and rewrite live sheets tabs."
+    )
+    parser.add_argument(
+        "--force-with-malformed-rows",
+        action="store_true",
+        default=False,
+        help="Override safety block if malformed shifted rows are detected in RESEARCH_LOG."
+    )
+    args = parser.parse_args()
+
     print("=" * 60)
     print("DRIPP MEDIA - RECLASSIFY CURRENT DATASET (QUALIFICATION ENGINE V2)")
     print("=" * 60)
@@ -461,32 +483,49 @@ def main():
     # 3. Synchronize cleanly with Google Sheets
     print("\n[Step 3] Syncing 3 tabs in Google Sheets...")
 
-    # Clear and rewrite LEADS tab
-    print(f"  Writing {len(new_outreach_leads)} OUTREACH_READY leads to LEADS...")
-    storage.leads_worksheet.clear()
-    storage.ensure_leads_columns()
-    if new_outreach_leads:
-        lead_rows = [lead.to_sheet_row(LEADS_COLUMNS) for lead in new_outreach_leads]
-        end_col = col_to_letter(len(LEADS_COLUMNS))
-        storage.leads_worksheet.update(values=lead_rows, range_name=f"A2:{end_col}{len(lead_rows)+1}", value_input_option="USER_ENTERED")
+    if not args.apply:
+        print("  [SAFEGUARD] Mode: DRY-RUN (default). Use --apply to execute changes.")
+        print("  [SAFEGUARD] Skipped destructive clear and rewrite. Google Sheets was NOT modified.")
+    elif not args.confirm_destructive_clear:
+        print("  [CRITICAL SAFETY BLOCK] --apply requested without mandatory --confirm-destructive-clear flag.")
+        print("  [CRITICAL SAFETY BLOCK] Aborting. Google Sheets was NOT modified.")
+        sys.exit(1)
+    else:
+        # Check for malformed rows before clearing!
+        diag = storage.diagnose_research_log()
+        shifted_count = diag.get("shifted_rows_count", 0)
+        if shifted_count > 0 and not args.force_with_malformed_rows:
+            print(f"  [CRITICAL SAFETY BLOCK] RESEARCH_LOG contains {shifted_count} malformed shifted rows.")
+            print("  [CRITICAL SAFETY BLOCK] Destructive clear would permanently erase these historical audit records.")
+            print("  [CRITICAL SAFETY BLOCK] Aborting sync to protect live data. Run with --force-with-malformed-rows only if backups are secured.")
+            sys.exit(1)
 
-    # Clear and rewrite REVIEW_QUEUE tab
-    print(f"  Writing {len(new_review_leads)} MANUAL_REVIEW candidates to REVIEW_QUEUE...")
-    storage.review_queue_worksheet.clear()
-    storage.ensure_review_queue_columns()
-    if new_review_leads:
-        rev_rows = [lead.to_sheet_row(REVIEW_QUEUE_COLUMNS) for lead in new_review_leads]
-        end_col = col_to_letter(len(REVIEW_QUEUE_COLUMNS))
-        storage.review_queue_worksheet.update(values=rev_rows, range_name=f"A2:{end_col}{len(rev_rows)+1}", value_input_option="USER_ENTERED")
+        # Clear and rewrite LEADS tab safely with backup
+        print(f"  Writing {len(new_outreach_leads)} OUTREACH_READY leads to LEADS...")
+        storage.safe_clear_worksheet("LEADS", confirm_token="CONFIRM_DESTRUCTIVE_CLEAR")
+        storage.ensure_leads_columns()
+        if new_outreach_leads:
+            lead_rows = [lead.to_sheet_row(LEADS_COLUMNS) for lead in new_outreach_leads]
+            end_col = col_to_letter(len(LEADS_COLUMNS))
+            storage.leads_worksheet.update(values=lead_rows, range_name=f"A2:{end_col}{len(lead_rows)+1}", value_input_option="USER_ENTERED")
 
-    # Clear and rewrite RESEARCH_LOG tab
-    print(f"  Writing {len(new_research_entries)} records to RESEARCH_LOG...")
-    storage.research_worksheet.clear()
-    storage.ensure_research_columns()
-    if new_research_entries:
-        res_rows = [entry.to_sheet_row(RESEARCH_LOG_COLUMNS) for entry in new_research_entries]
-        end_col = col_to_letter(len(RESEARCH_LOG_COLUMNS))
-        storage.research_worksheet.update(values=res_rows, range_name=f"A2:{end_col}{len(res_rows)+1}", value_input_option="USER_ENTERED")
+        # Clear and rewrite REVIEW_QUEUE tab safely with backup
+        print(f"  Writing {len(new_review_leads)} MANUAL_REVIEW candidates to REVIEW_QUEUE...")
+        storage.safe_clear_worksheet("REVIEW_QUEUE", confirm_token="CONFIRM_DESTRUCTIVE_CLEAR")
+        storage.ensure_review_queue_columns()
+        if new_review_leads:
+            rev_rows = [lead.to_sheet_row(REVIEW_QUEUE_COLUMNS) for lead in new_review_leads]
+            end_col = col_to_letter(len(REVIEW_QUEUE_COLUMNS))
+            storage.review_queue_worksheet.update(values=rev_rows, range_name=f"A2:{end_col}{len(rev_rows)+1}", value_input_option="USER_ENTERED")
+
+        # Clear and rewrite RESEARCH_LOG tab safely with backup
+        print(f"  Writing {len(new_research_entries)} records to RESEARCH_LOG...")
+        storage.safe_clear_worksheet("RESEARCH_LOG", confirm_token="CONFIRM_DESTRUCTIVE_CLEAR")
+        storage.ensure_research_columns()
+        if new_research_entries:
+            res_rows = [entry.to_sheet_row(RESEARCH_LOG_COLUMNS) for entry in new_research_entries]
+            end_col = col_to_letter(len(RESEARCH_LOG_COLUMNS))
+            storage.research_worksheet.update(values=res_rows, range_name=f"A2:{end_col}{len(res_rows)+1}", value_input_option="USER_ENTERED")
 
     print("\n[Step 4] Reclassification Complete!")
     print("-" * 60)
