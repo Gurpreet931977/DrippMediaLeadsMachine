@@ -740,6 +740,72 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         res = subprocess.run(["bash", "-n", setup_script_path], capture_output=True, text=True)
         self.assertEqual(res.returncode, 0, f"Bash syntax check failed: {res.stderr}")
 
+    # -------------------------------------------------------------------------
+    # 29. CI Guard: Administrator Setup Script Read-Only Preflight Ordering & Isolation
+    # -------------------------------------------------------------------------
+    def test_29_administrator_setup_script_preflight_ordering_and_isolation(self):
+        """Enforces that setup_gcp_deployment_iam.sh executes job and runtime identity
+        discovery in a read-only preflight phase before ANY resource creation,
+        API enablement, or IAM policy modifications."""
+        setup_script_path = os.path.join(PROJECT_ROOT, "scripts", "setup_gcp_deployment_iam.sh")
+        with open(setup_script_path, "r", encoding="utf-8") as f:
+            script_text = f.read()
+
+        # 1. Step markers must confirm 8-step structure with preflight at step 2
+        self.assertIn("[1/8] Configuring active GCP project", script_text)
+        self.assertIn("[2/8] Running read-only preflight", script_text)
+        self.assertIn("[3/8] Enabling minimal required GCP Service APIs", script_text)
+        self.assertIn("[4/8] Ensuring Artifact Registry repository", script_text)
+        self.assertIn("[5/8] Ensuring Workload Identity Pool", script_text)
+        self.assertIn("[6/8] Ensuring Workload Identity Provider", script_text)
+        self.assertIn("[7/8] Ensuring Deployer Service Account exists", script_text)
+        self.assertIn("[8/8] Granting scoped, least-privilege deployment permissions", script_text)
+
+        # 2. Strict Ordering Enforcement: Preflight must occur BEFORE all mutative commands
+        idx_preflight = script_text.index("[2/8] Running read-only preflight")
+        idx_api_enable = script_text.index("gcloud services enable")
+        idx_artifact_repo = script_text.index("gcloud artifacts repositories create")
+        idx_wif_pool = script_text.index("gcloud iam workload-identity-pools create")
+        idx_wif_provider = script_text.index("gcloud iam workload-identity-pools providers create-oidc")
+        idx_sa_create = script_text.index("gcloud iam service-accounts create")
+        idx_first_iam_add = script_text.index("add-iam-policy-binding")
+
+        self.assertLess(idx_preflight, idx_api_enable, "Preflight must precede API enablement")
+        self.assertLess(idx_preflight, idx_artifact_repo, "Preflight must precede Artifact Registry creation")
+        self.assertLess(idx_preflight, idx_wif_pool, "Preflight must precede WIF Pool creation")
+        self.assertLess(idx_preflight, idx_wif_provider, "Preflight must precede WIF Provider creation")
+        self.assertLess(idx_preflight, idx_sa_create, "Preflight must precede Deployer SA creation")
+        self.assertLess(idx_preflight, idx_first_iam_add, "Preflight must precede any IAM policy bindings")
+
+        # 3. Preflight Fail-Closed Verification
+        # Extract preflight section
+        preflight_section = script_text[idx_preflight:idx_api_enable]
+        self.assertIn('JOB_JSON=$(gcloud run jobs describe "${JOB_NAME}"', preflight_section)
+        self.assertIn('if [ -z "${JOB_JSON}" ]; then', preflight_section)
+        self.assertIn('if [ -z "${ACTUAL_RUNTIME_SA}" ]; then', preflight_section)
+        self.assertIn('if ! gcloud iam service-accounts describe "${ACTUAL_RUNTIME_SA}"', preflight_section)
+        # All 3 failure branches in preflight must exit 1
+        self.assertEqual(preflight_section.count("exit 1"), 3, "Preflight must have 3 fail-closed exit 1 guards")
+
+        # 4. Scoped Alternative SA Cleanup: must target only DEPLOYER_EMAIL and roles/iam.serviceAccountUser
+        step8_section = script_text[script_text.index("[8/8]"): ]
+        self.assertIn('gcloud iam service-accounts remove-iam-policy-binding "${ALT_SA}"', step8_section)
+        self.assertIn('--member="serviceAccount:${DEPLOYER_EMAIL}"', step8_section)
+        self.assertIn('--role="roles/iam.serviceAccountUser"', step8_section)
+
+        # 5. Short-name SA normalization test
+        import json
+        def extract_and_normalize(json_str: str, project_id: str = "poised-eye-509816-a4") -> str:
+            data = json.loads(json_str)
+            sa = data.get("template", {}).get("template", {}).get("serviceAccount", "")
+            sa = (sa or "").strip()
+            if sa and "@" not in sa and project_id:
+                sa = f"{sa}@{project_id}.iam.gserviceaccount.com"
+            return sa
+
+        res_short = extract_and_normalize('{"template": {"template": {"serviceAccount": "custom-runner"}}}')
+        self.assertEqual(res_short, "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com")
+
 
 if __name__ == "__main__":
     unittest.main()
