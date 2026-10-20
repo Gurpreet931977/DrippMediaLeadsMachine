@@ -340,7 +340,14 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
 
             # Least privilege permissions
             perms = data.get("permissions")
-            self.assertEqual(perms, {"contents": "read"}, f"Violated least privilege in {wfile}")
+            if "05-deploy-cloud-run" in wfile:
+                self.assertEqual(
+                    perms,
+                    {"contents": "read", "id-token": "write"},
+                    f"Violated least privilege in {wfile}"
+                )
+            else:
+                self.assertEqual(perms, {"contents": "read"}, f"Violated least privilege in {wfile}")
 
             # Concurrency control present with cancel-in-progress: false
             concurrency = data.get("concurrency")
@@ -581,6 +588,54 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
             [],
             f"Found missing typing imports in repository: {missing_typing}"
         )
+
+    # -------------------------------------------------------------------------
+    # 27. CI Guard: Production Cloud Run Deployment Workflow Hardening
+    # -------------------------------------------------------------------------
+    def test_27_production_deployment_workflow_hardening(self):
+        import yaml
+
+        deploy_wf_path = os.path.join(PROJECT_ROOT, ".github", "workflows", "05-deploy-cloud-run.yml")
+        self.assertTrue(os.path.exists(deploy_wf_path), "05-deploy-cloud-run.yml must exist")
+
+        with open(deploy_wf_path, "r", encoding="utf-8") as f:
+            raw_text = f.read()
+            data = yaml.safe_load(raw_text)
+
+        # 1. Trigger must strictly be manual workflow_dispatch (no push, no pr, no cron)
+        on_data = data.get("on") or data.get(True) or {}
+        triggers = list(on_data.keys()) if isinstance(on_data, dict) else []
+        self.assertEqual(triggers, ["workflow_dispatch"], "Deployment workflow must ONLY trigger on manual workflow_dispatch")
+
+        # 2. Required confirmation input must exist
+        inputs = on_data.get("workflow_dispatch", {}).get("inputs", {})
+        self.assertIn("confirm_deployment", inputs, "Must define confirm_deployment input safety gate")
+        self.assertTrue(inputs["confirm_deployment"].get("required", False), "confirm_deployment must be required")
+
+        # 3. Mutable image_tag_override input must NOT exist
+        self.assertNotIn("image_tag_override", inputs, "image_tag_override input must be removed to enforce immutable commit SHA tags")
+
+        # 4. Input values must NOT be directly interpolated in shell scripts without env mapping
+        self.assertNotIn("${{ github.event.inputs.confirm_deployment }}", raw_text.split("env:")[0] if "env:" in raw_text else "")
+        # Confirm that the confirmation step uses env:
+        steps = data.get("jobs", {}).get("deploy-cloud-run-job", {}).get("steps", [])
+        validate_step = next((s for s in steps if s.get("name") == "Validate Safety Confirmation Gate"), None)
+        self.assertIsNotNone(validate_step, "Must have Validate Safety Confirmation Gate step")
+        self.assertIn("CONFIRM_TOKEN", validate_step.get("env", {}), "Input must be mapped through environment variables")
+
+        # 5. Workflow must NOT create Artifact Registry repository (must verify existence only)
+        self.assertNotIn("artifacts repositories create", raw_text, "Workflow must not attempt to create repository; administrator pre-provisioning required")
+
+        # 6. Deployment verification must strictly assert all required settings
+        self.assertIn("ENABLE_DISTRIBUTED_LOCK", raw_text)
+        self.assertIn("FIRESTORE_ENABLED", raw_text)
+        self.assertIn("TRAVEL_MODE", raw_text)
+        self.assertIn("COMMERCIAL_ACTIONS_ENABLED", raw_text)
+        self.assertIn("AUTOMATED_EMAIL_ENABLED", raw_text)
+        self.assertIn("TECHNICAL_AUTOMATION_ENABLED", raw_text)
+
+        # 7. Safety invariant: workflow must NEVER automatically execute the discovery job
+        self.assertNotIn("run jobs execute", raw_text, "Deployment workflow must NEVER automatically execute the discovery job")
 
 
 if __name__ == "__main__":

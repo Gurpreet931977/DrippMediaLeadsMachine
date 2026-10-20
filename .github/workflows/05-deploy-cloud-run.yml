@@ -1,16 +1,11 @@
 name: "05 - Production Cloud Run Deployment"
 
-on:
+'on':
   workflow_dispatch:
     inputs:
       confirm_deployment:
         description: "Safety Gate: Type 'CONFIRM_DEPLOY_TO_PRODUCTION' to authorize live deployment"
         required: true
-        default: ""
-        type: string
-      image_tag_override:
-        description: "Optional custom image tag override (defaults to commit SHA)"
-        required: false
         default: ""
         type: string
 
@@ -39,9 +34,11 @@ jobs:
 
     steps:
       - name: "Validate Safety Confirmation Gate"
+        env:
+          CONFIRM_TOKEN: ${{ github.event.inputs.confirm_deployment }}
         run: |
-          if [ "${{ github.event.inputs.confirm_deployment }}" != "CONFIRM_DEPLOY_TO_PRODUCTION" ]; then
-            echo "::error::Deployment rejected. input.confirm_deployment must equal 'CONFIRM_DEPLOY_TO_PRODUCTION'."
+          if [ "${CONFIRM_TOKEN}" != "CONFIRM_DEPLOY_TO_PRODUCTION" ]; then
+            echo "::error::Deployment rejected. confirm_deployment must equal 'CONFIRM_DEPLOY_TO_PRODUCTION'."
             exit 1
           fi
           echo "Deployment safety gate confirmed by operator."
@@ -56,23 +53,19 @@ jobs:
         run: |
           FULL_SHA="${{ github.sha }}"
           SHORT_SHA=$(echo "${FULL_SHA}" | cut -c1-7)
-          CUSTOM_TAG="${{ github.event.inputs.image_tag_override }}"
-          
           IMAGE_BASE="${{ env.REGISTRY_HOST }}/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.PACKAGE_NAME }}"
           
-          if [ -n "$CUSTOM_TAG" ]; then
-            DEPLOY_TAG="$CUSTOM_TAG"
-          else
-            DEPLOY_TAG="$FULL_SHA"
-          fi
-
+          # Immutable deployment strictly uses the full Git commit SHA
+          DEPLOY_TAG="${FULL_SHA}"
+          
           echo "image_base=${IMAGE_BASE}" >> $GITHUB_OUTPUT
           echo "deploy_tag=${DEPLOY_TAG}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "full_sha=${FULL_SHA}" >> $GITHUB_OUTPUT
           
           echo "Target Image Base: ${IMAGE_BASE}"
-          echo "Deploy Image Tag:  ${DEPLOY_TAG}"
+          echo "Deploy Image Tag (Immutable Full SHA): ${DEPLOY_TAG}"
+          echo "Short SHA Tag: ${SHORT_SHA}"
 
       - name: "Authenticate to Google Cloud via Workload Identity Federation"
         id: auth
@@ -91,18 +84,14 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.REGISTRY_HOST }} --quiet
 
-      - name: "Ensure Artifact Registry Repository Exists"
+      - name: "Verify Artifact Registry Repository Exists"
         run: |
           if ! gcloud artifacts repositories describe ${{ env.REPOSITORY_NAME }} --location=${{ env.GCP_REGION }} --project=${{ env.GCP_PROJECT_ID }} >/dev/null 2>&1; then
-            echo "Creating Artifact Registry repository '${{ env.REPOSITORY_NAME }}' in ${{ env.GCP_REGION }}..."
-            gcloud artifacts repositories create ${{ env.REPOSITORY_NAME }} \
-              --repository-format=docker \
-              --location=${{ env.GCP_REGION }} \
-              --project=${{ env.GCP_PROJECT_ID }} \
-              --description="Docker repository for Dripp Media backend images"
-          else
-            echo "Artifact Registry repository '${{ env.REPOSITORY_NAME }}' verified."
+            echo "::error::Artifact Registry repository '${{ env.REPOSITORY_NAME }}' does not exist in ${{ env.GCP_REGION }} for project ${{ env.GCP_PROJECT_ID }}."
+            echo "::error::Pre-provisioning by GCP administrator is required before deployment."
+            exit 1
           fi
+          echo "Artifact Registry repository '${{ env.REPOSITORY_NAME }}' verified."
 
       - name: "Build Container Image"
         run: |
@@ -125,7 +114,7 @@ jobs:
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
           SHORT_SHA="${{ steps.tags.outputs.short_sha }}"
 
-          echo "Pushing immutable tag ${DEPLOY_TAG}..."
+          echo "Pushing immutable full SHA tag ${DEPLOY_TAG}..."
           docker push "${IMAGE_BASE}:${DEPLOY_TAG}"
 
           echo "Pushing short tag ${SHORT_SHA}..."
@@ -137,8 +126,9 @@ jobs:
       - name: "Deploy & Update Cloud Run Job"
         run: |
           DEPLOY_IMAGE="${{ steps.tags.outputs.image_base }}:${{ steps.tags.outputs.deploy_tag }}"
-          echo "Updating Cloud Run Job '${{ env.JOB_NAME }}' with image ${DEPLOY_IMAGE}..."
+          echo "Updating Cloud Run Job '${{ env.JOB_NAME }}' with immutable image ${DEPLOY_IMAGE}..."
 
+          # Update image and safety invariants; preserves unrelated existing environment variables and settings.
           gcloud run jobs update ${{ env.JOB_NAME }} \
             --image="${DEPLOY_IMAGE}" \
             --region="${{ env.GCP_REGION }}" \
@@ -159,44 +149,72 @@ jobs:
 
           EXPECTED_IMAGE="${{ steps.tags.outputs.image_base }}:${{ steps.tags.outputs.deploy_tag }}"
           
-          # Inspect container image
-          ACTUAL_IMAGE=$(echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec']['template']['spec']['containers'][0]['image'])" 2>/dev/null || \
-                         echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec']['containers'][0]['image'])")
-
-          echo "Expected Image: ${EXPECTED_IMAGE}"
-          echo "Actual Image:   ${ACTUAL_IMAGE}"
-
-          if [ "${ACTUAL_IMAGE}" != "${EXPECTED_IMAGE}" ]; then
-            echo "::error::Deployed image mismatch! Expected ${EXPECTED_IMAGE}, got ${ACTUAL_IMAGE}."
-            exit 1
-          fi
-
-          # Inspect parallelism and task constraints
-          PARALLELISM=$(echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec'].get('parallelism', 'unknown'))")
-          TASK_COUNT=$(echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec'].get('taskCount', 'unknown'))")
-
-          echo "Parallelism: ${PARALLELISM}"
-          echo "Task Count:  ${TASK_COUNT}"
-
-          if [ "${PARALLELISM}" != "1" ] || [ "${TASK_COUNT}" != "1" ]; then
-            echo "::error::Single-task defense-in-depth settings invalid (parallelism=${PARALLELISM}, taskCount=${TASK_COUNT})."
-            exit 1
-          fi
-
-          # Inspect environment variables
-          LOCK_SETTING=$(echo "$JOB_JSON" | python3 -c "
+          echo "$JOB_JSON" | python3 -c "
           import sys, json
-          data = json.load(sys.stdin)
-          containers = data.get('spec', {}).get('template', {}).get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
+
+          expected_image = sys.argv[1]
+
+          try:
+              data = json.load(sys.stdin)
+          except Exception as e:
+              print(f'::error::Failed to parse Cloud Run Job JSON: {e}', file=sys.stderr)
+              sys.exit(1)
+
+          spec = data.get('spec', {}).get('template', {}).get('spec', {})
+          containers = spec.get('template', {}).get('spec', {}).get('containers', [])
           if not containers:
-              containers = data.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
-          env = {e['name']: e.get('value', '') for e in containers[0].get('env', [])}
-          print(f\"ENABLE_DISTRIBUTED_LOCK={env.get('ENABLE_DISTRIBUTED_LOCK')} FIRESTORE_ENABLED={env.get('FIRESTORE_ENABLED')} TRAVEL_MODE={env.get('TRAVEL_MODE')}\")
-          ")
+              containers = spec.get('containers', [])
 
-          echo "Verified Env: ${LOCK_SETTING}"
+          if not containers:
+              print('::error::No containers found in deployed Cloud Run Job spec.', file=sys.stderr)
+              sys.exit(1)
 
-          echo "========================================================================"
-          echo "DEPLOYMENT VERIFICATION PASSED: Job updated and verified successfully."
-          echo "CRITICAL SAFETY INVARIANT: Cloud Run Job was NOT triggered or executed."
-          echo "========================================================================"
+          container = containers[0]
+          actual_image = container.get('image', '')
+
+          errors = []
+
+          print(f'Expected Image: {expected_image}')
+          print(f'Actual Image:   {actual_image}')
+          if actual_image != expected_image:
+              errors.append(f'Deployed image mismatch: expected {expected_image}, got {actual_image}')
+
+          parallelism = spec.get('parallelism')
+          task_count = spec.get('taskCount')
+          print(f'Parallelism: {parallelism} (expected: 1)')
+          print(f'Task Count:  {task_count} (expected: 1)')
+          if parallelism != 1 or task_count != 1:
+              errors.append(f'Single-task defense-in-depth settings invalid: parallelism={parallelism}, taskCount={task_count}')
+
+          env_list = container.get('env', [])
+          env = {e.get('name'): e.get('value', '') for e in env_list}
+
+          if env.get('ENABLE_DISTRIBUTED_LOCK', '').strip().lower() != 'true':
+              errors.append(f\"ENABLE_DISTRIBUTED_LOCK must be 'true', found: '{env.get('ENABLE_DISTRIBUTED_LOCK')}'\")
+
+          if env.get('FIRESTORE_ENABLED', '').strip().lower() != 'true':
+              errors.append(f\"FIRESTORE_ENABLED must be 'true', found: '{env.get('FIRESTORE_ENABLED')}'\")
+
+          travel_val = env.get('TRAVEL_MODE', '').strip().lower()
+          if travel_val not in ('active', 'true', '1', 'yes'):
+              errors.append(f\"TRAVEL_MODE must be ACTIVE/true, found: '{env.get('TRAVEL_MODE')}'\")
+
+          if env.get('COMMERCIAL_ACTIONS_ENABLED', '').strip().lower() != 'false':
+              errors.append(f\"COMMERCIAL_ACTIONS_ENABLED must be 'false', found: '{env.get('COMMERCIAL_ACTIONS_ENABLED')}'\")
+
+          if env.get('AUTOMATED_EMAIL_ENABLED', '').strip().lower() != 'false':
+              errors.append(f\"AUTOMATED_EMAIL_ENABLED must be 'false', found: '{env.get('AUTOMATED_EMAIL_ENABLED')}'\")
+
+          if env.get('TECHNICAL_AUTOMATION_ENABLED', '').strip().lower() != 'true':
+              errors.append(f\"TECHNICAL_AUTOMATION_ENABLED must be 'true', found: '{env.get('TECHNICAL_AUTOMATION_ENABLED')}'\")
+
+          if errors:
+              for err in errors:
+                  print(f'::error::[Verification Failure] {err}', file=sys.stderr)
+              sys.exit(1)
+
+          print('========================================================================')
+          print('DEPLOYMENT VERIFICATION PASSED: All configuration & safety checks match.')
+          print('CRITICAL SAFETY INVARIANT: Cloud Run Job was NOT triggered or executed.')
+          print('========================================================================')
+          " "${EXPECTED_IMAGE}"
