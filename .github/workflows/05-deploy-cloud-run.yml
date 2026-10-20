@@ -46,7 +46,7 @@ jobs:
       - name: "Checkout Merged Codebase"
         uses: actions/checkout@v4.2.2
         with:
-          ref: "main"
+          ref: ${{ github.sha }}
 
       - name: "Derive Immutable Build Tags"
         id: tags

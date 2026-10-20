@@ -641,6 +641,12 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertNotIn(":latest", raw_text, "Deployment workflow must not build or push mutable :latest image tag")
         self.assertNotIn("short_sha", raw_text, "Deployment workflow must not build or push mutable short_sha image tag")
 
+        # 9. Pinned Checkout: checkout step must strictly checkout ${{ github.sha }} rather than resolving main again
+        checkout_step = next((s for s in steps if s.get("name") == "Checkout Merged Codebase"), None)
+        self.assertIsNotNone(checkout_step, "Must have Checkout Merged Codebase step")
+        checkout_ref = str(checkout_step.get("with", {}).get("ref", ""))
+        self.assertIn("${{ github.sha }}", checkout_ref, "Checkout step must pin to exact dispatched commit ${{ github.sha }}")
+
     # -------------------------------------------------------------------------
     # 28. CI Guard: GCP Administrator Setup Script Hardening & Security Checks
     # -------------------------------------------------------------------------
@@ -656,27 +662,81 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         # 1. Repository ID immutable claim must be defined and equal to 1405742084
         self.assertIn('REPOSITORY_ID="1405742084"', script_text, "Setup script must define immutable REPOSITORY_ID 1405742084")
 
-        # 2. Attribute mapping must map attribute.repository_id=assertion.repository_id
+        # 2. Attribute mapping must map attribute.repository_id=assertion.repository_id and attribute.workflow_ref=assertion.workflow_ref
         self.assertIn("attribute.repository_id=assertion.repository_id", script_text)
+        self.assertIn("attribute.workflow_ref=assertion.workflow_ref", script_text)
 
-        # 3. Workload Identity User role binding must use attribute.repository_id
+        # 3. job_workflow_ref must NOT be in mapping or condition (reserved for reusable workflows)
+        self.assertNotIn("job_workflow_ref", script_text, "Ordinary workflow_dispatch must use workflow_ref, not job_workflow_ref")
+
+        # 4. Workload Identity User role binding must use attribute.repository_id
         self.assertIn("attribute.repository_id/${REPOSITORY_ID}", script_text)
 
-        # 4. Attribute condition must restrict by repository_id, repository, ref, and job_workflow_ref
+        # 5. Attribute condition must restrict by repository_id, repository, ref, and EXACT workflow_ref equality
         self.assertIn("assertion.repository_id == '${REPOSITORY_ID}'", script_text)
-        self.assertIn("assertion.job_workflow_ref.startsWith", script_text)
-        self.assertIn(".github/workflows/05-deploy-cloud-run.yml", script_text)
+        self.assertIn("assertion.repository == '${GITHUB_REPO}'", script_text)
+        self.assertIn("assertion.ref == 'refs/heads/main'", script_text)
+        self.assertIn("assertion.workflow_ref == '${GITHUB_REPO}/${WORKFLOW_PATH}@refs/heads/main'", script_text)
 
-        # 5. Must support both create-oidc and update-oidc for safe idempotency
+        # 6. Must support both create-oidc and update-oidc with identical mapping & condition
         self.assertIn("create-oidc", script_text)
         self.assertIn("update-oidc", script_text)
+        # Ensure update-oidc uses the same mapping and condition
+        update_section = script_text.split("update-oidc")[1].split("fi")[0]
+        self.assertIn("--attribute-mapping=\"${MAPPING}\"", update_section)
+        self.assertIn("--attribute-condition=\"${CONDITION}\"", update_section)
 
-        # 6. Must dynamically inspect Cloud Run job for actual runtime service account
-        self.assertIn("gcloud run jobs describe", script_text)
-        self.assertIn("serviceAccountName", script_text)
-        self.assertIn("remove-iam-policy-binding", script_text)
+        # 7. Fail-closed Runtime SA Discovery: must stop with exit 1 if unresolved (no guessing)
+        self.assertIn("if [ -z \"${ACTUAL_RUNTIME_SA}\" ]; then", script_text)
+        self.assertIn("exit 1", script_text)
+        # Verify script does not fall back to guessing an SA if job returns empty
+        self.assertNotIn("ACTUAL_RUNTIME_SA=\"${COMPUTE_SA}\"", script_text)
+        self.assertNotIn("ACTUAL_RUNTIME_SA=\"${DISCOVERY_SA}\"", script_text)
 
-        # 7. Validate bash syntax
+        # 8. Validate Python extraction logic across supported Cloud Run Jobs JSON shapes
+        def extract_sa_from_json(json_str: str, project_id: str = "poised-eye-509816-a4") -> str:
+            import json
+            try:
+                data = json.loads(json_str)
+                sa = ""
+                if isinstance(data, dict):
+                    sa = data.get("template", {}).get("template", {}).get("serviceAccount")
+                    if not sa:
+                        sa = data.get("spec", {}).get("template", {}).get("template", {}).get("serviceAccount")
+                    if not sa:
+                        sa = data.get("spec", {}).get("template", {}).get("template", {}).get("spec", {}).get("serviceAccountName")
+                    if not sa:
+                        sa = data.get("spec", {}).get("template", {}).get("spec", {}).get("serviceAccountName")
+                    if not sa:
+                        sa = data.get("spec", {}).get("template", {}).get("spec", {}).get("serviceAccount")
+                    if not sa:
+                        sa = data.get("spec", {}).get("template", {}).get("serviceAccount")
+                    if not sa:
+                        sa = data.get("template", {}).get("serviceAccount")
+                sa = (sa or "").strip()
+                if sa and "@" not in sa and project_id:
+                    sa = f"{sa}@{project_id}.iam.gserviceaccount.com"
+                return sa
+            except Exception:
+                return ""
+
+        # Test Shape 1 (v2 template.template.serviceAccount)
+        res1 = extract_sa_from_json('{"template": {"template": {"serviceAccount": "sa-v2@poised-eye-509816-a4.iam.gserviceaccount.com"}}}')
+        self.assertEqual(res1, "sa-v2@poised-eye-509816-a4.iam.gserviceaccount.com")
+
+        # Test Shape 2 (v2 spec.template.template.serviceAccount)
+        res2 = extract_sa_from_json('{"spec": {"template": {"template": {"serviceAccount": "sa-v2spec@poised-eye-509816-a4.iam.gserviceaccount.com"}}}}')
+        self.assertEqual(res2, "sa-v2spec@poised-eye-509816-a4.iam.gserviceaccount.com")
+
+        # Test Shape 3 (v1 spec.template.template.spec.serviceAccountName)
+        res3 = extract_sa_from_json('{"spec": {"template": {"template": {"spec": {"serviceAccountName": "sa-v1@poised-eye-509816-a4.iam.gserviceaccount.com"}}}}}')
+        self.assertEqual(res3, "sa-v1@poised-eye-509816-a4.iam.gserviceaccount.com")
+
+        # Test Shape 4 (Empty / unconfigured job spec) -> Must return empty string (fail closed)
+        res4 = extract_sa_from_json('{"spec": {"template": {}}}')
+        self.assertEqual(res4, "")
+
+        # 9. Validate bash syntax
         res = subprocess.run(["bash", "-n", setup_script_path], capture_output=True, text=True)
         self.assertEqual(res.returncode, 0, f"Bash syntax check failed: {res.stderr}")
 

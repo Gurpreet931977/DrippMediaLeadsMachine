@@ -11,9 +11,10 @@ set -euo pipefail
 # - Reuses existing resources where present.
 # - Scopes Cloud Run permissions strictly to job 'dripp-discovery-job'.
 # - Scopes Artifact Registry permissions strictly to repository 'dripp-media'.
-# - Scopes Service Account User strictly to the job's actual runtime identity.
+# - Resolves runtime Service Account User strictly from Cloud Run Job definition
+#   and fails closed if unresolved.
 # - Restricts OIDC trust to repository 'Gurpreet931977/DrippMediaLeadsMachine' (id: 1405742084)
-#   on 'main' running '.github/workflows/05-deploy-cloud-run.yml'.
+#   on 'main' running exact workflow '.github/workflows/05-deploy-cloud-run.yml'.
 # - Avoids Cloud Build and avoids long-lived service account JSON keys.
 # ==============================================================================
 
@@ -27,7 +28,6 @@ WORKFLOW_PATH=".github/workflows/05-deploy-cloud-run.yml"
 POOL_NAME="github-actions-pool"
 PROVIDER_NAME="github-actions-provider"
 DEPLOYER_SA="github-deployer"
-RUNTIME_SA_DEFAULT="dripp-international-leads@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "=============================================================================="
 echo "  DRIPP MEDIA — GCP DEPLOYMENT INFRASTRUCTURE & IAM PROVISIONING"
@@ -70,8 +70,8 @@ else
 fi
 
 echo "[5/7] Ensuring Workload Identity Provider '${PROVIDER_NAME}' exists..."
-MAPPING="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_id=assertion.repository_id,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref,attribute.job_workflow_ref=assertion.job_workflow_ref"
-CONDITION="assertion.repository_id == '${REPOSITORY_ID}' && assertion.repository == '${GITHUB_REPO}' && assertion.ref == 'refs/heads/main' && assertion.job_workflow_ref.startsWith('${GITHUB_REPO}/${WORKFLOW_PATH}@')"
+MAPPING="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_id=assertion.repository_id,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref,attribute.workflow_ref=assertion.workflow_ref"
+CONDITION="assertion.repository_id == '${REPOSITORY_ID}' && assertion.repository == '${GITHUB_REPO}' && assertion.ref == 'refs/heads/main' && assertion.workflow_ref == '${GITHUB_REPO}/${WORKFLOW_PATH}@refs/heads/main'"
 
 if ! gcloud iam workload-identity-pools providers describe "${PROVIDER_NAME}" \
     --workload-identity-pool="${POOL_NAME}" --location="global" >/dev/null 2>&1; then
@@ -134,55 +134,71 @@ gcloud artifacts repositories add-iam-policy-binding "${REPOSITORY_NAME}" \
   --role="roles/artifactregistry.writer" \
   --quiet
 
-# 3. Dynamic inspection of Cloud Run Job to identify actual runtime service account
+# 3. Dynamic inspection of Cloud Run Job to identify actual runtime service account (fails closed)
 echo "      - Inspecting Cloud Run job '${JOB_NAME}' to identify actual runtime service account..."
 COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-DISCOVERY_SA="${RUNTIME_SA_DEFAULT}"
 
 JOB_JSON=$(gcloud run jobs describe "${JOB_NAME}" --region="${REGION}" --format=json 2>/dev/null || true)
 ACTUAL_RUNTIME_SA=""
 if [ -n "${JOB_JSON}" ]; then
   ACTUAL_RUNTIME_SA=$(echo "${JOB_JSON}" | python3 -c "
 import sys, json
+project_id = sys.argv[1] if len(sys.argv) > 1 else ''
 try:
     data = json.load(sys.stdin)
-    sa = data.get('spec', {}).get('template', {}).get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
-    if not sa:
-        sa = data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
-    if not sa:
-        sa = data.get('spec', {}).get('template', {}).get('serviceAccount')
-    print((sa or '').strip())
+    sa = ''
+    if isinstance(data, dict):
+        # 1. Cloud Run Jobs v2 API standard: template.template.serviceAccount or spec.template.template.serviceAccount
+        sa = data.get('template', {}).get('template', {}).get('serviceAccount')
+        if not sa:
+            sa = data.get('spec', {}).get('template', {}).get('template', {}).get('serviceAccount')
+        # 2. Cloud Run Jobs v1 API standard: spec.template.template.spec.serviceAccountName
+        if not sa:
+            sa = data.get('spec', {}).get('template', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
+        # 3. Alternate v1/v2 schema paths
+        if not sa:
+            sa = data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
+        if not sa:
+            sa = data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccount')
+        if not sa:
+            sa = data.get('spec', {}).get('template', {}).get('serviceAccount')
+        if not sa:
+            sa = data.get('template', {}).get('serviceAccount')
+    sa = (sa or '').strip()
+    if sa and '@' not in sa and project_id:
+        sa = f'{sa}@{project_id}.iam.gserviceaccount.com'
+    print(sa)
 except Exception:
     print('')
-")
+" "${PROJECT_ID}")
 fi
 
 if [ -z "${ACTUAL_RUNTIME_SA}" ]; then
-  # If job doesn't specify custom SA, check if DISCOVERY_SA exists in project, else fallback to Compute SA
-  if gcloud iam service-accounts describe "${DISCOVERY_SA}" >/dev/null 2>&1; then
-    ACTUAL_RUNTIME_SA="${DISCOVERY_SA}"
-  else
-    ACTUAL_RUNTIME_SA="${COMPUTE_SA}"
-  fi
-  echo "        Runtime SA not explicitly set in job spec; resolved to: ${ACTUAL_RUNTIME_SA}"
-else
-  echo "        Discovered runtime SA from existing Cloud Run job: ${ACTUAL_RUNTIME_SA}"
+  echo "::error::Failed to resolve actual runtime service account from Cloud Run job '${JOB_NAME}'." >&2
+  echo "         The job definition in project '${PROJECT_ID}' region '${REGION}' did not yield a verifiable service account." >&2
+  echo "         Failing closed to avoid guessing identities or granting unauthorized permissions." >&2
+  echo "         Ensure job '${JOB_NAME}' exists and has an explicit runtime serviceAccount configured." >&2
+  exit 1
 fi
 
-# Ensure runtime SA exists before binding
-if gcloud iam service-accounts describe "${ACTUAL_RUNTIME_SA}" >/dev/null 2>&1; then
-  echo "        Granting roles/iam.serviceAccountUser strictly on ${ACTUAL_RUNTIME_SA}..."
-  gcloud iam service-accounts add-iam-policy-binding "${ACTUAL_RUNTIME_SA}" \
-    --member="serviceAccount:${DEPLOYER_EMAIL}" \
-    --role="roles/iam.serviceAccountUser" \
-    --quiet
-else
-  echo "        WARNING: Runtime service account ${ACTUAL_RUNTIME_SA} not found in IAM."
+echo "        Discovered runtime service account from job definition: ${ACTUAL_RUNTIME_SA}"
+
+# Ensure runtime SA exists in IAM before granting permissions
+if ! gcloud iam service-accounts describe "${ACTUAL_RUNTIME_SA}" >/dev/null 2>&1; then
+  echo "::error::Resolved runtime service account '${ACTUAL_RUNTIME_SA}' does not exist in IAM for project '${PROJECT_ID}'." >&2
+  echo "         Failing closed to prevent delegating to an invalid identity." >&2
+  exit 1
 fi
 
-# Remove unnecessary bindings on alternative identities
+echo "        Granting roles/iam.serviceAccountUser strictly on ${ACTUAL_RUNTIME_SA}..."
+gcloud iam service-accounts add-iam-policy-binding "${ACTUAL_RUNTIME_SA}" \
+  --member="serviceAccount:${DEPLOYER_EMAIL}" \
+  --role="roles/iam.serviceAccountUser" \
+  --quiet
+
+# Remove unnecessary bindings on alternative candidate identities if present
 CANDIDATE_ALTERNATIVES=(
-  "${DISCOVERY_SA}"
+  "dripp-international-leads@${PROJECT_ID}.iam.gserviceaccount.com"
   "${COMPUTE_SA}"
 )
 for ALT_SA in "${CANDIDATE_ALTERNATIVES[@]}"; do
