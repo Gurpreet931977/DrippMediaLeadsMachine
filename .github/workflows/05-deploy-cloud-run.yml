@@ -1,0 +1,202 @@
+name: "05 - Production Cloud Run Deployment"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deployment:
+        description: "Safety Gate: Type 'CONFIRM_DEPLOY_TO_PRODUCTION' to authorize live deployment"
+        required: true
+        default: ""
+        type: string
+      image_tag_override:
+        description: "Optional custom image tag override (defaults to commit SHA)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  id-token: write  # Mandatory for Google Workload Identity Federation OIDC token exchange
+
+concurrency:
+  group: deploy-production-cloud-run
+  cancel-in-progress: false
+
+jobs:
+  deploy-cloud-run-job:
+    name: "Build & Deploy dripp-discovery-job"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: Production
+
+    env:
+      GCP_PROJECT_ID: "poised-eye-509816-a4"
+      GCP_REGION: "us-central1"
+      JOB_NAME: "dripp-discovery-job"
+      REGISTRY_HOST: "us-central1-docker.pkg.dev"
+      REPOSITORY_NAME: "dripp-media"
+      PACKAGE_NAME: "dripp-discovery-job"
+
+    steps:
+      - name: "Validate Safety Confirmation Gate"
+        run: |
+          if [ "${{ github.event.inputs.confirm_deployment }}" != "CONFIRM_DEPLOY_TO_PRODUCTION" ]; then
+            echo "::error::Deployment rejected. input.confirm_deployment must equal 'CONFIRM_DEPLOY_TO_PRODUCTION'."
+            exit 1
+          fi
+          echo "Deployment safety gate confirmed by operator."
+
+      - name: "Checkout Merged Codebase"
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: "main"
+
+      - name: "Derive Immutable Build Tags"
+        id: tags
+        run: |
+          FULL_SHA="${{ github.sha }}"
+          SHORT_SHA=$(echo "${FULL_SHA}" | cut -c1-7)
+          CUSTOM_TAG="${{ github.event.inputs.image_tag_override }}"
+          
+          IMAGE_BASE="${{ env.REGISTRY_HOST }}/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.PACKAGE_NAME }}"
+          
+          if [ -n "$CUSTOM_TAG" ]; then
+            DEPLOY_TAG="$CUSTOM_TAG"
+          else
+            DEPLOY_TAG="$FULL_SHA"
+          fi
+
+          echo "image_base=${IMAGE_BASE}" >> $GITHUB_OUTPUT
+          echo "deploy_tag=${DEPLOY_TAG}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "full_sha=${FULL_SHA}" >> $GITHUB_OUTPUT
+          
+          echo "Target Image Base: ${IMAGE_BASE}"
+          echo "Deploy Image Tag:  ${DEPLOY_TAG}"
+
+      - name: "Authenticate to Google Cloud via Workload Identity Federation"
+        id: auth
+        uses: google-github-actions/auth@v2.1.8
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+          token_format: "access_token"
+
+      - name: "Set up Google Cloud SDK"
+        uses: google-github-actions/setup-gcloud@v2.1.4
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: "Configure Docker Artifact Registry Credentials"
+        run: |
+          gcloud auth configure-docker ${{ env.REGISTRY_HOST }} --quiet
+
+      - name: "Ensure Artifact Registry Repository Exists"
+        run: |
+          if ! gcloud artifacts repositories describe ${{ env.REPOSITORY_NAME }} --location=${{ env.GCP_REGION }} --project=${{ env.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+            echo "Creating Artifact Registry repository '${{ env.REPOSITORY_NAME }}' in ${{ env.GCP_REGION }}..."
+            gcloud artifacts repositories create ${{ env.REPOSITORY_NAME }} \
+              --repository-format=docker \
+              --location=${{ env.GCP_REGION }} \
+              --project=${{ env.GCP_PROJECT_ID }} \
+              --description="Docker repository for Dripp Media backend images"
+          else
+            echo "Artifact Registry repository '${{ env.REPOSITORY_NAME }}' verified."
+          fi
+
+      - name: "Build Container Image"
+        run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
+          SHORT_SHA="${{ steps.tags.outputs.short_sha }}"
+
+          echo "Building container from Dockerfile..."
+          docker build \
+            --label "org.opencontainers.image.revision=${{ steps.tags.outputs.full_sha }}" \
+            --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            -t "${IMAGE_BASE}:${DEPLOY_TAG}" \
+            -t "${IMAGE_BASE}:${SHORT_SHA}" \
+            -t "${IMAGE_BASE}:latest" \
+            .
+
+      - name: "Push Image to Artifact Registry"
+        run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
+          SHORT_SHA="${{ steps.tags.outputs.short_sha }}"
+
+          echo "Pushing immutable tag ${DEPLOY_TAG}..."
+          docker push "${IMAGE_BASE}:${DEPLOY_TAG}"
+
+          echo "Pushing short tag ${SHORT_SHA}..."
+          docker push "${IMAGE_BASE}:${SHORT_SHA}"
+
+          echo "Pushing latest tag..."
+          docker push "${IMAGE_BASE}:latest"
+
+      - name: "Deploy & Update Cloud Run Job"
+        run: |
+          DEPLOY_IMAGE="${{ steps.tags.outputs.image_base }}:${{ steps.tags.outputs.deploy_tag }}"
+          echo "Updating Cloud Run Job '${{ env.JOB_NAME }}' with image ${DEPLOY_IMAGE}..."
+
+          gcloud run jobs update ${{ env.JOB_NAME }} \
+            --image="${DEPLOY_IMAGE}" \
+            --region="${{ env.GCP_REGION }}" \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --update-env-vars="ENABLE_DISTRIBUTED_LOCK=true,FIRESTORE_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TECHNICAL_AUTOMATION_ENABLED=true,TZ=UTC" \
+            --parallelism=1 \
+            --tasks=1 \
+            --max-retries=0 \
+            --task-timeout=30m
+
+      - name: "Read-Back Inspection & Deployment Verification"
+        run: |
+          echo "Performing read-back inspection of deployed Cloud Run Job..."
+          JOB_JSON=$(gcloud run jobs describe ${{ env.JOB_NAME }} \
+            --region="${{ env.GCP_REGION }}" \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --format=json)
+
+          EXPECTED_IMAGE="${{ steps.tags.outputs.image_base }}:${{ steps.tags.outputs.deploy_tag }}"
+          
+          # Inspect container image
+          ACTUAL_IMAGE=$(echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec']['template']['spec']['containers'][0]['image'])" 2>/dev/null || \
+                         echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec']['containers'][0]['image'])")
+
+          echo "Expected Image: ${EXPECTED_IMAGE}"
+          echo "Actual Image:   ${ACTUAL_IMAGE}"
+
+          if [ "${ACTUAL_IMAGE}" != "${EXPECTED_IMAGE}" ]; then
+            echo "::error::Deployed image mismatch! Expected ${EXPECTED_IMAGE}, got ${ACTUAL_IMAGE}."
+            exit 1
+          fi
+
+          # Inspect parallelism and task constraints
+          PARALLELISM=$(echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec'].get('parallelism', 'unknown'))")
+          TASK_COUNT=$(echo "$JOB_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['spec']['template']['spec'].get('taskCount', 'unknown'))")
+
+          echo "Parallelism: ${PARALLELISM}"
+          echo "Task Count:  ${TASK_COUNT}"
+
+          if [ "${PARALLELISM}" != "1" ] || [ "${TASK_COUNT}" != "1" ]; then
+            echo "::error::Single-task defense-in-depth settings invalid (parallelism=${PARALLELISM}, taskCount=${TASK_COUNT})."
+            exit 1
+          fi
+
+          # Inspect environment variables
+          LOCK_SETTING=$(echo "$JOB_JSON" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          containers = data.get('spec', {}).get('template', {}).get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
+          if not containers:
+              containers = data.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
+          env = {e['name']: e.get('value', '') for e in containers[0].get('env', [])}
+          print(f\"ENABLE_DISTRIBUTED_LOCK={env.get('ENABLE_DISTRIBUTED_LOCK')} FIRESTORE_ENABLED={env.get('FIRESTORE_ENABLED')} TRAVEL_MODE={env.get('TRAVEL_MODE')}\")
+          ")
+
+          echo "Verified Env: ${LOCK_SETTING}"
+
+          echo "========================================================================"
+          echo "DEPLOYMENT VERIFICATION PASSED: Job updated and verified successfully."
+          echo "CRITICAL SAFETY INVARIANT: Cloud Run Job was NOT triggered or executed."
+          echo "========================================================================"
