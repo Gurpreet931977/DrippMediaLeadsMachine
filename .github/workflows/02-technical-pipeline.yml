@@ -28,18 +28,8 @@ name: "02 - Technical Lead Acquisition Pipeline"
         required: true
         default: true
         type: boolean
-      refresh_existing:
-        description: "Refresh Existing Leads"
-        required: false
-        default: false
-        type: boolean
       enable_research:
         description: "Enable Website & Business Research Stage"
-        required: true
-        default: true
-        type: boolean
-      enable_contactability:
-        description: "Enable Contactability Assessment Stage"
         required: true
         default: true
         type: boolean
@@ -110,12 +100,14 @@ jobs:
       - name: "Execute Technical Acquisition Pipeline"
         run: |
           DRY_RUN_ARG="${{ inputs.dry_run && '--dry-run' || '--no-dry-run' }}"
+          RESEARCH_ARG="${{ inputs.enable_research && '--enable-research' || '--no-enable-research' }}"
           python scripts/run_technical_pipeline.py \
             --market "${{ inputs.market }}" \
             --country "${{ inputs.country }}" \
             --city "${{ inputs.city }}" \
             --limit "${{ inputs.lead_limit }}" \
-            $DRY_RUN_ARG
+            $DRY_RUN_ARG \
+            $RESEARCH_ARG
 
       - name: "Upload Pipeline Run Artifacts"
         if: always()
