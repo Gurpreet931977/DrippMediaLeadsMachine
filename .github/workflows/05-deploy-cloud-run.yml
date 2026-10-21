@@ -29,6 +29,9 @@ jobs:
       GCP_REGION: "us-central1"
       JOB_NAME: "dripp-discovery-job"
       RUNTIME_SERVICE_ACCOUNT: "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com"
+      API_SERVICE: "dripp-leads-api"
+      API_RUNTIME_SERVICE_ACCOUNT: "dripp-leads-api@poised-eye-509816-a4.iam.gserviceaccount.com"
+      API_URL: "https://dripp-leads-api-ukng7vge6q-uc.a.run.app"
       REGISTRY_HOST: "us-central1-docker.pkg.dev"
       REPOSITORY_NAME: "dripp-media"
       PACKAGE_NAME: "dripp-discovery-job"
@@ -118,6 +121,17 @@ jobs:
           print('Runtime service account preflight passed.')
           " "$EXPECTED_RUNTIME_SA"
 
+      - name: "Preflight Cloud Run API Service Runtime Identity & Security"
+        run: |
+          gcloud run services describe "$API_SERVICE" \
+            --region="$GCP_REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --format=json > "$RUNNER_TEMP/api-service-preflight.json"
+          python3 scripts/verify_cloud_run_api_service.py preflight \
+            "$RUNNER_TEMP/api-service-preflight.json" \
+            "$API_RUNTIME_SERVICE_ACCOUNT" \
+            "$API_URL"
+
       - name: "Build Container Image"
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
@@ -137,6 +151,36 @@ jobs:
 
           echo "Pushing immutable full SHA tag ${DEPLOY_TAG}..."
           docker push "${IMAGE_BASE}:${DEPLOY_TAG}"
+
+      - name: "Deploy & Update Cloud Run API Service"
+        run: |
+          DEPLOY_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
+          echo "Updating API service $API_SERVICE with immutable image $DEPLOY_IMAGE..."
+          gcloud run services update "$API_SERVICE" \
+            --image="$DEPLOY_IMAGE" \
+            --command=uvicorn \
+            --args="server:app,--host,0.0.0.0,--port,8080,--proxy-headers" \
+            --service-account="$API_RUNTIME_SERVICE_ACCOUNT" \
+            --region="$GCP_REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TZ=UTC"
+
+      - name: "Read-Back Inspection & API Health Verification"
+        run: |
+          gcloud run services describe "$API_SERVICE" \
+            --region="$GCP_REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --format=json > "$RUNNER_TEMP/api-service-deployed.json"
+          python3 scripts/verify_cloud_run_api_service.py deployed \
+            "$RUNNER_TEMP/api-service-deployed.json" \
+            "$API_RUNTIME_SERVICE_ACCOUNT" \
+            "$API_URL" \
+            "$IMAGE_BASE:$DEPLOY_TAG"
+          echo "Checking public liveness endpoint (no operator credential used)..."
+          curl --fail --silent --show-error \
+            --connect-timeout 5 --max-time 30 \
+            "$API_URL/api/system/health" -o /dev/null
+          echo "API service health probe passed."
 
       - name: "Deploy & Update Cloud Run Job"
         run: |
