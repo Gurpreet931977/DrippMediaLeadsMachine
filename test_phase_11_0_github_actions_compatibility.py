@@ -965,6 +965,42 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertNotIn('parser.add_argument("--enable-contactability"', runner)
 
 
+    # -------------------------------------------------------------------------
+    # 30. API Service Deployment Must Be Preflighted and Verified
+    # -------------------------------------------------------------------------
+    def test_30_cloud_run_api_service_deployment_is_guarded(self):
+        import os
+        import yaml
+
+        root = os.path.dirname(os.path.abspath(__file__))
+        workflow_path = os.path.join(root, ".github", "workflows", "05-deploy-cloud-run.yml")
+        with open(workflow_path, "r", encoding="utf-8") as f:
+            raw = f.read()
+            workflow = yaml.safe_load(raw)
+
+        steps = workflow.get("jobs", {}).get("deploy-cloud-run-job", {}).get("steps", [])
+        names = [step.get("name") for step in steps]
+        self.assertIn("Preflight Cloud Run API Service Runtime Identity & Security", names)
+        self.assertIn("Deploy & Update Cloud Run API Service", names)
+        self.assertIn("Read-Back Inspection & API Health Verification", names)
+        self.assertIn("Deploy & Update Cloud Run Job", names)
+        self.assertLess(names.index("Preflight Cloud Run API Service Runtime Identity & Security"), names.index("Build Container Image"))
+        self.assertLess(names.index("Push Image to Artifact Registry"), names.index("Deploy & Update Cloud Run API Service"))
+        self.assertLess(names.index("Read-Back Inspection & API Health Verification"), names.index("Deploy & Update Cloud Run Job"))
+        self.assertIn("verify_cloud_run_api_service.py preflight", raw)
+        self.assertIn("verify_cloud_run_api_service.py deployed", raw)
+        with open(os.path.join(root, "scripts", "verify_cloud_run_api_service.py"), encoding="utf-8") as f:
+            verifier = f.read()
+        self.assertIn("OPERATOR_KEY", verifier)
+        self.assertIn("GOOGLE_SHEET_ID", verifier)
+        self.assertIn("GCS_BACKUP_BUCKET", verifier)
+        self.assertIn("API_RUNTIME_SERVICE_ACCOUNT", raw)
+        with open(os.path.join(root, "scripts", "setup_gcp_api_service_deploy_iam.sh"), encoding="utf-8") as f:
+            iam_setup = f.read()
+        self.assertIn("roles/run.developer", iam_setup)
+        self.assertIn("roles/iam.serviceAccountUser", iam_setup)
+        self.assertNotIn("run jobs execute", raw.lower(), "Deployment must not execute the discovery job")
+
 if __name__ == "__main__":
     unittest.main()
 
