@@ -635,6 +635,17 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertIn("AUTOMATED_EMAIL_ENABLED", raw_text)
         self.assertIn("TECHNICAL_AUTOMATION_ENABLED", raw_text)
 
+        # 6a. Deployment must explicitly configure and verify the correct job runner/identity
+        # and keep the job in dry-run mode until an operator changes the safety posture.
+        self.assertIn("RUNTIME_SERVICE_ACCOUNT", raw_text)
+        self.assertIn("--service-account", raw_text)
+        self.assertIn("--command=python3", raw_text)
+        self.assertIn("--args=scripts/run_cloud_run_job.py", raw_text)
+        self.assertIn("DRY_RUN=true", raw_text)
+        self.assertIn("expected_runtime_sa", raw_text)
+        self.assertIn("Container Command", raw_text)
+        self.assertIn("DRY_RUN must be 'true'", raw_text)
+
         # 7. Safety invariant: workflow must NEVER automatically execute the discovery job
         self.assertNotIn("run jobs execute", raw_text, "Deployment workflow must NEVER automatically execute the discovery job")
 
