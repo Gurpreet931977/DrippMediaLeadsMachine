@@ -134,13 +134,33 @@ def record_failed_login(ip: str) -> None:
 def clear_failed_logins(ip: str) -> None:
     login_failed_attempts.pop(ip, None)
 
+def _is_hosted_runtime() -> bool:
+    """Return True when running on a managed production runtime that must fail closed."""
+    return any(
+        os.getenv(name, "").strip()
+        for name in ("K_SERVICE", "K_REVISION", "CLOUD_RUN_JOB", "CLOUD_RUN_EXECUTION")
+    )
+
+
+def _configured_operator_key() -> str:
+    """Read the supported operator key variables without exposing their values."""
+    return os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+
+
 def get_authenticated_operator(request: Request) -> Dict[str, Any]:
     """
     Evaluates operator authentication and returns auth status + auth channel.
     Channels: 'dev_open', 'cookie', 'bearer_session', 'bearer_master_key', 'header_session', 'header_master_key', 'query_param'.
+    Local development may be open when no key is configured; hosted runtimes fail closed.
     """
-    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+    expected = _configured_operator_key()
     if not expected:
+        if _is_hosted_runtime():
+            return {
+                "authenticated": False,
+                "auth_channel": None,
+                "error": "Operator authentication is not configured for hosted runtime",
+            }
         return {"authenticated": True, "auth_channel": "dev_open", "error": None}
     
     # 1. Check Bearer token in Authorization header
@@ -674,7 +694,12 @@ async def operator_login_endpoint(req: OperatorLoginRequest, request: Request):
             detail="Too many failed login attempts. IP temporarily locked for 5 minutes."
         )
 
-    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+    expected = _configured_operator_key()
+    if not expected and _is_hosted_runtime():
+        raise HTTPException(
+            status_code=503,
+            detail="Operator authentication is not configured for hosted runtime",
+        )
     provided = req.operator_key.strip()
     
     if not provided:
@@ -714,10 +739,9 @@ async def operator_session_status_endpoint(request: Request):
     """
     Checks active operator session validity and returns remaining TTL.
     """
-    expected = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
     auth_res = get_authenticated_operator(request)
     auth = auth_res["authenticated"]
-    if expected and not auth:
+    if not auth:
         raise HTTPException(status_code=401, detail="Unauthorized operator session")
 
     # Extract session details if authenticated via a session token
