@@ -28,6 +28,7 @@ jobs:
       GCP_PROJECT_ID: "poised-eye-509816-a4"
       GCP_REGION: "us-central1"
       JOB_NAME: "dripp-discovery-job"
+      RUNTIME_SERVICE_ACCOUNT: "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com"
       REGISTRY_HOST: "us-central1-docker.pkg.dev"
       REPOSITORY_NAME: "dripp-media"
       PACKAGE_NAME: "dripp-discovery-job"
@@ -90,6 +91,33 @@ jobs:
           fi
           echo "Artifact Registry repository '${{ env.REPOSITORY_NAME }}' verified."
 
+      - name: "Preflight Existing Cloud Run Job Runtime Identity"
+        env:
+          EXPECTED_RUNTIME_SA: ${{ env.RUNTIME_SERVICE_ACCOUNT }}
+        run: |
+          JOB_JSON="$(gcloud run jobs describe "${{ env.JOB_NAME }}" \
+            --region="${{ env.GCP_REGION }}" \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --format=json)"
+          printf '%s' "$JOB_JSON" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          actual = (
+              data.get('spec', {}).get('template', {}).get('spec', {})
+                  .get('template', {}).get('spec', {}).get('serviceAccountName')
+              or data.get('template', {}).get('template', {}).get('serviceAccount')
+              or data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
+              or ''
+          )
+          expected = sys.argv[1]
+          print(f'Expected runtime identity: {expected}')
+          print(f'Actual runtime identity:   {actual or "MISSING"}')
+          if actual != expected:
+              print('::error::Existing Cloud Run Job runtime service account is missing or unexpected.')
+              sys.exit(1)
+          print('Runtime service account preflight passed.')
+          " "$EXPECTED_RUNTIME_SA"
+
       - name: "Build Container Image"
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
@@ -118,9 +146,12 @@ jobs:
           # Update image and safety invariants; preserves unrelated existing environment variables and settings.
           gcloud run jobs update ${{ env.JOB_NAME }} \
             --image="${DEPLOY_IMAGE}" \
+            --command=python3 \
+            --args=scripts/run_cloud_run_job.py \
+            --service-account="${{ env.RUNTIME_SERVICE_ACCOUNT }}" \
             --region="${{ env.GCP_REGION }}" \
             --project="${{ env.GCP_PROJECT_ID }}" \
-            --update-env-vars="ENABLE_DISTRIBUTED_LOCK=true,FIRESTORE_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TECHNICAL_AUTOMATION_ENABLED=true,TZ=UTC" \
+            --update-env-vars="ENABLE_DISTRIBUTED_LOCK=true,FIRESTORE_ENABLED=true,TRAVEL_MODE=ACTIVE,DRY_RUN=true,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TECHNICAL_AUTOMATION_ENABLED=true,TZ=UTC" \
             --parallelism=1 \
             --tasks=1 \
             --max-retries=0 \
@@ -140,6 +171,7 @@ jobs:
           import sys, json
 
           expected_image = sys.argv[1]
+          expected_runtime_sa = sys.argv[2]
 
           try:
               data = json.load(sys.stdin)
@@ -158,6 +190,15 @@ jobs:
 
           container = containers[0]
           actual_image = container.get('image', '')
+          actual_command = container.get('command', []) or []
+          actual_args = container.get('args', []) or []
+          actual_runtime_sa = (
+              data.get('spec', {}).get('template', {}).get('spec', {})
+                  .get('template', {}).get('spec', {}).get('serviceAccountName')
+              or data.get('template', {}).get('template', {}).get('serviceAccount')
+              or data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
+              or ''
+          )
 
           errors = []
 
@@ -165,6 +206,18 @@ jobs:
           print(f'Actual Image:   {actual_image}')
           if actual_image != expected_image:
               errors.append(f'Deployed image mismatch: expected {expected_image}, got {actual_image}')
+
+          print(f'Expected Runtime Service Account: {expected_runtime_sa}')
+          print(f'Actual Runtime Service Account:   {actual_runtime_sa or "MISSING"}')
+          if actual_runtime_sa != expected_runtime_sa:
+              errors.append(f'Runtime service account mismatch: expected {expected_runtime_sa}, got {actual_runtime_sa or "MISSING"}')
+
+          print(f'Container Command: {actual_command}')
+          print(f'Container Args:    {actual_args}')
+          if actual_command != ['python3']:
+              errors.append(f'Container command must be ["python3"], got {actual_command}')
+          if actual_args != ['scripts/run_cloud_run_job.py']:
+              errors.append(f'Container args must invoke scripts/run_cloud_run_job.py, got {actual_args}')
 
           parallelism = spec.get('parallelism')
           task_count = spec.get('taskCount')
@@ -195,6 +248,9 @@ jobs:
           if env.get('TECHNICAL_AUTOMATION_ENABLED', '').strip().lower() != 'true':
               errors.append(f\"TECHNICAL_AUTOMATION_ENABLED must be 'true', found: '{env.get('TECHNICAL_AUTOMATION_ENABLED')}'\")
 
+          if env.get('DRY_RUN', '').strip().lower() != 'true':
+              errors.append(f\"DRY_RUN must be 'true', found: '{env.get('DRY_RUN')}'\")
+
           if errors:
               for err in errors:
                   print(f'::error::[Verification Failure] {err}', file=sys.stderr)
@@ -204,4 +260,4 @@ jobs:
           print('DEPLOYMENT VERIFICATION PASSED: All configuration & safety checks match.')
           print('CRITICAL SAFETY INVARIANT: Cloud Run Job was NOT triggered or executed.')
           print('========================================================================')
-          " "${EXPECTED_IMAGE}"
+          " "${EXPECTED_IMAGE}" "${{ env.RUNTIME_SERVICE_ACCOUNT }}"
