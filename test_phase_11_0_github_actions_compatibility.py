@@ -911,6 +911,49 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertEqual(res_short, "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com")
 
 
+    # -------------------------------------------------------------------------
+    # 29. Technical Pipeline Workflow Inputs Must Match Supported Runner Flags
+    # -------------------------------------------------------------------------
+    def test_29_technical_pipeline_workflow_controls_match_runner_capabilities(self):
+        import yaml
+
+        workflow_path = os.path.join(
+            PROJECT_ROOT, ".github", "workflows", "02-technical-pipeline.yml"
+        )
+        with open(workflow_path, "r", encoding="utf-8") as f:
+            workflow = yaml.safe_load(f)
+
+        on_data = workflow.get("on") or workflow.get(True) or {}
+        inputs = on_data.get("workflow_dispatch", {}).get("inputs", {})
+        self.assertIn("dry_run", inputs)
+        self.assertIn("enable_research", inputs)
+        self.assertNotIn(
+            "refresh_existing", inputs,
+            "Do not expose a refresh_existing control until the runner implements it.",
+        )
+        self.assertNotIn(
+            "enable_contactability", inputs,
+            "Do not expose an enable_contactability control until the runner implements it.",
+        )
+
+        steps = workflow.get("jobs", {}).get("run-technical-pipeline", {}).get("steps", [])
+        execute_step = next(
+            (s for s in steps if s.get("name") == "Execute Technical Acquisition Pipeline"),
+            None,
+        )
+        self.assertIsNotNone(execute_step)
+        run_script = execute_step.get("run", "")
+        self.assertIn("inputs.enable_research", run_script)
+        self.assertIn("--no-enable-research", run_script)
+
+        runner_path = os.path.join(PROJECT_ROOT, "scripts", "run_technical_pipeline.py")
+        with open(runner_path, "r", encoding="utf-8") as f:
+            runner = f.read()
+        self.assertIn("action=argparse.BooleanOptionalAction", runner)
+        self.assertNotIn('parser.add_argument("--refresh-existing"', runner)
+        self.assertNotIn('parser.add_argument("--enable-contactability"', runner)
+
+
 if __name__ == "__main__":
     unittest.main()
 
