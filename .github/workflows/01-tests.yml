@@ -82,6 +82,10 @@ jobs:
         run: |
           pytest -v test_production_operator_auth.py
 
+      - name: "Run Cloud Run API Service Deployment Verification Tests"
+        run: |
+          pytest -v test_cloud_run_api_service_deployment.py
+
       - name: "Run Production Hardening & Core Regression Suites"
         run: |
           pytest -v \
