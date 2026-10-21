@@ -274,9 +274,14 @@ def main():
         help="Dry run mode (no CRM mutations)",
     )
     parser.add_argument("--no-dry-run", dest="dry_run", action="store_false", help="Disable dry run mode")
-    parser.add_argument("--refresh-existing", action="store_true", default=False, help="Refresh existing leads")
-    parser.add_argument("--enable-research", action="store_true", default=True, help="Enable research stage")
-    parser.add_argument("--enable-contactability", action="store_true", default=True, help="Enable contactability stage")
+    # Provide symmetric --enable-research / --no-enable-research flags so manual
+    # workflow inputs actually control the research stage.
+    parser.add_argument(
+        "--enable-research",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable or disable the research stage",
+    )
     parser.add_argument("--report-path", default=None, help="Custom output report path")
 
     args = parser.parse_args()
@@ -288,9 +293,7 @@ def main():
             city=args.city,
             lead_limit=args.limit,
             dry_run=args.dry_run,
-            refresh_existing=args.refresh_existing,
             enable_research=args.enable_research,
-            enable_contactability=args.enable_contactability,
             report_path=args.report_path,
         )
         if report.get("status") in ("FAILED", "BLOCKED"):
