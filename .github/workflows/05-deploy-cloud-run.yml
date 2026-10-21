@@ -154,6 +154,8 @@ jobs:
 
       - name: "Deploy & Update Cloud Run API Service"
         run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
           DEPLOY_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
           echo "Updating API service $API_SERVICE with immutable image $DEPLOY_IMAGE..."
           gcloud run services update "$API_SERVICE" \
@@ -167,6 +169,8 @@ jobs:
 
       - name: "Read-Back Inspection & API Health Verification"
         run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
           gcloud run services describe "$API_SERVICE" \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
