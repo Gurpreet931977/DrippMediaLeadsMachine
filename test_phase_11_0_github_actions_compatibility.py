@@ -48,6 +48,7 @@ from lib.system.system_health import SystemHealthMonitor
 from scripts.security_secret_scan import scan_file, check_gitignore, PATTERNS
 from scripts.run_technical_pipeline import assert_safety_invariants, run_pipeline
 from scripts.run_freshness_check import run_freshness
+from scripts.parse_cloud_run_sa import parse_runtime_service_account
 from sheets_sync import get_sheet_client, get_worksheet
 
 
@@ -693,48 +694,157 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertNotIn("ACTUAL_RUNTIME_SA=\"${COMPUTE_SA}\"", script_text)
         self.assertNotIn("ACTUAL_RUNTIME_SA=\"${DISCOVERY_SA}\"", script_text)
 
-        # 8. Validate Python extraction logic across supported Cloud Run Jobs JSON shapes
-        def extract_sa_from_json(json_str: str, project_id: str = "poised-eye-509816-a4") -> str:
-            import json
-            try:
-                data = json.loads(json_str)
-                sa = ""
-                if isinstance(data, dict):
-                    sa = data.get("template", {}).get("template", {}).get("serviceAccount")
-                    if not sa:
-                        sa = data.get("spec", {}).get("template", {}).get("template", {}).get("serviceAccount")
-                    if not sa:
-                        sa = data.get("spec", {}).get("template", {}).get("template", {}).get("spec", {}).get("serviceAccountName")
-                    if not sa:
-                        sa = data.get("spec", {}).get("template", {}).get("spec", {}).get("serviceAccountName")
-                    if not sa:
-                        sa = data.get("spec", {}).get("template", {}).get("spec", {}).get("serviceAccount")
-                    if not sa:
-                        sa = data.get("spec", {}).get("template", {}).get("serviceAccount")
-                    if not sa:
-                        sa = data.get("template", {}).get("serviceAccount")
-                sa = (sa or "").strip()
-                if sa and "@" not in sa and project_id:
-                    sa = f"{sa}@{project_id}.iam.gserviceaccount.com"
-                return sa
-            except Exception:
-                return ""
+        # 8. Validate Production Runtime SA Parser with realistic Google Cloud Run Jobs responses
+        # Avoid duplicate parser logic: test the production parse_runtime_service_account helper directly.
 
-        # Test Shape 1 (v2 template.template.serviceAccount)
-        res1 = extract_sa_from_json('{"template": {"template": {"serviceAccount": "sa-v2@poised-eye-509816-a4.iam.gserviceaccount.com"}}}')
-        self.assertEqual(res1, "sa-v2@poised-eye-509816-a4.iam.gserviceaccount.com")
+        # Fixture 1: Documented Google Cloud Run Jobs v1 API response
+        # Schema: spec.template.spec.template.spec.serviceAccountName
+        v1_doc_fixture = {
+            "apiVersion": "run.googleapis.com/v1",
+            "kind": "Job",
+            "metadata": {
+                "name": "dripp-discovery-job",
+                "namespace": "poised-eye-509816-a4",
+                "uid": "1111-2222-3333",
+            },
+            "spec": {
+                "template": {
+                    "metadata": {"name": "dripp-discovery-job-run"},
+                    "spec": {
+                        "template": {
+                            "spec": {
+                                "containers": [
+                                    {
+                                        "image": "us-central1-docker.pkg.dev/poised-eye-509816-a4/dripp-media/dripp-discovery-job:pinned",
+                                        "resources": {"limits": {"cpu": "2000m", "memory": "2Gi"}},
+                                    }
+                                ],
+                                "serviceAccountName": "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com",
+                                "timeoutSeconds": 1800,
+                            }
+                        }
+                    },
+                }
+            },
+        }
+        res_v1 = parse_runtime_service_account(v1_doc_fixture, project_id="poised-eye-509816-a4")
+        self.assertEqual(res_v1, "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com")
 
-        # Test Shape 2 (v2 spec.template.template.serviceAccount)
-        res2 = extract_sa_from_json('{"spec": {"template": {"template": {"serviceAccount": "sa-v2spec@poised-eye-509816-a4.iam.gserviceaccount.com"}}}}')
-        self.assertEqual(res2, "sa-v2spec@poised-eye-509816-a4.iam.gserviceaccount.com")
+        # Fixture 2: Documented Google Cloud Run Jobs v2 API response
+        # Schema: template.template.serviceAccount
+        v2_doc_fixture = {
+            "name": "projects/poised-eye-509816-a4/locations/us-central1/jobs/dripp-discovery-job",
+            "uid": "4444-5555-6666",
+            "generation": "1",
+            "template": {
+                "template": {
+                    "containers": [
+                        {
+                            "image": "us-central1-docker.pkg.dev/poised-eye-509816-a4/dripp-media/dripp-discovery-job:pinned",
+                            "resources": {"limits": {"cpu": "2", "memory": "2Gi"}},
+                        }
+                    ],
+                    "maxRetries": 0,
+                    "timeout": "1800s",
+                    "serviceAccount": "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com",
+                }
+            },
+        }
+        res_v2 = parse_runtime_service_account(v2_doc_fixture, project_id="poised-eye-509816-a4")
+        self.assertEqual(res_v2, "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com")
 
-        # Test Shape 3 (v1 spec.template.template.spec.serviceAccountName)
-        res3 = extract_sa_from_json('{"spec": {"template": {"template": {"spec": {"serviceAccountName": "sa-v1@poised-eye-509816-a4.iam.gserviceaccount.com"}}}}}')
-        self.assertEqual(res3, "sa-v1@poised-eye-509816-a4.iam.gserviceaccount.com")
+        # Fixture 3: Short-name normalization for v1 and v2 responses
+        v1_short = {
+            "spec": {
+                "template": {
+                    "spec": {
+                        "template": {
+                            "spec": {
+                                "serviceAccountName": "custom-runner"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.assertEqual(
+            parse_runtime_service_account(v1_short, project_id="poised-eye-509816-a4"),
+            "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com",
+        )
 
-        # Test Shape 4 (Empty / unconfigured job spec) -> Must return empty string (fail closed)
-        res4 = extract_sa_from_json('{"spec": {"template": {}}}')
-        self.assertEqual(res4, "")
+        v2_short = {
+            "template": {
+                "template": {
+                    "serviceAccount": "custom-runner"
+                }
+            }
+        }
+        self.assertEqual(
+            parse_runtime_service_account(v2_short, project_id="poised-eye-509816-a4"),
+            "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com",
+        )
+
+        # Fixture 4: Missing identity in v1 and v2 (fail closed)
+        v1_empty = {"spec": {"template": {"spec": {"template": {"spec": {"serviceAccountName": "   "}}}}}}
+        self.assertEqual(parse_runtime_service_account(v1_empty, project_id="poised-eye-509816-a4"), "")
+
+        v2_empty = {"template": {"template": {"serviceAccount": ""}}}
+        self.assertEqual(parse_runtime_service_account(v2_empty, project_id="poised-eye-509816-a4"), "")
+
+        unconfigured = {"spec": {"template": {}}}
+        self.assertEqual(parse_runtime_service_account(unconfigured, project_id="poised-eye-509816-a4"), "")
+
+        # Fixture 5: Malformed JSON and invalid types (fail closed without exception)
+        self.assertEqual(parse_runtime_service_account("{ invalid: json }", project_id="poised-eye-509816-a4"), "")
+        self.assertEqual(parse_runtime_service_account("", project_id="poised-eye-509816-a4"), "")
+        self.assertEqual(parse_runtime_service_account(None, project_id="poised-eye-509816-a4"), "")
+        self.assertEqual(parse_runtime_service_account([], project_id="poised-eye-509816-a4"), "")
+
+        # Fixture 6: CLI subprocess execution of parse_cloud_run_sa.py via stdin
+        helper_path = os.path.join(PROJECT_ROOT, "scripts", "parse_cloud_run_sa.py")
+        proc_v1 = subprocess.run(
+            [sys.executable, helper_path, "poised-eye-509816-a4"],
+            input=json.dumps(v1_doc_fixture),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(proc_v1.stdout.strip(), "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com")
+
+        proc_v2 = subprocess.run(
+            [sys.executable, helper_path, "poised-eye-509816-a4"],
+            input=json.dumps(v2_doc_fixture),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(proc_v2.stdout.strip(), "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com")
+
+        # Fixture 7: Ensure setup_gcp_deployment_iam.sh invokes helper and includes documented fallback
+        self.assertIn('PARSER_HELPER="${SCRIPT_DIR}/parse_cloud_run_sa.py"', script_text)
+        self.assertIn("data.get('template', {}).get('template', {}).get('serviceAccount')", script_text)
+        self.assertIn("spec.template.spec.template.spec.serviceAccountName", script_text)
+        self.assertIn(".get('serviceAccountName')", script_text)
+
+        # Fixture 8: Verify embedded fallback in setup_gcp_deployment_iam.sh has 100% parity with helper
+        fallback_code = script_text.split('python3 -c "')[1].split('\n" "${PROJECT_ID}")')[0]
+        for fixture, expected in [
+            (v1_doc_fixture, "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com"),
+            (v2_doc_fixture, "dripp-international-leads@poised-eye-509816-a4.iam.gserviceaccount.com"),
+            (v1_short, "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com"),
+            (v2_short, "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com"),
+            (v1_empty, ""),
+            (v2_empty, ""),
+            (unconfigured, ""),
+        ]:
+            proc_fallback = subprocess.run(
+                [sys.executable, "-c", fallback_code, "poised-eye-509816-a4"],
+                input=json.dumps(fixture),
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertEqual(proc_fallback.stdout.strip(), expected)
 
         # 9. Validate bash syntax
         res = subprocess.run(["bash", "-n", setup_script_path], capture_output=True, text=True)
@@ -793,17 +903,11 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertIn('--member="serviceAccount:${DEPLOYER_EMAIL}"', step8_section)
         self.assertIn('--role="roles/iam.serviceAccountUser"', step8_section)
 
-        # 5. Short-name SA normalization test
-        import json
-        def extract_and_normalize(json_str: str, project_id: str = "poised-eye-509816-a4") -> str:
-            data = json.loads(json_str)
-            sa = data.get("template", {}).get("template", {}).get("serviceAccount", "")
-            sa = (sa or "").strip()
-            if sa and "@" not in sa and project_id:
-                sa = f"{sa}@{project_id}.iam.gserviceaccount.com"
-            return sa
-
-        res_short = extract_and_normalize('{"template": {"template": {"serviceAccount": "custom-runner"}}}')
+        # 5. Short-name SA normalization test using production helper
+        res_short = parse_runtime_service_account(
+            '{"template": {"template": {"serviceAccount": "custom-runner"}}}',
+            project_id="poised-eye-509816-a4",
+        )
         self.assertEqual(res_short, "custom-runner@poised-eye-509816-a4.iam.gserviceaccount.com")
 
 

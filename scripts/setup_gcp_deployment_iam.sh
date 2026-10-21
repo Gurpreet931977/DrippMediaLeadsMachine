@@ -59,29 +59,31 @@ if [ -z "${JOB_JSON}" ]; then
   exit 1
 fi
 
-ACTUAL_RUNTIME_SA=$(echo "${JOB_JSON}" | python3 -c "
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARSER_HELPER="${SCRIPT_DIR}/parse_cloud_run_sa.py"
+
+if [ -f "${PARSER_HELPER}" ]; then
+  ACTUAL_RUNTIME_SA=$(echo "${JOB_JSON}" | python3 "${PARSER_HELPER}" "${PROJECT_ID}")
+else
+  ACTUAL_RUNTIME_SA=$(echo "${JOB_JSON}" | python3 -c "
 import sys, json
 project_id = sys.argv[1] if len(sys.argv) > 1 else ''
 try:
     data = json.load(sys.stdin)
     sa = ''
     if isinstance(data, dict):
-        # 1. Cloud Run Jobs v2 API standard: template.template.serviceAccount or spec.template.template.serviceAccount
+        # 1. Cloud Run Jobs v2 API standard: template.template.serviceAccount
         sa = data.get('template', {}).get('template', {}).get('serviceAccount')
+        # 2. Cloud Run Jobs v1 API standard: spec.template.spec.template.spec.serviceAccountName
         if not sa:
-            sa = data.get('spec', {}).get('template', {}).get('template', {}).get('serviceAccount')
-        # 2. Cloud Run Jobs v1 API standard: spec.template.template.spec.serviceAccountName
-        if not sa:
-            sa = data.get('spec', {}).get('template', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
-        # 3. Alternate v1/v2 schema paths
-        if not sa:
-            sa = data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccountName')
-        if not sa:
-            sa = data.get('spec', {}).get('template', {}).get('spec', {}).get('serviceAccount')
-        if not sa:
-            sa = data.get('spec', {}).get('template', {}).get('serviceAccount')
-        if not sa:
-            sa = data.get('template', {}).get('serviceAccount')
+            sa = (
+                data.get('spec', {})
+                .get('template', {})
+                .get('spec', {})
+                .get('template', {})
+                .get('spec', {})
+                .get('serviceAccountName')
+            )
     sa = (sa or '').strip()
     if sa and '@' not in sa and project_id:
         sa = f'{sa}@{project_id}.iam.gserviceaccount.com'
@@ -89,6 +91,7 @@ try:
 except Exception:
     print('')
 " "${PROJECT_ID}")
+fi
 
 if [ -z "${ACTUAL_RUNTIME_SA}" ]; then
   echo "::error::Preflight check failed: Failed to resolve actual runtime service account from Cloud Run job '${JOB_NAME}'." >&2
