@@ -91,10 +91,12 @@ class CountryValidator:
             extracted_postcode = postcode_match.group(1).upper()
             evidence_points.append(f"Valid UK Postcode ({extracted_postcode})")
 
-        # 3. Check for UK Address Keywords
+        # 3. Check for UK Address Keywords.
+        # Use token boundaries so the substring "uk" in unrelated words (e.g. "Duke")
+        # cannot be mistaken for country evidence.
         uk_keywords = ["united kingdom", "england", "scotland", "wales", "northern ireland", "greater manchester", "uk"]
         for kw in uk_keywords:
-            if kw in addr_lower:
+            if re.search(rf"\b{re.escape(kw)}\b", addr_lower):
                 evidence_points.append(f"UK keyword in address ('{kw}')")
                 break
 
