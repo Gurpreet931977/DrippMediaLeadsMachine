@@ -988,7 +988,7 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertLess(names.index("Push Image to Artifact Registry"), names.index("Deploy & Update Cloud Run API Service"))
         self.assertLess(names.index("Read-Back Inspection & API Health Verification"), names.index("Deploy & Update Cloud Run Job"))
         self.assertIn("verify_cloud_run_api_service.py preflight", raw)
-        self.assertIn("verify_cloud_run_api_service.py deployed", raw)
+        self.assertIn("verify_cloud_run_api_service.py candidate", raw)
         self.assertIn("verify_cloud_run_api_service.py routed", raw)
         self.assertIn("scripts/verify_cloud_run_api_candidate.py", raw)
         self.assertIn("DRIPP_OPERATOR_KEY", raw)
