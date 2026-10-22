@@ -1,5 +1,6 @@
 """Unit tests for fail-closed Cloud Run API service deployment verification."""
 from scripts.verify_cloud_run_api_service import verify_service
+from scripts.wait_for_cloud_run_api_candidate import candidate_status
 
 EXPECTED_SA = "dripp-leads-api@poised-eye-509816-a4.iam.gserviceaccount.com"
 EXPECTED_URL = "https://dripp-leads-api-ukng7vge6q-uc.a.run.app"
@@ -117,3 +118,66 @@ def test_candidate_mode_rejects_primary_traffic_moving_before_readiness_passes()
         EXPECTED_IMAGE, EXPECTED_REVISION, "dripp-leads-api-00009-6nf"
     )
     assert any("previous revision before promotion" in error for error in errors)
+
+
+
+def test_candidate_status_accepts_ready_v1_service_and_expected_image():
+    data = {
+        "spec": {"template": {"spec": {"containers": [{"image": EXPECTED_IMAGE}]}}},
+        "status": {
+            "latestCreatedRevisionName": EXPECTED_REVISION,
+            "latestReadyRevisionName": EXPECTED_REVISION,
+            "conditions": [{"type": "Ready", "status": "True"}],
+        },
+    }
+    state = candidate_status(data, EXPECTED_IMAGE)
+    assert state["accepted"] is True
+    assert state["created_revision"] == EXPECTED_REVISION
+    assert state["ready_revision"] == EXPECTED_REVISION
+
+
+def test_candidate_status_rejects_revision_that_is_not_ready_yet():
+    data = {
+        "spec": {"template": {"spec": {"containers": [{"image": EXPECTED_IMAGE}]}}},
+        "status": {
+            "latestCreatedRevisionName": "dripp-leads-api-00014-abc",
+            "latestReadyRevisionName": EXPECTED_REVISION,
+            "conditions": [{"type": "Ready", "status": "False"}],
+        },
+    }
+    state = candidate_status(data, EXPECTED_IMAGE)
+    assert state["ready"] is False
+    assert state["accepted"] is False
+
+
+def test_candidate_status_supports_cloud_run_v2_resource_shape():
+    data = {
+        "template": {"containers": [{"image": EXPECTED_IMAGE}]},
+        "status": {
+            "latestCreatedRevision": (
+                "projects/poised-eye-509816-a4/locations/us-central1/"
+                "services/dripp-leads-api/revisions/" + EXPECTED_REVISION
+            ),
+            "latestReadyRevision": (
+                "projects/poised-eye-509816-a4/locations/us-central1/"
+                "services/dripp-leads-api/revisions/" + EXPECTED_REVISION
+            ),
+        },
+    }
+    state = candidate_status(data, EXPECTED_IMAGE)
+    assert state["accepted"] is True
+    assert state["created_revision"] == EXPECTED_REVISION
+
+
+def test_candidate_status_rejects_immutable_image_mismatch():
+    data = {
+        "spec": {"template": {"spec": {"containers": [{"image": "mutable:latest"}]}}},
+        "status": {
+            "latestCreatedRevisionName": EXPECTED_REVISION,
+            "latestReadyRevisionName": EXPECTED_REVISION,
+        },
+    }
+    state = candidate_status(data, EXPECTED_IMAGE)
+    assert state["ready"] is True
+    assert state["image_matches"] is False
+    assert state["accepted"] is False

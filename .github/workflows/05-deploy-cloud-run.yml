@@ -207,35 +207,23 @@ jobs:
 
       - name: "Capture and Tag Ready API Candidate Revision"
         id: candidate
+        timeout-minutes: 4
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
           EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
-          gcloud run services describe "$API_SERVICE" \
-            --region="$GCP_REGION" \
-            --project="$GCP_PROJECT_ID" \
-            --format=json > "$RUNNER_TEMP/api-service-candidate.json"
 
-          CANDIDATE_REVISION="$(python3 - "$RUNNER_TEMP/api-service-candidate.json" "$EXPECTED_IMAGE" <<'PY'
-          import json, sys
-          from pathlib import Path
-
-          data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-          status = data.get("status", {})
-          created = status.get("latestCreatedRevisionName") or ""
-          ready = status.get("latestReadyRevisionName") or ""
-          spec = data.get("spec", {}).get("template", {}).get("spec", {})
-          containers = spec.get("containers", [])
-          actual_image = containers[0].get("image", "") if containers else ""
-          if not created or created != ready:
-              print("::error::Latest created API revision is not the latest ready revision.")
-              raise SystemExit(1)
-          if actual_image != sys.argv[2]:
-              print("::error::API candidate image does not match the immutable build image.")
-              raise SystemExit(1)
-          print(created)
-          PY
-          )"
+          # Cloud Run can return the updated service before the revision has reached
+          # Ready. Poll the service and validate the immutable image before tagging.
+          # The helper writes the revision name to stdout and diagnostics to stderr,
+          # so failed checks remain visible in the Actions log.
+          CANDIDATE_REVISION="$(python3 scripts/wait_for_cloud_run_api_candidate.py \
+            --service "$API_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --expected-image "$EXPECTED_IMAGE" \
+            --timeout-seconds 180 \
+            --poll-interval-seconds 5)"
           echo "Candidate revision: $CANDIDATE_REVISION"
           echo "revision=$CANDIDATE_REVISION" >> "$GITHUB_OUTPUT"
 
