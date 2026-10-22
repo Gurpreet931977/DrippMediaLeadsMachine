@@ -16,8 +16,10 @@ from lib.discovery.web_search import (
     SearchResultList,
     CircuitState,
     ProviderCircuitBreaker,
-    DuckDuckGoRateLimiter
+    DuckDuckGoRateLimiter,
+    convert_search_result_to_candidate,
 )
+from lib.validation.country_validator import CountryValidator
 from lib.verification.no_website_verifier import NoWebsiteVerificationProvider
 from lib.enrichment.review_rating_enricher import (
     ReviewRatingEnricher,
@@ -671,6 +673,69 @@ class TestLiveSearchHardeningAndEvidenceIntegrity(unittest.TestCase):
         self.assertEqual(mock_post.call_count, 3)  # initial + 2 retries
         self.assertEqual(mock_sleep.call_count, 2)
         self.assertEqual(res.retries, 2)
+
+
+
+class TestWebDiscoveryLocationEvidenceHardening(unittest.TestCase):
+    """Regression tests for non-fabricated location/country evidence in web discovery."""
+
+    def _convert(self, title, snippet, url):
+        boundary = MagicMock()
+        boundary.validate_candidate.return_value = MagicMock(
+            city_match=True,
+            city_match_reason="mocked boundary for deterministic unit test",
+            boundary_source="TEST",
+            boundary_validation_method="TEST_ONLY",
+        )
+        return convert_search_result_to_candidate(
+            result={"title": title, "snippet": snippet, "result_url": url},
+            city="Manchester",
+            country="United Kingdom",
+            industry="restaurants",
+            country_validator=CountryValidator(),
+            boundary_validator=boundary,
+        )
+
+    def test_rejects_manchester_maryland_instead_of_fabricating_uk_location(self):
+        candidate = self._convert(
+            "Restaurants in Manchester, MD",
+            "Find restaurants in Manchester, MD, Maryland, United States.",
+            "https://sellbuymdhomes.com/real-estate-blog/restaurants-in-manchester-md",
+        )
+        self.assertIsNone(candidate)
+
+    def test_rejects_manchester_vermont_when_source_has_no_uk_evidence(self):
+        candidate = self._convert(
+            "Taste | Manchester, Vermont",
+            "Food and drink around Manchester, Vermont. Visitor information.",
+            "https://www.manchestervermont.com/taste",
+        )
+        self.assertIsNone(candidate)
+
+    def test_city_in_url_only_is_not_target_location_evidence(self):
+        candidate = self._convert(
+            "The Example Grill",
+            "Independent restaurant with an evening menu and friendly service.",
+            "https://directory.example/manchester/the-example-grill",
+        )
+        self.assertIsNone(candidate)
+
+    def test_word_duke_does_not_count_as_uk_country_evidence(self):
+        candidate = self._convert(
+            "The Duke - Manchester",
+            "A casual restaurant on Duke Street serving lunch and dinner.",
+            "https://theduke.example/",
+        )
+        self.assertIsNone(candidate)
+
+    def test_explicit_manchester_uk_business_is_still_accepted(self):
+        candidate = self._convert(
+            "The Example Grill - Manchester, UK",
+            "Independent restaurant in Manchester, UK. Family-run food and drinks.",
+            "https://examplegrill.co.uk/",
+        )
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate.raw_website, "https://examplegrill.co.uk/")
 
 
 if __name__ == "__main__":
