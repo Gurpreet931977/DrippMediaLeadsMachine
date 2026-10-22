@@ -234,6 +234,55 @@ class TestCRMHardening(unittest.TestCase):
         self.assertEqual(lead.response_status, "REPLIED")
         self.assertEqual(lead.sales_stage, "QUALIFIED_CONVERSATION")
 
+    # Fail closed if the authoritative CRM deduplication snapshot is unavailable.
+    def test_leads_read_failure_never_appends_undeduplicated_lead(self):
+        self.mock_leads_ws.get_all_records.side_effect = RuntimeError("Sheets temporarily unavailable")
+        lead = Lead(
+            lead_id="LEAD-FAIL-CLOSED-001",
+            company_name="Safe Guard Bistro",
+            industry="Restaurant",
+            target_country="United Kingdom",
+            country="United Kingdom",
+            city="Manchester",
+            qualification_state=QualificationState.OUTREACH_READY.value,
+        )
+        with self.assertRaisesRegex(RuntimeError, "Deduplication Block.*Could not read LEADS"):
+            self.provider.save_qualified_leads([lead])
+        self.mock_leads_ws.append_rows.assert_not_called()
+        self.mock_leads_ws.update.assert_not_called()
+
+    def test_review_queue_read_failure_never_appends_undeduplicated_review(self):
+        self.mock_review_ws.get_all_records.side_effect = RuntimeError("Sheets temporarily unavailable")
+        lead = Lead(
+            lead_id="LEAD-FAIL-CLOSED-002",
+            company_name="Possible Match Bistro",
+            industry="Restaurant",
+            target_country="United Kingdom",
+            country="United Kingdom",
+            city="Manchester",
+            qualification_state=QualificationState.MANUAL_REVIEW.value,
+        )
+        with self.assertRaisesRegex(RuntimeError, "Deduplication Block.*Could not read REVIEW_QUEUE"):
+            self.provider.save_review_queue([lead])
+        self.mock_review_ws.append_rows.assert_not_called()
+        self.mock_review_ws.update.assert_not_called()
+
+    def test_research_log_read_failure_never_writes_without_snapshot(self):
+        self.mock_research_ws.get_all_values.side_effect = RuntimeError("Sheets temporarily unavailable")
+        entry = ResearchLogEntry(
+            research_id="RES-FAIL-CLOSED-003",
+            company_name="Research Safe Bistro",
+            industry="Restaurant",
+            target_country="United Kingdom",
+            detected_country="United Kingdom",
+            country_status="COUNTRY_MATCH",
+            city="Manchester",
+        )
+        with self.assertRaisesRegex(RuntimeError, "Deduplication Block.*Could not read RESEARCH_LOG"):
+            self.provider.save_research_log([entry])
+        self.mock_research_ws.update.assert_not_called()
+        self.mock_research_ws.append_rows.assert_not_called()
+
     # 11. deduplication_behavior_unchanged
     def test_deduplication_behavior_unchanged(self):
         existing_rows = [{
