@@ -151,7 +151,13 @@ class DurableBackupEngine:
                     for doc in docs:
                         items.append({"id": doc.id, "data": doc.to_dict()})
                 except Exception as e:
-                    logger.warning("Error streaming Firestore collection %s: %s", coll_name, e)
+                    logger.error("Error streaming Firestore collection %s during durable backup: %s", coll_name, e)
+                    # An accessible production Firestore must be captured completely.
+                    # Never serialize an inaccessible collection as an empty successful backup.
+                    if store.is_live:
+                        raise RuntimeError(
+                            f"Durable backup could not capture Firestore collection '{coll_name}': {e}"
+                        ) from e
             else:
                 # Capture from mock data store
                 mock_coll = store._mock_data.get(coll_name, {})
