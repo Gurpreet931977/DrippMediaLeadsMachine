@@ -200,6 +200,7 @@ jobs:
             --args="server:app,--host,0.0.0.0,--port,8080,--proxy-headers" \
             --service-account="$API_RUNTIME_SERVICE_ACCOUNT" \
             --memory=1Gi \
+            --tag=release-candidate \
             --no-traffic \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \

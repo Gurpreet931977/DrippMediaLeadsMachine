@@ -992,6 +992,22 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertIn("verify_cloud_run_api_service.py routed", raw)
         self.assertIn("scripts/verify_cloud_run_api_candidate.py", raw)
         self.assertIn("DRIPP_OPERATOR_KEY", raw)
+
+        # Assign the candidate tag at revision creation time. Without this, a revision
+        # created with zero traffic can become RETIRED before the later readiness poll
+        # gets a chance to tag it, leaving the poll waiting on an older ready revision.
+        deploy_step = next(
+            (step for step in steps if step.get("name") == "Deploy & Update Cloud Run API Service"),
+            None,
+        )
+        self.assertIsNotNone(deploy_step)
+        deploy_command = deploy_step.get("run", "")
+        self.assertIn("--tag=release-candidate", deploy_command)
+        self.assertLess(
+            deploy_command.index("--tag=release-candidate"),
+            deploy_command.index("--no-traffic"),
+            "Candidate tag must be attached during creation while primary traffic remains unchanged",
+        )
         self.assertIn("--no-traffic", raw, "API candidate must receive zero primary traffic until validated")
         self.assertIn("--memory=1Gi", raw, "API candidate memory must be explicit")
         self.assertIn("--update-tags", raw, "Candidate revision must have a tagged test URL")
