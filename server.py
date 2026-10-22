@@ -2683,7 +2683,12 @@ async def trigger_system_backup_endpoint():
                 data_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"),
                 run_id=f"manual-api-{uuid.uuid4().hex[:8]}",
             )
-            return {"status": "ok", "backup_type": "DURABLE_GCS_VERIFIED", **res}
+            return {
+                "status": "ok",
+                "backup_type": "DURABLE_GCS_VERIFIED",
+                "backup_status": res.get("status"),
+                **{key: value for key, value in res.items() if key != "status"},
+            }
 
         from lib.system.backup_manager import BackupManager
         bm = BackupManager()
