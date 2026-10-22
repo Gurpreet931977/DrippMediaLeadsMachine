@@ -203,7 +203,7 @@ jobs:
             --no-traffic \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
-            --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TZ=UTC"
+            --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,FIRESTORE_ENABLED=true,GCS_BACKUP_BUCKET=dripp-leads-backups-poised-eye-509816-a4,TZ=UTC"
 
       - name: "Capture and Tag Ready API Candidate Revision"
         id: candidate
