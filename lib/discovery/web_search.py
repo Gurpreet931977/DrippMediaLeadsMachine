@@ -1699,12 +1699,36 @@ class WebSearchProvider(DiscoveryProvider):
         Queries diverse discovery families and converts valid search results
         into validated DiscoveredBusiness records with strict location and identity gates.
         """
-        queries = [
-            f'"independent {industry.lower()}" {city}',
-            f'"{industry.lower()}" "{city}" "no website"',
-            f'"{industry.lower()}" in {city}',
-            f'"family {industry.lower()}" {city}'
-        ]
+        city_label = (city or "").strip()
+        country_label = (country or "").strip()
+        industry_label = (industry or "").strip().lower()
+        country_key = re.sub(r"[^a-z]", "", country_label.lower())
+
+        # Geographic context is part of every fallback query. Searching a city
+        # name alone returned unrelated places that share the same name
+        # (e.g. Manchester, Vermont or Maryland) when Overpass was unavailable.
+        if country_key in {"unitedkingdom", "uk", "greatbritain", "gb", "england", "scotland", "wales"}:
+            queries = [
+                f'"independent {industry_label}" "{city_label}" England UK',
+                f'"{industry_label}" "{city_label}" England "no website"',
+                f'"{industry_label}" "{city_label}" "{country_label}"',
+                f'"family-run {industry_label}" "{city_label}" England UK',
+            ]
+            if city_label.casefold() == "manchester":
+                # Greater Manchester terminology is common in local listings;
+                # retain it as a separate query family rather than widening the
+                # location gate or accepting ambiguous city-name matches.
+                queries.extend([
+                    f'"independent {industry_label}" "Greater Manchester" England',
+                    f'"{industry_label}" "Greater Manchester" "no website"',
+                ])
+        else:
+            queries = [
+                f'"independent {industry_label}" "{city_label}" "{country_label}"',
+                f'"{industry_label}" "{city_label}" "{country_label}" "no website"',
+                f'"{industry_label}" in "{city_label}" "{country_label}"',
+                f'"family-run {industry_label}" "{city_label}" "{country_label}"',
+            ]
         candidates: List[DiscoveredBusiness] = []
         seen_identities = set()
         any_query_attempted = False
