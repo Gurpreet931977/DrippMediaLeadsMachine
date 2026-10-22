@@ -84,7 +84,7 @@ jobs:
 
       - name: "Run Cloud Run API Service Deployment Verification Tests"
         run: |
-          pytest -v test_cloud_run_api_service_deployment.py
+          pytest -v test_cloud_run_api_service_deployment.py test_cloud_run_api_candidate_verification.py
 
       - name: "Run Production Hardening & Core Regression Suites"
         run: |
