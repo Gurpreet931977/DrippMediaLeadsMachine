@@ -205,33 +205,32 @@ jobs:
             --project="$GCP_PROJECT_ID" \
             --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,FIRESTORE_ENABLED=true,GCS_BACKUP_BUCKET=dripp-leads-backups-poised-eye-509816-a4,TZ=UTC"
 
-      - name: "Capture and Tag Ready API Candidate Revision"
+      - name: "Tag Candidate and Wait for Verified Readiness"
         id: candidate
-        timeout-minutes: 4
+        timeout-minutes: 5
+        env:
+          API_CANDIDATE_URL: ${{ env.API_CANDIDATE_URL }}
+          PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
           EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
 
-          # Cloud Run can return the updated service before the revision has reached
-          # Ready. Poll the service and validate the immutable image before tagging.
-          # The helper writes the revision name to stdout and diagnostics to stderr,
-          # so failed checks remain visible in the Actions log.
+          # Identify the created revision by immutable image, assign only the candidate
+          # URL tag while retaining the old 100% primary, then probe that URL until
+          # both application health and Cloud Run's latest-ready revision agree.
+          # Diagnostics go to stderr; only the verified revision name goes to stdout.
           CANDIDATE_REVISION="$(python3 scripts/wait_for_cloud_run_api_candidate.py \
             --service "$API_SERVICE" \
             --region "$GCP_REGION" \
             --project "$GCP_PROJECT_ID" \
             --expected-image "$EXPECTED_IMAGE" \
+            --candidate-url "$API_CANDIDATE_URL" \
+            --expected-primary-revision "$PREVIOUS_PRIMARY_REVISION" \
             --timeout-seconds 180 \
             --poll-interval-seconds 5)"
-          echo "Candidate revision: $CANDIDATE_REVISION"
+          echo "Verified candidate revision: $CANDIDATE_REVISION"
           echo "revision=$CANDIDATE_REVISION" >> "$GITHUB_OUTPUT"
-
-          gcloud run services update-traffic "$API_SERVICE" \
-            --region="$GCP_REGION" \
-            --project="$GCP_PROJECT_ID" \
-            --update-tags="release-candidate=$CANDIDATE_REVISION" \
-            --quiet
 
       - name: "Read-Back Inspection & API Health Verification"
         env:
