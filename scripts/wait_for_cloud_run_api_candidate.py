@@ -248,7 +248,11 @@ def wait_for_candidate(
                         f"Candidate identified by immutable image: {candidate_revision}",
                         file=sys.stderr,
                     )
-                    _tag_candidate(service, region, project, candidate_revision)
+                    try:
+                        _tag_candidate(service, region, project, candidate_revision)
+                    except RuntimeError as exc:
+                        print(f"::error::Candidate tag assignment failed: {exc}", file=sys.stderr)
+                        return 1
                     tagged = True
                     print(
                         "Candidate-only release-candidate tag assigned. "
