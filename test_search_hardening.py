@@ -738,5 +738,37 @@ class TestWebDiscoveryLocationEvidenceHardening(unittest.TestCase):
         self.assertEqual(candidate.raw_website, "https://examplegrill.co.uk/")
 
 
+
+class TestCountrySpecificDiscoveryQueries(unittest.TestCase):
+    """Ensures fallback discovery sends explicit geographic context to search engines."""
+
+    def setUp(self):
+        self.provider = WebSearchProvider()
+        self.empty_success = SearchResultList(
+            [],
+            outcome=SearchOutcome.SEARCH_SUCCEEDED_EMPTY,
+            provider="TEST",
+        )
+
+    def _captured_queries(self, city, country):
+        with patch.object(self.provider, "search_web", return_value=self.empty_success) as search:
+            self.provider.discover_businesses(city, country, "restaurants", limit=5)
+        return [call.args[0] for call in search.call_args_list]
+
+    def test_uk_discovery_queries_include_country_and_regional_context(self):
+        queries = self._captured_queries("Manchester", "United Kingdom")
+        self.assertTrue(queries)
+        self.assertTrue(all("Manchester" in q or "Greater Manchester" in q for q in queries))
+        self.assertTrue(any("England" in q or "United Kingdom" in q for q in queries))
+        self.assertTrue(any("no website" in q for q in queries))
+        self.assertTrue(any("Greater Manchester" in q for q in queries))
+        self.assertLessEqual(len(queries), 6)
+
+    def test_other_countries_are_included_in_every_fallback_query(self):
+        queries = self._captured_queries("Austin", "United States")
+        self.assertEqual(len(queries), 4)
+        self.assertTrue(all("Austin" in q and "United States" in q for q in queries))
+
+
 if __name__ == "__main__":
     unittest.main()
