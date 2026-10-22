@@ -88,6 +88,18 @@ class OpenStreetMapProvider(DiscoveryProvider):
         self.min_interval = min_request_interval
         self.endpoints = list(endpoints) if endpoints is not None else get_default_endpoints()
         self._last_request_time: float = 0.0
+
+        # Once every configured Overpass mirror has failed, do not spend the same
+        # multi-minute timeout budget again on each discovery round. Keep the
+        # circuit open briefly and let HybridDiscoveryEngine use its web fallback.
+        try:
+            self.overpass_failure_cooldown_seconds = max(
+                0.0, float(os.getenv("OVERPASS_FAILURE_COOLDOWN_SECONDS", "180"))
+            )
+        except (TypeError, ValueError):
+            self.overpass_failure_cooldown_seconds = 180.0
+        self._overpass_circuit_open_until = 0.0
+
         self.country_validator = CountryValidator()
         self.boundary_validator = CityBoundaryValidator()
         self.adjacent_research_candidates: List[DiscoveredBusiness] = []
@@ -183,6 +195,14 @@ class OpenStreetMapProvider(DiscoveryProvider):
         if cached is not None:
             return cached
 
+        remaining_cooldown = self._overpass_circuit_open_until - time.monotonic()
+        if remaining_cooldown > 0:
+            remaining_seconds = max(1, int(remaining_cooldown + 0.999))
+            raise OverpassQueryError(
+                "OpenStreetMap Overpass circuit is OPEN after a previous all-endpoint outage; "
+                f"retry in approximately {remaining_seconds}s. Use the configured discovery fallback."
+            )
+
         headers = {
             "User-Agent": USER_AGENT,
             "Accept": "application/json"
@@ -212,6 +232,9 @@ class OpenStreetMapProvider(DiscoveryProvider):
                             data = resp.json()
                             elements = data.get("elements", [])
                             self._set_cache(query, data)
+                            # Any successful HTTP 200 query (including a legitimate
+                            # empty result) proves the provider is reachable again.
+                            self._overpass_circuit_open_until = 0.0
                             self.record_call(latency=latency, candidates_count=len(elements))
                             logger.info(
                                 "[OSM] Query succeeded via %s in %.2fs (%d elements found)",
@@ -262,6 +285,10 @@ class OpenStreetMapProvider(DiscoveryProvider):
                         time.sleep(1.0)
 
         self.record_call(latency=0.0, error=True)
+        if self.overpass_failure_cooldown_seconds > 0:
+            self._overpass_circuit_open_until = (
+                time.monotonic() + self.overpass_failure_cooldown_seconds
+            )
         error_msg = (
             f"OpenStreetMap Overpass query failed across all {len(endpoints)} endpoints. "
             f"Last error: {last_error}. Details: {'; '.join(attempt_errors[-4:])}"
