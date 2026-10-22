@@ -489,11 +489,16 @@ def convert_search_result_to_candidate(
         return None
 
     # 4. Target-Location Evidence Verification
-    combined_text = f"{title} {snippet} {raw_url}".lower()
-    city_lower = city.lower()
+    # Only result title/snippet are positive location evidence. A target-city word
+    # appearing only in a URL slug must not qualify an unrelated page.
+    source_location_text = f"{title} {snippet}".strip()
+    combined_text = source_location_text.lower()
+    city_lower = (city or "").strip().lower()
 
-    has_city_mention = city_lower in combined_text
-    postcode_match = UK_POSTCODE_REGEX.search(f"{title} {snippet}")
+    has_city_mention = bool(
+        re.search(rf"\b{re.escape(city_lower)}\b", combined_text)
+    ) if city_lower else False
+    postcode_match = UK_POSTCODE_REGEX.search(source_location_text)
     extracted_postcode = postcode_match.group(1).upper() if postcode_match else ""
 
     MANCHESTER_AREAS = [
@@ -504,7 +509,9 @@ def convert_search_result_to_candidate(
     ]
     has_area_mention = any(a in combined_text for a in MANCHESTER_AREAS) if city_lower == "manchester" else False
 
-    if not (has_city_mention or extracted_postcode or has_area_mention):
+    # A UK postcode can support country validation, but without a target-city or
+    # target-area mention it cannot establish that the business is in this city.
+    if not (has_city_mention or has_area_mention):
         return None
 
     # Parse address components
@@ -525,13 +532,14 @@ def convert_search_result_to_candidate(
         phone = phone_m.group(0).strip()
 
     # 5. Target Country Validation
+    # Do not feed a synthesized fallback address (e.g. "Manchester, United Kingdom")
+    # into the validator: that fabricates the very country evidence this gate must prove.
     cv = country_validator or _get_default_country_validator()
-    observed_text = f"{addr_profile.normalized_address or ''} {snippet}".strip()
     c_status, det_country, reg, pcode, c_evidence = cv.validate(
         target_country=country,
-        address=observed_text or full_address,
+        address=source_location_text,
         phone=phone,
-        raw_data={"title": title, "snippet": snippet, "url": raw_url}
+        raw_data={**result, "title": title, "snippet": snippet, "url": raw_url}
     )
     if c_status != CountryStatus.COUNTRY_MATCH.value:
         return None
