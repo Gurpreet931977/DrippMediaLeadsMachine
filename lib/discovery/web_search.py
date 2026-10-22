@@ -394,10 +394,18 @@ def _is_probable_owned_business_domain(raw_url: str, company_name: str) -> bool:
     if not meaningful_tokens:
         return False
 
-    # One meaningful brand token in the hostname is a useful weak signal,
-    # not proof of ownership. The downstream verification pipeline remains
-    # responsible for confirming the website belongs to the exact business.
-    return any(token in host_slug for token in meaningful_tokens)
+    # A token occurring anywhere in a hostname is too weak: "Mala" would
+    # incorrectly match "smalabar.com". Require the domain to begin with a
+    # meaningful brand token, or the complete normalized brand name. This still
+    # supports common brand domains such as cottonfood.com and malamcr.co.uk,
+    # while avoiding arbitrary middle-substring matches.
+    normalized_brand = "".join(meaningful_tokens)
+    if host_slug.startswith(normalized_brand) or host_slug.startswith(f"the{normalized_brand}"):
+        return True
+    return any(
+        len(token) >= 5 and (host_slug.startswith(token) or host_slug.startswith(f"the{token}"))
+        for token in meaningful_tokens
+    )
 
 
 def convert_search_result_to_candidate(
