@@ -1,9 +1,9 @@
-# Dripp Media — Production Activation & Commercial Go-Live Checklist (Phase 10.6)
+# Dripp Media — Technical Production Readiness & Future Outreach Add-on Checklist
 
 > [!CRITICAL]
-> **MANDATORY SAFETY GOVERNANCE**:
-> Technical readiness does **NOT** automatically grant permission to execute commercial outreach or send automated email.
-> Commercial activation requires explicit, unambiguous **HUMAN OPERATOR CONFIRMATION** and manual unlock of production environment variables.
+> **CURRENT RELEASE SCOPE:** Technical production readiness only. Automated email and live outreach are deliberately excluded and must remain disabled.
+> A green readiness check, deployment, backup, or smoke test does **NOT** authorize commercial messages.
+> The outreach addon requires a separate, explicit authorization after the technical system is stable.
 
 ---
 
@@ -11,13 +11,14 @@
 
 | Safety Invariant | Current State | Production Activation Requirement |
 | :--- | :--- | :--- |
-| **Travel Mode** | `ACTIVE` | Must be explicitly changed to `DISABLED` by operator |
-| **Commercial Actions** | `LOCKED` | Must be explicitly set to `COMMERCIAL_ACTIONS_ENABLED=true` |
-| **Automated Email** | `DISABLED` | Must be activated via `AUTOMATED_EMAIL_ENABLED=true` |
-| **Scheduled Cron** | `DISABLED` | Workflows remain manual `workflow_dispatch` until cron un-commented |
-| **Rule B Criteria** | `FROZEN` | 100% Frozen in V1 specification (zero threshold degradation) |
+| **Travel Mode** | `ACTIVE` | Keep active during current technical rollout and smoke tests |
+| **Commercial Actions** | `LOCKED` | Keep `COMMERCIAL_ACTIONS_ENABLED=false`; no live outreach in current release |
+| **Automated Email** | `DISABLED` | Keep `AUTOMATED_EMAIL_ENABLED=false`; email is a final optional addon |
+| **Discovery Job** | `DRY_RUN=true` | Discovery smoke tests only; no CRM writes or outreach dispatches |
+| **Scheduled Cron** | `DISABLED` | Workflows remain manual `workflow_dispatch` until separately approved |
+| **Rule B Criteria** | `FROZEN` | Zero threshold degradation |
 | **CRM Authority** | `Google Sheets` | Remains single source of truth; git never stores CRM state |
-| **Human Activation** | `PENDING` | `HUMAN_ACTIVATION_CONFIRMED=true` required before live dispatches |
+| **Human Activation** | `NOT REQUIRED FOR TECHNICAL ROLLOUT` | Outreach confirmation is deferred to a separate addon review |
 
 ---
 
@@ -31,11 +32,10 @@
 - [ ] **Synthetic Staged Pipeline**: Run `StagedPipelineRunner` dry-run and confirm 0 unhandled exceptions.
 
 ### Section B: External Account & Provider Readiness
-- [ ] **Tavily Research Provider**: Valid, funded API key stored in GitHub Secrets as `TAVILY_API_KEY` (monthly quota verified).
-- [ ] **Google Sheets CRM**: Service account credentials configured with edit access to master production spreadsheet.
-- [ ] **SMTP / Mail Provider**: Hostinger / Google Workspace SMTP credentials verified (`SMTP_HOST`, `SMTP_PORT=465`, `SMTP_USER`, `SMTP_PASSWORD`).
-- [ ] **Meta Graph API**: If Instagram DM or Facebook Messenger is enabled, verify Meta App review status and `META_ACCESS_TOKEN` validity.
-- [ ] **Quota Ceilings**: Confirm `DEFAULT_DAILY_LIMITS` in `lib/system/quota_governor.py` match contracted provider tier allowances.
+- [ ] **Web Research Provider**: Verify any configured research provider and quota caps without exposing secrets.
+- [ ] **Google Sheets CRM**: Confirm least-privilege service-account access and read/write integrity checks.
+- [ ] **Quota Ceilings**: Confirm configured search/research budgets match the available provider tier.
+- [ ] **Deferred addon dependencies**: SMTP credentials and Meta Graph API access are intentionally out of scope. Do not configure or activate them as part of technical production readiness.
 
 ### Section C: Security Readiness
 - [ ] **Secret Scan**: Run `python scripts/security_secret_scan.py` and confirm 0 unallowed credentials tracked in Git.
@@ -57,26 +57,39 @@
 - [ ] **Alert Cooldowns**: Verify notification throttling rules (`ALERT_COOLDOWN_SECONDS=3600`) are enforced.
 - [ ] **Disaster Recovery Sandbox**: Confirm operational procedures in `docs/OPERATIONAL_RECOVERY_RUNBOOK.md` are accessible.
 
-### Section F: Commercial Outreach Readiness
-- [ ] **Audience Eligibility**: Ensure all outreach-ready candidates strictly satisfy the frozen 8 criteria of Rule B.
-- [ ] **Anti-Hallucination Copy QA**: Ensure dynamic outreach message copy contains no placeholder text or template errors.
-- [ ] **Daily & Hourly Send Limits**: Verify `EmailGovernor` rate limits (`MAX_EMAIL_BATCH=5`, daily limit <= 20) are enforced.
-- [ ] **PECR / GDPR Compliance**: Confirm lawful basis evidence (`LEGITIMATE_INTERESTS`) is attached to every queued recipient.
-- [ ] **Suppression List Active**: Verify opt-outs and bounces are completely blocked from re-contact.
+### Section F: Future Outreach Add-on (DEFERRED — DO NOT EXECUTE NOW)
 
-### Section G: Human Operator Approval & Activation Sequence
-1. **Operator Sign-Off**: The human founder/operator conducts a final review of candidate lists and channel configurations.
-2. **Set Activation Flags**:
+These checks are not prerequisites for the technical rollout, and none authorizes sending by itself. Keep this entire section deferred until the technical stack has passed deployment, backup/restore, safe smoke-test, CRM-integrity, and monitoring checks.
+
+- [ ] **Audience Eligibility**: Review Rule B qualification and evidence for every proposed recipient.
+- [ ] **Copy QA**: Confirm messages contain no invented claims, placeholder text, or unsupported website observations.
+- [ ] **Send Limits**: Verify channel-specific daily/hourly limits and quota governor behavior.
+- [ ] **Legal Review**: Confirm a documented lawful basis and applicable PECR/GDPR requirements for every channel.
+- [ ] **Suppression Controls**: Prove opt-outs, bounces, and previous-contact history block repeat outreach.
+- [ ] **Channel Ownership**: Verify sending domains, sender identities, Meta permissions, and platform-policy compliance.
+- [ ] **Human Approval**: Obtain a separate explicit approval specifically for the outreach addon.
+
+### Section G: Current Technical Rollout (Outreach Must Stay Locked)
+
+1. **Use the guarded deployment workflow** only after the full source regression suite succeeds.
+2. **Verify the deployed safety posture** remains:
    ```bash
-   export TRAVEL_MODE=false
-   export COMMERCIAL_ACTIONS_ENABLED=true
-   export AUTOMATED_EMAIL_ENABLED=true
-   export DRIPP_RUNTIME_MODE=PRODUCTION
-   export HUMAN_ACTIVATION_CONFIRMED=true
+   export TRAVEL_MODE=true
+   export DRY_RUN=true
+   export COMMERCIAL_ACTIONS_ENABLED=false
+   export AUTOMATED_EMAIL_ENABLED=false
+   export TECHNICAL_AUTOMATION_ENABLED=true
    ```
-3. **Execution Gate Token**: Arm the target campaign via operator UI or CLI to issue a time-limited (300s) single-use HMAC token.
-4. **Controlled Pilot Send**: Execute exactly ONE test message to verified internal recipient address before general dispatch.
-5. **Continuous Monitoring**: Inspect `data/incidents.json` and provider dashboards during initial run window.
+   These are the expected technical-rollout settings; do not flip any of the commercial flags.
+3. **Verify durable recovery**: require a GCS backup archive and manifest, checksums, and a passing isolated restore drill.
+4. **Run a controlled discovery smoke test** with bounded research. Confirm the execution status and funnel metrics, verify Shadow Mode bypassed Google Sheets/CRM writes, and verify zero outreach dispatches.
+5. **Review monitoring and CRM integrity** reports. A failure or unresolved contradiction is a hold, not permission to bypass a gate.
+
+### Section H: Final Add-on Activation (SEPARATE FUTURE DECISION ONLY)
+
+This section is deliberately not part of current technical production activation. Do not run these steps until the founder explicitly requests the addon in a separate decision.
+
+Only after approval, legal review, sender/channel verification, suppression checks, copy QA, and a verified internal pilot plan should a future runbook define any change to `TRAVEL_MODE`, `COMMERCIAL_ACTIONS_ENABLED`, `AUTOMATED_EMAIL_ENABLED`, or `HUMAN_ACTIVATION_CONFIRMED`. Until then, all production and CI workflows must keep commercial actions and automated email disabled, with no live messages.
 
 ---
 
