@@ -48,8 +48,8 @@
 - [ ] **Google Sheets Reconciliation**: Run `lib.system.reconciliation_engine` and verify zero unresolved critical schema mismatches.
 - [ ] **Canonical ID Stability**: Verify existing lead IDs (`LEAD-MAN-[A-F0-9]{6}`) remain stable across deduplication cycles.
 - [ ] **Protected Historical States**: Confirm historical outreach records (`SENT`, `BOUNCED`, `SUPPRESSED`, `NEVER_CONFIRMED_SENT`) are immutable.
-- [ ] **Verified Baseline Backup**: Verify that at least one backup with valid SHA-256 manifest exists in `data/backups/`.
-- [ ] **Dual-Anchor Retention**: Verify backup pruning protects the newest valid and previous valid backup archives.
+- [ ] **Verified Durable Backup**: In Cloud Run, verify a GCS archive and companion manifest exist under `gs://dripp-leads-backups-poised-eye-509816-a4/backups/`, the SHA-256 checks pass, and remote isolated-restore verification returns `PASS`.
+- [ ] **Non-Ephemeral Recovery**: Do not count `/app/data/backups` as durable production backup storage. Verify retention policies preserve recoverable archive/manifest pairs before pruning any older artifacts.
 
 ### Section E: Monitoring & Health Readiness
 - [ ] **Zero Open Incidents**: Confirm `IncidentManager` reports 0 open `CRITICAL` or `ERROR` incidents in `data/incidents.json`.
