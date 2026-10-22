@@ -270,6 +270,15 @@ jobs:
             "$API_CANDIDATE_URL/api/system/health" -o /dev/null
           echo "Candidate API liveness probe passed."
 
+      - name: "Create & Verify Durable Pre-Promotion Backup"
+        timeout-minutes: 8
+        env:
+          DRIPP_OPERATOR_KEY: ${{ secrets.DRIPP_OPERATOR_KEY }}
+          API_CANDIDATE_URL: ${{ env.API_CANDIDATE_URL }}
+          GCS_BACKUP_BUCKET: "dripp-leads-backups-poised-eye-509816-a4"
+        run: |
+          python3 scripts/bootstrap_candidate_durable_backup.py
+
       - name: "Verify Authenticated Candidate CRM & Readiness"
         timeout-minutes: 5
         env:
