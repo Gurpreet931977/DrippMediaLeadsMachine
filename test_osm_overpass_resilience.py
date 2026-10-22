@@ -169,6 +169,53 @@ class TestOSMOverpassResilience(unittest.TestCase):
             self.assertIn("timeout", str(ctx.exception).lower())
             self.assertEqual(provider.metrics.errors, 1)
 
+    def test_overpass_all_endpoint_failure_opens_circuit_for_followup_queries(self):
+        """After all mirrors fail once, a second query fails fast without new network calls."""
+        provider = OpenStreetMapProvider(
+            cache_dir=self.test_cache_dir,
+            min_request_interval=0.0,
+            endpoints=["https://ep1.test/api/interpreter", "https://ep2.test/api/interpreter"],
+        )
+
+        with patch("time.sleep"), patch(
+            "requests.post", side_effect=requests.exceptions.Timeout("Connection timed out")
+        ) as mock_post:
+            with self.assertRaises(OverpassQueryError) as first:
+                provider.execute_overpass_query("query_one")
+            self.assertIn("failed across all 2 endpoints", str(first.exception))
+            first_call_count = mock_post.call_count
+            self.assertEqual(first_call_count, 2)
+
+            with self.assertRaises(OverpassQueryError) as second:
+                provider.execute_overpass_query("query_two")
+            self.assertIn("circuit is OPEN", str(second.exception))
+            self.assertEqual(mock_post.call_count, first_call_count)
+
+    def test_overpass_circuit_allows_retry_after_cooldown_and_resets_on_success(self):
+        """Expired cooldown permits a fresh query and successful response resets the circuit."""
+        provider = OpenStreetMapProvider(
+            cache_dir=self.test_cache_dir,
+            min_request_interval=0.0,
+            endpoints=["https://ep1.test/api/interpreter"],
+        )
+        provider._overpass_circuit_open_until = __import__("time").monotonic() + 60
+
+        with patch("time.sleep"), patch("requests.post") as mock_post:
+            with self.assertRaises(OverpassQueryError):
+                provider.execute_overpass_query("blocked_query")
+            mock_post.assert_not_called()
+
+            provider._overpass_circuit_open_until = __import__("time").monotonic() - 1
+            response = MagicMock()
+            response.status_code = 200
+            response.json.return_value = {"elements": []}
+            mock_post.return_value = response
+            result = provider.execute_overpass_query("after_cooldown")
+
+        self.assertEqual(result, {"elements": []})
+        self.assertEqual(provider._overpass_circuit_open_until, 0.0)
+        mock_post.assert_called_once()
+
     def test_hybrid_discovery_raises_outage_when_osm_fails_and_no_candidates(self):
         """HybridDiscoveryEngine raises descriptive RuntimeError when OSM fails and no other provider yields candidates."""
         engine = HybridDiscoveryEngine(mode="HYBRID", apify_enabled=False)
