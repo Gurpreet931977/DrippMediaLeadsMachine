@@ -1,6 +1,10 @@
 """Unit tests for fail-closed Cloud Run API service deployment verification."""
 from scripts.verify_cloud_run_api_service import verify_service
-from scripts.wait_for_cloud_run_api_candidate import candidate_status
+from scripts.wait_for_cloud_run_api_candidate import (
+    candidate_status,
+    primary_traffic_matches,
+    wait_for_candidate,
+)
 
 EXPECTED_SA = "dripp-leads-api@poised-eye-509816-a4.iam.gserviceaccount.com"
 EXPECTED_URL = "https://dripp-leads-api-ukng7vge6q-uc.a.run.app"
@@ -181,3 +185,117 @@ def test_candidate_status_rejects_immutable_image_mismatch():
     assert state["ready"] is True
     assert state["image_matches"] is False
     assert state["accepted"] is False
+
+
+
+def test_candidate_can_be_identified_before_latest_ready_moves():
+    data = {
+        "spec": {"template": {"spec": {"containers": [{"image": EXPECTED_IMAGE}]}}},
+        "status": {
+            "latestCreatedRevisionName": EXPECTED_REVISION,
+            "latestReadyRevisionName": "dripp-leads-api-00012-xyz",
+            "conditions": [{"type": "Ready", "status": "True"}],
+            "traffic": [{"revisionName": "dripp-leads-api-00012-xyz", "percent": 100}],
+        },
+    }
+    state = candidate_status(data, EXPECTED_IMAGE)
+    assert state["candidate_identified"] is True
+    assert state["ready"] is False
+    assert state["accepted"] is False
+
+
+def test_primary_traffic_check_allows_zero_weight_tagged_candidate():
+    data = {
+        "status": {
+            "traffic": [
+                {"revisionName": "dripp-leads-api-00012-xyz", "percent": 100},
+                {"revisionName": EXPECTED_REVISION, "tag": "release-candidate"},
+            ]
+        }
+    }
+    assert primary_traffic_matches(data, "dripp-leads-api-00012-xyz") is True
+
+
+def test_primary_traffic_check_rejects_candidate_primary_promotion():
+    data = {
+        "status": {
+            "traffic": [{"revisionName": EXPECTED_REVISION, "percent": 100}]
+        }
+    }
+    assert primary_traffic_matches(data, "dripp-leads-api-00012-xyz") is False
+
+
+def test_wait_for_candidate_tags_then_health_checks_before_accepting(monkeypatch, capsys):
+    old_primary = "dripp-leads-api-00012-xyz"
+    before_ready = {
+        "spec": {"template": {"spec": {"containers": [{"image": EXPECTED_IMAGE}]}}},
+        "status": {
+            "latestCreatedRevisionName": EXPECTED_REVISION,
+            "latestReadyRevisionName": old_primary,
+            "conditions": [{"type": "Ready", "status": "True"}],
+            "traffic": [{"revisionName": old_primary, "percent": 100}],
+        },
+    }
+    after_health = {
+        "spec": {"template": {"spec": {"containers": [{"image": EXPECTED_IMAGE}]}}},
+        "status": {
+            "latestCreatedRevisionName": EXPECTED_REVISION,
+            "latestReadyRevisionName": EXPECTED_REVISION,
+            "conditions": [{"type": "Ready", "status": "True"}],
+            "traffic": [
+                {"revisionName": old_primary, "percent": 100},
+                {"revisionName": EXPECTED_REVISION, "tag": "release-candidate"},
+            ],
+        },
+    }
+    describe_results = iter([before_ready, after_health])
+    calls = []
+    monkeypatch.setattr(
+        "scripts.wait_for_cloud_run_api_candidate._describe_service",
+        lambda service, region, project: next(describe_results),
+    )
+    monkeypatch.setattr(
+        "scripts.wait_for_cloud_run_api_candidate._tag_candidate",
+        lambda service, region, project, revision: calls.append(("tag", revision)),
+    )
+    monkeypatch.setattr(
+        "scripts.wait_for_cloud_run_api_candidate._probe_candidate",
+        lambda url: (calls.append(("probe", url)) is None, "HTTP 200"),
+    )
+
+    result = wait_for_candidate(
+        "dripp-leads-api", "us-central1", "test-project", EXPECTED_IMAGE,
+        "https://candidate.example", old_primary, timeout_seconds=5,
+        poll_interval_seconds=1,
+    )
+    assert result == 0
+    assert calls[0] == ("tag", EXPECTED_REVISION)
+    assert calls[1] == ("probe", "https://candidate.example")
+    assert EXPECTED_REVISION in capsys.readouterr().out
+
+
+def test_wait_for_candidate_refuses_to_tag_if_primary_traffic_changed(monkeypatch):
+    changed_traffic = {
+        "spec": {"template": {"spec": {"containers": [{"image": EXPECTED_IMAGE}]}}},
+        "status": {
+            "latestCreatedRevisionName": EXPECTED_REVISION,
+            "latestReadyRevisionName": EXPECTED_REVISION,
+            "traffic": [{"revisionName": EXPECTED_REVISION, "percent": 100}],
+        },
+    }
+    tags = []
+    monkeypatch.setattr(
+        "scripts.wait_for_cloud_run_api_candidate._describe_service",
+        lambda service, region, project: changed_traffic,
+    )
+    monkeypatch.setattr(
+        "scripts.wait_for_cloud_run_api_candidate._tag_candidate",
+        lambda *args: tags.append(args),
+    )
+    result = wait_for_candidate(
+        "dripp-leads-api", "us-central1", "test-project", EXPECTED_IMAGE,
+        "https://candidate.example", "dripp-leads-api-00012-xyz",
+        timeout_seconds=1, poll_interval_seconds=1,
+    )
+    assert result == 1
+    assert tags == []
