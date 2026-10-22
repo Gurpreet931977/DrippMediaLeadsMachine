@@ -5,6 +5,7 @@ Phase 1 Hardening Test Suite (Tests 1 - 28).
 """
 
 import unittest
+import os
 from unittest.mock import patch, MagicMock
 import time
 from datetime import datetime, timezone
@@ -31,6 +32,16 @@ from lib.country_adapters import get_country_adapter
 
 class TestSearchOutcomeModel(unittest.TestCase):
     """Tests 1 - 8: Search Outcome Model & Cache Safety"""
+
+    @patch.dict(os.environ, {"WEB_SEARCH_CACHE_TTL_SECONDS": ""})
+    def test_default_search_cache_ttl_is_seven_days(self):
+        provider = WebSearchProvider()
+        self.assertEqual(provider.cache_ttl, 7 * 86400)
+
+    @patch.dict(os.environ, {"WEB_SEARCH_CACHE_TTL_SECONDS": "3600"})
+    def test_search_cache_ttl_environment_override_is_respected(self):
+        provider = WebSearchProvider()
+        self.assertEqual(provider.cache_ttl, 3600)
 
     def setUp(self):
         self.provider = WebSearchProvider()
