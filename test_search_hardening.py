@@ -728,6 +728,27 @@ class TestWebDiscoveryLocationEvidenceHardening(unittest.TestCase):
         )
         self.assertIsNone(candidate)
 
+
+    def test_third_party_directory_url_is_not_misclassified_as_official_website(self):
+        candidate = self._convert(
+            "Cotton - Manchester",
+            "Cotton is an independent restaurant in Manchester, England, UK.",
+            "https://manchesterfoodguide.example/independent-restaurants/cotton",
+        )
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate.company_name, "Cotton")
+        self.assertEqual(candidate.raw_website, "")
+        self.assertIn("result_url", candidate.raw_data)
+
+    def test_business_named_domain_is_retained_as_probable_official_website(self):
+        candidate = self._convert(
+            "Cotton - Manchester",
+            "Cotton is an independent restaurant in Manchester, England, UK.",
+            "https://www.cottonfood.com/",
+        )
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate.raw_website, "https://www.cottonfood.com/")
+
     def test_explicit_manchester_uk_business_is_still_accepted(self):
         candidate = self._convert(
             "The Example Grill - Manchester, UK",

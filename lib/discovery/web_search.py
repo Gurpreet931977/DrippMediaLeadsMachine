@@ -23,7 +23,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 import requests
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 from lib.discovery.base import DiscoveryProvider
 from lib.types import DiscoveredBusiness, SocialStatus, CountryStatus
 from lib.validation.country_validator import CountryValidator
@@ -350,6 +350,56 @@ def _get_default_boundary_validator() -> CityBoundaryValidator:
     return _DEFAULT_BOUNDARY_VALIDATOR
 
 
+def _is_probable_owned_business_domain(raw_url: str, company_name: str) -> bool:
+    """
+    Conservative ownership heuristic for search-result URLs.
+
+    A result page is not a business website merely because it has a URL. Treat it
+    as a probable official domain only when the hostname contains a meaningful
+    token from the business name. This intentionally errs toward UNKNOWN so the
+    dedicated website verifier can investigate ambiguous candidates.
+    """
+    try:
+        hostname = (urlparse(raw_url or "").hostname or "").lower().strip(".")
+    except (TypeError, ValueError):
+        return False
+
+    if not hostname or "." not in hostname:
+        return False
+
+    ignored_host_labels = {
+        "www", "www2", "m", "mobile", "shop", "store", "order", "orders",
+        "online", "book", "booking", "menu", "reservations", "reserve",
+        "com", "co", "uk", "org", "net", "info", "biz", "io", "app", "site",
+        "de", "us", "gov", "ac", "edu", "me", "restaurant", "cafe",
+    }
+    host_slug = "".join(
+        label for label in hostname.split(".")
+        if label and label not in ignored_host_labels
+    )
+    if not host_slug:
+        return False
+
+    name_tokens = re.findall(r"[a-z0-9]+", (company_name or "").lower())
+    ignored_name_tokens = {
+        "the", "and", "for", "from", "with", "at", "in", "of", "co", "company",
+        "limited", "ltd", "restaurant", "restaurants", "cafe", "cafes", "bar",
+        "bars", "pub", "pubs", "grill", "kitchen", "food", "eatery", "eats",
+        "manchester", "greater", "mcr", "uk", "official",
+    }
+    meaningful_tokens = [
+        token for token in name_tokens
+        if len(token) >= 4 and token not in ignored_name_tokens
+    ]
+    if not meaningful_tokens:
+        return False
+
+    # One meaningful brand token in the hostname is a useful weak signal,
+    # not proof of ownership. The downstream verification pipeline remains
+    # responsible for confirming the website belongs to the exact business.
+    return any(token in host_slug for token in meaningful_tokens)
+
+
 def convert_search_result_to_candidate(
     result: Dict[str, Any],
     city: str,
@@ -580,8 +630,12 @@ def convert_search_result_to_candidate(
         social_status = SocialStatus.SOCIAL_FOUND.value
     elif any(dom in url_lower for dom in AGGREGATOR_DOMAINS):
         raw_website = ""
-    else:
+    elif _is_probable_owned_business_domain(raw_url, company_name):
         raw_website = raw_url
+    else:
+        # Keep the source URL in raw_data/source_id as research evidence, but do
+        # not classify a third-party article/listing as the business's website.
+        raw_website = ""
 
     if not instagram_url:
         ig_m = re.search(r'https?://(?:www\.)?instagram\.com/[a-zA-Z0-9._-]+/?', snippet)
