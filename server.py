@@ -2661,14 +2661,36 @@ async def reconcile_system_endpoint():
 @app.post("/api/system/backup")
 async def trigger_system_backup_endpoint():
     """
-    Creates an immediate point-in-time state backup with SHA-256 manifest.
+    Creates a verified backup. Cloud Run must upload to GCS and pass local
+    plus remote isolated-restore verification; local environments retain the
+    existing SHA-256 snapshot behavior.
     """
     try:
+        is_cloud_run = bool(os.getenv("K_SERVICE") or os.getenv("K_REVISION"))
+        if is_cloud_run:
+            bucket_name = os.getenv("GCS_BACKUP_BUCKET", "").strip()
+            if not bucket_name:
+                return JSONResponse(
+                    {
+                        "status": "error",
+                        "message": "GCS_BACKUP_BUCKET is required for durable Cloud Run backups.",
+                    },
+                    status_code=503,
+                )
+            from lib.system.durable_backup_service import create_and_verify_durable_backup
+            res = create_and_verify_durable_backup(
+                bucket_name=bucket_name,
+                data_dir=os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"),
+                run_id=f"manual-api-{uuid.uuid4().hex[:8]}",
+            )
+            return {"status": "ok", "backup_type": "DURABLE_GCS_VERIFIED", **res}
+
         from lib.system.backup_manager import BackupManager
         bm = BackupManager()
         res = bm.create_backup(label="manual_api")
-        return {"status": "ok", **res}
+        return {"status": "ok", "backup_type": "LOCAL_SNAPSHOT", **res}
     except Exception as e:
+        logger.exception("System backup failed.")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
