@@ -98,3 +98,22 @@ def test_routed_mode_rejects_traffic_pinned_to_an_older_revision():
         EXPECTED_IMAGE, EXPECTED_REVISION
     )
     assert any("100% primary traffic" in error for error in errors)
+
+
+
+def test_candidate_mode_accepts_candidate_ready_without_moving_primary_traffic():
+    data = service_fixture()
+    data["status"]["traffic"] = [{"revisionName": "dripp-leads-api-00009-6nf", "percent": 100}]
+    assert verify_service(
+        data, "candidate", EXPECTED_SA, EXPECTED_URL,
+        EXPECTED_IMAGE, EXPECTED_REVISION, "dripp-leads-api-00009-6nf"
+    ) == []
+
+
+def test_candidate_mode_rejects_primary_traffic_moving_before_readiness_passes():
+    data = service_fixture()
+    errors = verify_service(
+        data, "candidate", EXPECTED_SA, EXPECTED_URL,
+        EXPECTED_IMAGE, EXPECTED_REVISION, "dripp-leads-api-00009-6nf"
+    )
+    assert any("previous revision before promotion" in error for error in errors)
