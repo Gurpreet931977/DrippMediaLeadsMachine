@@ -370,6 +370,45 @@ class TechnicalOrchestrator:
                     "records_skipped": 0,
                     "resource_usage": {"backup_created": False, "dry_run": True},
                 }
+
+            # Cloud Run uses an ephemeral filesystem. A local snapshot is not a
+            # durable backup there, so fail closed unless the complete GCS workflow
+            # (live Sheets + live Firestore + local restore + remote restore) passes.
+            is_cloud_run = bool(os.getenv("K_SERVICE") or os.getenv("K_REVISION"))
+            if is_cloud_run:
+                bucket_name = os.getenv("GCS_BACKUP_BUCKET", "").strip()
+                if not bucket_name:
+                    raise RuntimeError(
+                        "GCS_BACKUP_BUCKET is required for RUN_BACKUP on Cloud Run; "
+                        "refusing to report an ephemeral local snapshot as a durable backup."
+                    )
+                from lib.system.durable_backup_service import create_and_verify_durable_backup
+
+                durable_res = create_and_verify_durable_backup(
+                    bucket_name=bucket_name,
+                    data_dir=self.data_dir,
+                    run_id=run_id,
+                )
+                crm_counts = durable_res.get("crm_record_counts", {})
+                return {
+                    "status": JobState.COMPLETED.value,
+                    "records_processed": sum(int(v) for v in crm_counts.values()),
+                    "records_changed": 0,
+                    "records_skipped": 0,
+                    "resource_usage": {
+                        "backup_id": durable_res.get("backup_id"),
+                        "backup_status": durable_res.get("status"),
+                        "archive_uri": durable_res.get("archive_uri"),
+                        "manifest_uri": durable_res.get("manifest_uri"),
+                        "archive_sha256": durable_res.get("archive_sha256"),
+                        "files_count": durable_res.get("files_count"),
+                        "firestore_documents": durable_res.get("firestore_documents"),
+                        "local_restore_status": durable_res.get("local_restore_status"),
+                        "remote_restore_status": durable_res.get("remote_restore_status"),
+                        "crm_record_counts": crm_counts,
+                    },
+                }
+
             backup_res = self.backup_mgr.create_backup(run_id=run_id, label="orchestrator")
             return {
                 "status": JobState.COMPLETED.value,

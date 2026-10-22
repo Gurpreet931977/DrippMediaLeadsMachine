@@ -203,7 +203,7 @@ jobs:
             --no-traffic \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
-            --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TZ=UTC"
+            --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,FIRESTORE_ENABLED=true,GCS_BACKUP_BUCKET=dripp-leads-backups-poised-eye-509816-a4,TZ=UTC"
 
       - name: "Capture and Tag Ready API Candidate Revision"
         id: candidate
@@ -269,6 +269,15 @@ jobs:
             --connect-timeout 5 --max-time 30 \
             "$API_CANDIDATE_URL/api/system/health" -o /dev/null
           echo "Candidate API liveness probe passed."
+
+      - name: "Create & Verify Durable Pre-Promotion Backup"
+        timeout-minutes: 8
+        env:
+          DRIPP_OPERATOR_KEY: ${{ secrets.DRIPP_OPERATOR_KEY }}
+          API_CANDIDATE_URL: ${{ env.API_CANDIDATE_URL }}
+          GCS_BACKUP_BUCKET: "dripp-leads-backups-poised-eye-509816-a4"
+        run: |
+          python3 scripts/bootstrap_candidate_durable_backup.py
 
       - name: "Verify Authenticated Candidate CRM & Readiness"
         timeout-minutes: 5
