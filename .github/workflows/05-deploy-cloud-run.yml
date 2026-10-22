@@ -246,6 +246,9 @@ jobs:
             --quiet
 
       - name: "Read-Back Inspection & API Health Verification"
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
@@ -254,11 +257,13 @@ jobs:
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
             --format=json > "$RUNNER_TEMP/api-service-deployed.json"
-          python3 scripts/verify_cloud_run_api_service.py deployed \
+          python3 scripts/verify_cloud_run_api_service.py candidate \
             "$RUNNER_TEMP/api-service-deployed.json" \
             "$API_RUNTIME_SERVICE_ACCOUNT" \
             "$API_URL" \
-            "$EXPECTED_IMAGE"
+            "$EXPECTED_IMAGE" \
+            "$CANDIDATE_REVISION" \
+            "$PREVIOUS_PRIMARY_REVISION"
           echo "Checking candidate liveness (candidate tag only; primary traffic is not changed)..."
           curl --fail --silent --show-error \
             --connect-timeout 5 --max-time 30 \
