@@ -2704,7 +2704,7 @@
         <a id="nav-leads" class="nav-link" data-dest="leads" onclick="navigateTo('leads')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span>Leads</span>
-          <span class="nav-badge-pill" id="navLeadsBadge">07</span>
+          <span class="nav-badge-pill" id="navLeadsBadge">--</span>
         </a>
         <a id="nav-pipeline" class="nav-link" data-dest="pipeline" onclick="navigateTo('pipeline')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="3" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="21" y2="12"/></svg>
@@ -2787,7 +2787,7 @@
     <div id="view-readiness"></div>
     <div id="view-settings"></div>
     <span id="homeReadinessVal">STAGING_READY</span>
-    <span id="homeOutreachVal">3</span>
+    <span id="homeOutreachVal">--</span>
     <span id="homeFreshnessVal">100%</span>
     <span id="homeIssuesCount">0 Active</span>
   </div>
@@ -2809,14 +2809,14 @@
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span>Manchester, UK &bull; YOUR LEAD MACHINE IS RUNNING QUIETLY.</span>
               </div>
-              <div class="home-hero-huge-num" id="homeHeroReadyNum">07</div>
+              <div class="home-hero-huge-num" id="homeHeroReadyNum">--</div>
               <div class="home-hero-huge-label">READY TO REVIEW</div>
               <div class="home-hero-sub-breakdown">
-                <span><strong id="homeQualifiedVal" style="color:var(--text-main);">7</strong> Qualified</span>
+                <span><strong id="homeQualifiedVal" style="color:var(--text-main);">--</strong> Qualified</span>
                 <span>&bull;</span>
-                <span><strong id="homeResearchedVal">7</strong> Researched</span>
+                <span><strong id="homeResearchedVal">--</strong> Researched</span>
                 <span>&bull;</span>
-                <span><strong id="homeReadyCount">7</strong> Discovered</span>
+                <span><strong id="homeReadyCount">--</strong> Discovered</span>
               </div>
             </div>
 
@@ -2826,7 +2826,7 @@
                 <span>Launch Discovery Engine</span>
               </button>
               <button class="btn-pill btn-pill-secondary" onclick="navigateTo('leads'); setLeadFilter('OUTREACH_READY')">
-                <span>View ready leads (<span id="homeViewReadyBtnCount">07</span>)</span>
+                <span>View ready leads (<span id="homeViewReadyBtnCount">--</span>)</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
               <button class="btn-pill btn-pill-secondary" onclick="navigateTo('system')">
@@ -3618,8 +3618,8 @@
       </div>
 
       <div class="filter-pills-scroll">
-        <button class="quick-filter-btn active" data-filter="ALL" onclick="setLeadFilter('ALL')">All (<span id="pillCountAll">7</span>)</button>
-        <button class="quick-filter-btn" data-filter="OUTREACH_READY" onclick="setLeadFilter('OUTREACH_READY')">Ready (<span id="pillCountReady">7</span>)</button>
+        <button class="quick-filter-btn active" data-filter="ALL" onclick="setLeadFilter('ALL')">All (<span id="pillCountAll">--</span>)</button>
+        <button class="quick-filter-btn" data-filter="OUTREACH_READY" onclick="setLeadFilter('OUTREACH_READY')">Ready (<span id="pillCountReady">--</span>)</button>
         <button class="quick-filter-btn" data-filter="QUALIFIED" onclick="setLeadFilter('QUALIFIED')">Qualified</button>
         <button class="quick-filter-btn" data-filter="NEEDS_REVIEW" onclick="setLeadFilter('NEEDS_REVIEW')">Needs Review (0)</button>
         <button class="quick-filter-btn" data-filter="RESEARCHING" onclick="setLeadFilter('RESEARCHING')">Researching</button>
@@ -3738,31 +3738,31 @@
       <div class="pipeline-stage-nodes-row" style="margin-bottom:2rem;">
         <div class="pipeline-stage-node" id="pipeTab-0" onclick="switchPipelineStage(0)">
           <div class="p-stage-header">STAGE 01</div>
-          <div class="p-stage-val" id="pipeTabVal-0">7</div>
+          <div class="p-stage-val" id="pipeTabVal-0">--</div>
           <div class="p-stage-title">Discovered</div>
           <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">OSM Boundary Query</div>
         </div>
         <div class="pipeline-stage-node" id="pipeTab-1" onclick="switchPipelineStage(1)">
           <div class="p-stage-header">STAGE 02</div>
-          <div class="p-stage-val" id="pipeTabVal-1">7</div>
+          <div class="p-stage-val" id="pipeTabVal-1">--</div>
           <div class="p-stage-title">Research</div>
           <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Domain &amp; Presence Check</div>
         </div>
         <div class="pipeline-stage-node" id="pipeTab-2" onclick="switchPipelineStage(2)">
           <div class="p-stage-header">STAGE 03</div>
-          <div class="p-stage-val" id="pipeTabVal-2">7</div>
+          <div class="p-stage-val" id="pipeTabVal-2">--</div>
           <div class="p-stage-title">Qualified</div>
           <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Rule B 8 Frozen Criteria</div>
         </div>
         <div class="pipeline-stage-node" id="pipeTab-3" onclick="switchPipelineStage(3)">
           <div class="p-stage-header">STAGE 04</div>
-          <div class="p-stage-val" id="pipeTabVal-3">7</div>
+          <div class="p-stage-val" id="pipeTabVal-3">--</div>
           <div class="p-stage-title">Contactable</div>
           <div style="font-size:0.7rem; color:var(--text-dim); margin-top:4px;">Phone / Social Active</div>
         </div>
         <div class="pipeline-stage-node active-ready" id="pipeTab-4" onclick="switchPipelineStage(4)">
           <div class="p-stage-header" style="color:var(--accent-yellow);">STAGE 05</div>
-          <div class="p-stage-val" style="color:var(--accent-yellow);" id="pipeTabVal-4">7</div>
+          <div class="p-stage-val" style="color:var(--accent-yellow);" id="pipeTabVal-4">--</div>
           <div class="p-stage-title" style="color:var(--accent-yellow);">Ready to Review</div>
           <div style="font-size:0.7rem; color:var(--accent-yellow); margin-top:4px;">Operator Staged</div>
         </div>
@@ -3771,7 +3771,7 @@
       <!-- Live Stage Candidates -->
       <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main);" id="pipelineStageHeading">Stage Candidates: Ready to Review (7)</h3>
+          <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-main);" id="pipelineStageHeading">Stage Candidates: Ready to Review (--)</h3>
           <button class="btn-pill btn-pill-secondary" style="font-size:0.75rem; padding:0.35rem 0.75rem;" onclick="navigateTo('leads')">
             <span>Open in Workspace</span>
           </button>
@@ -5011,6 +5011,7 @@
        ======================================================================== -->
   <script>
     let allLeads = [];
+    let isLeadsLoaded = false;
     let selectedLead = null;
     let currentFilter = 'ALL';
     let currentSearchTerm = '';
@@ -5467,9 +5468,13 @@
       if (!container) return;
 
       const targetHud = document.getElementById('radarActiveTargetText');
-      if (!allLeads || allLeads.length === 0) {
+      if (!isLeadsLoaded || !allLeads || allLeads.length === 0) {
         container.innerHTML = '';
-        if (targetHud) targetHud.innerText = 'RADAR SCANNING: AWAITING DISCOVERY OR CONNECTED CRM';
+        if (targetHud) {
+          targetHud.innerText = isLeadsLoaded
+            ? 'RADAR SCANNING: AWAITING DISCOVERY CANDIDATES'
+            : 'RADAR SCANNING: CONNECTING TO CRM...';
+        }
         return;
       }
 
@@ -5583,17 +5588,60 @@
       }
     }
 
+    function resetLeadCountsToPlaceholder() {
+      const elIds = [
+        'homeHeroReadyNum',
+        'homeQualifiedVal',
+        'homeResearchedVal',
+        'homeReadyCount',
+        'homeViewReadyBtnCount',
+        'homeOutreachVal',
+        'navLeadsBadge',
+        'pillCountAll',
+        'pillCountReady',
+        'pipeTabVal-0',
+        'pipeTabVal-1',
+        'pipeTabVal-2',
+        'pipeTabVal-3',
+        'pipeTabVal-4',
+        'plDiscoveredVal',
+        'plResearchedVal',
+        'plQualifiedVal',
+        'plContactableVal',
+        'plReadyVal'
+      ];
+      elIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '--';
+      });
+      const heading = document.getElementById('pipelineStageHeading');
+      if (heading) {
+        const stageNames = ['Discovered', 'Research', 'Qualified', 'Contactable', 'Ready to Review'];
+        heading.innerText = `Stage Candidates: ${stageNames[currentPipelineStageIdx || 4]} (--)`;
+      }
+      const targetHud = document.getElementById('radarActiveTargetText');
+      if (targetHud) targetHud.innerText = 'RADAR OFFLINE: BACKEND CRM DISCONNECTED';
+    }
+
     async function loadLeadsData() {
       try {
         const res = await apiFetch('/api/leads');
         if (res.status === 401) {
           console.warn('[CRM Notice] Operator authentication required to view private leads.');
-          const homeQual = document.getElementById('homeQualifiedVal');
-          if (homeQual) homeQual.innerText = '--';
+          isLeadsLoaded = false;
+          allLeads = [];
+          resetLeadCountsToPlaceholder();
+          renderHomeReadyLeads();
+          renderPipelineCandidates();
+          renderHomeRadarBlips();
           return;
+        }
+        if (!res.ok) {
+          throw new Error(`API returned HTTP ${res.status}`);
         }
         const data = await res.json();
         allLeads = data.leads || [];
+        isLeadsLoaded = true;
 
         if (data.sheet_url) {
           const s = document.getElementById('sheetLink');
@@ -5603,7 +5651,7 @@
         const count = allLeads.length;
         const readyLeads = allLeads.filter(l => (l.qualification_state || 'OUTREACH_READY') === 'OUTREACH_READY').length;
 
-        // Populate Home Banner Numbers
+        // Populate Home Banner Numbers dynamically
         const homeReadyNum = document.getElementById('homeHeroReadyNum');
         if (homeReadyNum) homeReadyNum.innerText = readyLeads < 10 ? `0${readyLeads}` : readyLeads;
         const homeQual = document.getElementById('homeQualifiedVal');
@@ -5612,6 +5660,16 @@
         if (homeOut) homeOut.innerText = readyLeads;
         const homeBtnCount = document.getElementById('homeViewReadyBtnCount');
         if (homeBtnCount) homeBtnCount.innerText = readyLeads < 10 ? `0${readyLeads}` : readyLeads;
+
+        // Update navLeadsBadge dynamically
+        const navLeads = document.getElementById('navLeadsBadge');
+        if (navLeads) navLeads.innerText = readyLeads < 10 ? `0${readyLeads}` : readyLeads;
+
+        // Update Workspace Filter Pills dynamically
+        const pillAll = document.getElementById('pillCountAll');
+        if (pillAll) pillAll.innerText = count;
+        const pillReady = document.getElementById('pillCountReady');
+        if (pillReady) pillReady.innerText = readyLeads;
 
         // Dynamic Pipeline Counts derived from active run or persistent CRM
         let runDiscovered = count;
@@ -5674,8 +5732,15 @@
         renderHomeRadarBlips();
       } catch (err) {
         console.error('Failed to load leads:', err);
+        isLeadsLoaded = false;
+        allLeads = [];
+        resetLeadCountsToPlaceholder();
+        renderHomeReadyLeads();
+        renderPipelineCandidates();
+        renderHomeRadarBlips();
+
         const streamContainer = document.getElementById('leadsStreamContainer');
-        if (streamContainer && (!allLeads || allLeads.length === 0)) {
+        if (streamContainer) {
           const rawUrl = DrippConfig.getBackendUrl();
           const targetUrl = rawUrl || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:8000' : null);
           const isUnconfigured = !targetUrl;
@@ -5705,6 +5770,11 @@
     function renderHomeReadyLeads() {
       const container = document.getElementById('homeReadyLeadsList');
       if (!container) return;
+
+      if (!isLeadsLoaded) {
+        container.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-bottom:0.4rem; color:var(--accent-yellow);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div>Live CRM Offline &bull; Lead stream will populate once connected.</div></div>';
+        return;
+      }
 
       const readyList = allLeads.slice(0, 4); // Display top 4 on home
       if (readyList.length === 0) {
@@ -5893,9 +5963,17 @@
         ping.classList.add('active');
       }
       if (targetHud) {
-        targetHud.innerText = 'SWEEP ACTIVE: 2.4GHz MULTI-SIGNAL · 7 CONFIRMED CANDIDATES';
+        const count = isLeadsLoaded ? allLeads.length : 0;
+        targetHud.innerText = count > 0
+          ? `SWEEP ACTIVE: 2.4GHz MULTI-SIGNAL · ${count} CONFIRMED CANDIDATES`
+          : 'SWEEP ACTIVE: 2.4GHz MULTI-SIGNAL · SCANNING SECTOR';
         setTimeout(() => {
-          if (targetHud) targetHud.innerText = 'TARGET LOCK: 7 QUALIFIED CANDIDATES IN SECTOR';
+          if (targetHud) {
+            const freshCount = isLeadsLoaded ? allLeads.length : 0;
+            targetHud.innerText = freshCount > 0
+              ? `TARGET LOCK: ${freshCount} QUALIFIED CANDIDATES IN SECTOR`
+              : (isLeadsLoaded ? 'RADAR SCANNING: AWAITING DISCOVERY CANDIDATES' : 'RADAR SCANNING: CONNECTING TO CRM...');
+          }
         }, 3000);
       }
     }
@@ -6000,7 +6078,17 @@
       if (!container || !heading) return;
 
       const stageNames = ['Discovered', 'Research', 'Qualified', 'Contactable', 'Ready to Review'];
+      if (!isLeadsLoaded) {
+        heading.innerText = `Stage Candidates: ${stageNames[currentPipelineStageIdx]} (--)`;
+        container.innerHTML = '<div style="padding:2.5rem; text-align:center; color:var(--text-muted);">CRM connection offline. Stage candidates unavailable.</div>';
+        return;
+      }
       heading.innerText = `Stage Candidates: ${stageNames[currentPipelineStageIdx]} (${allLeads.length})`;
+
+      if (allLeads.length === 0) {
+        container.innerHTML = '<div style="padding:2.5rem; text-align:center; color:var(--text-muted);">No candidates currently staged for this stage.</div>';
+        return;
+      }
 
       container.innerHTML = allLeads.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
