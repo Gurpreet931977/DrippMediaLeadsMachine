@@ -621,17 +621,21 @@ class GoogleSheetsStorageProvider:
                 leads_map[norm_id] = (idx, row)
         return leads_map
 
-    def get_existing_research_map(self) -> ResearchLogMap:
+    def get_existing_research_map(self, *, fail_closed: bool = False) -> ResearchLogMap:
         """
-        Loads all existing rows from RESEARCH_LOG tab and indexes them by normalized identity
-        and multi-signal attributes (source_url, domain, phone, address).
-        Correctly parses both normal rows (A:AB) and shifted malformed rows (AA:BB, e.g. rows 280-317)
-        so that deduplication is NEVER blind to shifted records outside A:AB.
+        Loads existing RESEARCH_LOG rows and indexes them by identity/source evidence.
+        Read/display callers may tolerate a failed read; write callers must fail closed.
+        Correctly parses normal rows (A:AB) and shifted malformed rows (AA:BB).
         """
         try:
             ws = getattr(self, "_research_ws", None) or self.spreadsheet.worksheet("RESEARCH_LOG")
             raw_rows = ws.get_all_values()
-        except Exception:
+        except Exception as exc:
+            if fail_closed:
+                raise RuntimeError(
+                    "[GoogleSheets Deduplication Block] Could not read RESEARCH_LOG before writing; "
+                    "refusing to append or update research records without a complete deduplication snapshot."
+                ) from exc
             return ResearchLogMap()
 
         if not raw_rows or len(raw_rows) < 2:
@@ -793,14 +797,21 @@ class GoogleSheetsStorageProvider:
         ws.clear()
         return {"status": "CLEARED", "worksheet": ws_title, "rows_cleared": len(vals), "backup_path": backup_file}
 
-    def get_existing_review_queue_map(self) -> Dict[str, Tuple[int, Dict[str, Any]]]:
+    def get_existing_review_queue_map(self, *, fail_closed: bool = False) -> Dict[str, Tuple[int, Dict[str, Any]]]:
         """
         Loads all existing rows from REVIEW_QUEUE tab and indexes them by normalized identity.
+        Read/display callers may tolerate a failed read; write callers must fail closed.
         """
         try:
-            # Read-only helper: do not create the tab or repair its schema.
-            rows = self.spreadsheet.worksheet("REVIEW_QUEUE").get_all_records()
-        except Exception:
+            # Reuse an already-injected/initialized worksheet, but never create or repair a tab here.
+            ws = getattr(self, "_review_ws", None) or self.spreadsheet.worksheet("REVIEW_QUEUE")
+            rows = ws.get_all_records()
+        except Exception as exc:
+            if fail_closed:
+                raise RuntimeError(
+                    "[GoogleSheets Deduplication Block] Could not read REVIEW_QUEUE before writing; "
+                    "refusing to append a review candidate without a complete deduplication snapshot."
+                ) from exc
             return {}
 
         review_map = {}
@@ -850,8 +861,13 @@ class GoogleSheetsStorageProvider:
             self.ensure_leads_columns()
             try:
                 existing_rows = self.leads_worksheet.get_all_records()
-            except Exception:
-                existing_rows = []
+            except Exception as exc:
+                # Never treat an unreadable CRM as an empty CRM: that would
+                # bypass identity matching and could append duplicate leads.
+                raise RuntimeError(
+                    "[GoogleSheets Deduplication Block] Could not read LEADS before writing; "
+                    "refusing to insert or update qualified leads without a complete deduplication snapshot."
+                ) from exc
 
             today_str = datetime.now().strftime("%Y-%m-%d")
             rows_to_insert = []
@@ -987,7 +1003,7 @@ class GoogleSheetsStorageProvider:
             return 0, 0
 
         self.ensure_review_queue_columns()
-        existing_map = self.get_existing_review_queue_map()
+        existing_map = self.get_existing_review_queue_map(fail_closed=True)
         today_str = datetime.now().strftime("%Y-%m-%d")
 
         rows_to_insert = []
@@ -1054,7 +1070,7 @@ class GoogleSheetsStorageProvider:
 
         with crm_write_lock():
             self.ensure_research_columns()
-            existing_map = self.get_existing_research_map()
+            existing_map = self.get_existing_research_map(fail_closed=True)
             today_str = datetime.now().strftime("%Y-%m-%d")
 
             rows_to_insert = []
