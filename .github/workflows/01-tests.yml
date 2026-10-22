@@ -101,6 +101,8 @@ jobs:
             test_phase_10_6_production_readiness.py \
             test_phase_11_1_research_recovery.py \
             test_phase_11_2_tavily_provider.py \
+            test_phase_12_2_7_durable_recovery_drill.py \
+            test_durable_backup_service.py \
             test_score_decoupling.py \
             test_search_hardening.py \
             test_search_circuit_and_crm.py \
