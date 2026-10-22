@@ -32,6 +32,7 @@ jobs:
       API_SERVICE: "dripp-leads-api"
       API_RUNTIME_SERVICE_ACCOUNT: "dripp-leads-api@poised-eye-509816-a4.iam.gserviceaccount.com"
       API_URL: "https://dripp-leads-api-ukng7vge6q-uc.a.run.app"
+      API_CANDIDATE_URL: "https://release-candidate---dripp-leads-api-ukng7vge6q-uc.a.run.app"
       REGISTRY_HOST: "us-central1-docker.pkg.dev"
       REPOSITORY_NAME: "dripp-media"
       PACKAGE_NAME: "dripp-discovery-job"
@@ -46,6 +47,17 @@ jobs:
             exit 1
           fi
           echo "Deployment safety gate confirmed by operator."
+
+      - name: "Validate Authenticated Candidate Readiness Secret"
+        env:
+          DRIPP_OPERATOR_KEY: ${{ secrets.DRIPP_OPERATOR_KEY }}
+        run: |
+          if [ -z "${DRIPP_OPERATOR_KEY:-}" ]; then
+            echo "::error::Set DRIPP_OPERATOR_KEY as an environment secret in the Production GitHub environment before deployment."
+            exit 1
+          fi
+          echo "::add-mask::${DRIPP_OPERATOR_KEY}"
+          echo "Authenticated candidate readiness secret is available."
 
       - name: "Checkout Merged Codebase"
         uses: actions/checkout@v4.2.2
@@ -132,6 +144,30 @@ jobs:
             "$API_RUNTIME_SERVICE_ACCOUNT" \
             "$API_URL"
 
+      - name: "Capture Existing Primary Traffic Assignment"
+        id: capture_primary
+        run: |
+          python3 - "$RUNNER_TEMP/api-service-preflight.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          traffic = data.get("status", {}).get("traffic") or data.get("spec", {}).get("traffic", [])
+          primary = [
+              item for item in traffic
+              if isinstance(item, dict)
+              and item.get("revisionName")
+              and item.get("percent") is not None
+              and float(item["percent"]) == 100.0
+          ]
+          if len(primary) != 1:
+              print("::error::Expected exactly one currently serving 100% primary revision; refusing deployment.")
+              raise SystemExit(1)
+          revision = primary[0]["revisionName"]
+          print("Previous primary revision captured for rollback:", revision)
+          with open(sys.argv[2], "a", encoding="utf-8") as output:
+              output.write(f"revision={revision}\n")
+
       - name: "Build Container Image"
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
@@ -157,20 +193,63 @@ jobs:
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
           DEPLOY_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
-          echo "Updating API service $API_SERVICE with immutable image $DEPLOY_IMAGE..."
+          echo "Creating API candidate $API_SERVICE with immutable image $DEPLOY_IMAGE, 1 GiB memory, and no primary traffic..."
           gcloud run services update "$API_SERVICE" \
             --image="$DEPLOY_IMAGE" \
             --command=uvicorn \
             --args="server:app,--host,0.0.0.0,--port,8080,--proxy-headers" \
             --service-account="$API_RUNTIME_SERVICE_ACCOUNT" \
+            --memory=1Gi \
+            --no-traffic \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
             --update-env-vars="TECHNICAL_AUTOMATION_ENABLED=true,TRAVEL_MODE=ACTIVE,COMMERCIAL_ACTIONS_ENABLED=false,AUTOMATED_EMAIL_ENABLED=false,TZ=UTC"
+
+      - name: "Capture and Tag Ready API Candidate Revision"
+        id: candidate
+        run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
+          EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
+          gcloud run services describe "$API_SERVICE" \
+            --region="$GCP_REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --format=json > "$RUNNER_TEMP/api-service-candidate.json"
+
+          CANDIDATE_REVISION="$(python3 - "$RUNNER_TEMP/api-service-candidate.json" "$EXPECTED_IMAGE" <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          status = data.get("status", {})
+          created = status.get("latestCreatedRevisionName") or ""
+          ready = status.get("latestReadyRevisionName") or ""
+          spec = data.get("spec", {}).get("template", {}).get("spec", {})
+          containers = spec.get("containers", [])
+          actual_image = containers[0].get("image", "") if containers else ""
+          if not created or created != ready:
+              print("::error::Latest created API revision is not the latest ready revision.")
+              raise SystemExit(1)
+          if actual_image != sys.argv[2]:
+              print("::error::API candidate image does not match the immutable build image.")
+              raise SystemExit(1)
+          print(created)
+          PY
+          )"
+          echo "Candidate revision: $CANDIDATE_REVISION"
+          echo "revision=$CANDIDATE_REVISION" >> "$GITHUB_OUTPUT"
+
+          gcloud run services update-traffic "$API_SERVICE" \
+            --region="$GCP_REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --update-tags="release-candidate=$CANDIDATE_REVISION" \
+            --quiet
 
       - name: "Read-Back Inspection & API Health Verification"
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
+          EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
           gcloud run services describe "$API_SERVICE" \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
@@ -179,12 +258,20 @@ jobs:
             "$RUNNER_TEMP/api-service-deployed.json" \
             "$API_RUNTIME_SERVICE_ACCOUNT" \
             "$API_URL" \
-            "$IMAGE_BASE:$DEPLOY_TAG"
-          echo "Checking public liveness endpoint (no operator credential used)..."
+            "$EXPECTED_IMAGE"
+          echo "Checking candidate liveness (candidate tag only; primary traffic is not changed)..."
           curl --fail --silent --show-error \
             --connect-timeout 5 --max-time 30 \
-            "$API_URL/api/system/health" -o /dev/null
-          echo "API service health probe passed."
+            "$API_CANDIDATE_URL/api/system/health" -o /dev/null
+          echo "Candidate API liveness probe passed."
+
+      - name: "Verify Authenticated Candidate CRM & Readiness"
+        timeout-minutes: 5
+        env:
+          DRIPP_OPERATOR_KEY: ${{ secrets.DRIPP_OPERATOR_KEY }}
+        run: |
+          echo "Validating candidate health, operator login, Sheets CRM, and all readiness gates before primary promotion..."
+          python3 scripts/verify_cloud_run_api_candidate.py "$API_CANDIDATE_URL"
 
       - name: "Deploy & Update Cloud Run Job"
         run: |
@@ -309,3 +396,62 @@ jobs:
           print('CRITICAL SAFETY INVARIANT: Cloud Run Job was NOT triggered or executed.')
           print('========================================================================')
           " "${EXPECTED_IMAGE}" "${{ env.RUNTIME_SERVICE_ACCOUNT }}"
+
+      - name: "Promote Verified API Revision to Primary Traffic"
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+        run: |
+          echo "Promoting readiness-verified API revision $CANDIDATE_REVISION to 100% primary traffic..."
+          gcloud run services update-traffic "$API_SERVICE" \
+            --project="$GCP_PROJECT_ID" \
+            --region="$GCP_REGION" \
+            --to-revisions="$CANDIDATE_REVISION=100" \
+            --quiet
+
+      - name: "Verify Primary Traffic & Health (Rollback on Failure)"
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
+        run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
+          EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
+
+          rollback() {
+            echo "::error::Primary revision verification failed; attempting rollback to $PREVIOUS_PRIMARY_REVISION."
+            if ! gcloud run services update-traffic "$API_SERVICE" \
+              --project="$GCP_PROJECT_ID" \
+              --region="$GCP_REGION" \
+              --to-revisions="$PREVIOUS_PRIMARY_REVISION=100" \
+              --quiet; then
+              echo "::error::Automatic traffic rollback failed. Manual traffic recovery is required."
+            fi
+          }
+
+          if ! gcloud run services describe "$API_SERVICE" \
+            --region="$GCP_REGION" \
+            --project="$GCP_PROJECT_ID" \
+            --format=json > "$RUNNER_TEMP/api-service-routed.json"; then
+            rollback
+            exit 1
+          fi
+
+          if ! python3 scripts/verify_cloud_run_api_service.py routed \
+            "$RUNNER_TEMP/api-service-routed.json" \
+            "$API_RUNTIME_SERVICE_ACCOUNT" \
+            "$API_URL" \
+            "$EXPECTED_IMAGE" \
+            "$CANDIDATE_REVISION"; then
+            rollback
+            exit 1
+          fi
+
+          echo "Checking primary API health after traffic promotion..."
+          if ! curl --fail --silent --show-error \
+            --connect-timeout 5 --max-time 30 \
+            "$API_URL/api/system/health" -o /dev/null; then
+            rollback
+            exit 1
+          fi
+          echo "Primary traffic points to the verified candidate and health is operational."
+
