@@ -749,6 +749,16 @@ class TestWebDiscoveryLocationEvidenceHardening(unittest.TestCase):
         self.assertIsNotNone(candidate)
         self.assertEqual(candidate.raw_website, "https://www.cottonfood.com/")
 
+    def test_brand_token_inside_unrelated_domain_is_not_enough_for_official_website(self):
+        candidate = self._convert(
+            "Mala - Manchester",
+            "Mala is an independent restaurant in Manchester, England, UK.",
+            "https://smalabar.example/",
+        )
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate.company_name, "Mala")
+        self.assertEqual(candidate.raw_website, "")
+
     def test_explicit_manchester_uk_business_is_still_accepted(self):
         candidate = self._convert(
             "The Example Grill - Manchester, UK",
