@@ -720,7 +720,10 @@ class WebSearchProvider(DiscoveryProvider):
         self.cache_dir = cache_dir or os.path.join(self.base_dir, "data", "cache_search")
         os.makedirs(self.cache_dir, exist_ok=True)
         ttl_env = os.getenv("WEB_SEARCH_CACHE_TTL_SECONDS")
-        self.cache_ttl = cache_ttl_seconds if cache_ttl_seconds is not None else (int(ttl_env) if ttl_env else 365 * 86400)
+        # Search snippets are time-sensitive lead evidence (especially website ownership).
+        # Keep the default cache short enough to avoid reusing year-old results, while
+        # preserving an explicit deployment-level override for quota/cost trade-offs.
+        self.cache_ttl = cache_ttl_seconds if cache_ttl_seconds is not None else (int(ttl_env) if ttl_env else 7 * 86400)
         env_th = os.getenv("SEARCH_FAILURE_THRESHOLD")
         effective_threshold = int(env_th) if (env_th and failure_threshold == 2) else failure_threshold
         env_cd = os.getenv("SEARCH_CIRCUIT_COOLDOWN_SECONDS")
