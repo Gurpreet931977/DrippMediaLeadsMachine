@@ -994,7 +994,15 @@ class TestGitHubActionsCompatibility(unittest.TestCase):
         self.assertIn("DRIPP_OPERATOR_KEY", raw)
         self.assertIn("--no-traffic", raw, "API candidate must receive zero primary traffic until validated")
         self.assertIn("--memory=1Gi", raw, "API candidate memory must be explicit")
-        self.assertIn("--update-tags", raw, "Candidate revision must have a tagged test URL")
+        candidate_waiter_path = os.path.join(root, "scripts", "wait_for_cloud_run_api_candidate.py")
+        with open(candidate_waiter_path, "r", encoding="utf-8") as f:
+            candidate_waiter = f.read()
+        self.assertIn(
+            "--update-tags=release-candidate=",
+            candidate_waiter,
+            "Candidate revision must receive its candidate-only test URL before readiness polling",
+        )
+        self.assertIn("--candidate-url", raw, "Workflow must health-check the tagged candidate URL")
         self.assertIn("--to-revisions", raw, "Workflow must explicitly promote a verified revision")
         self.assertIn("release-candidate", raw)
         self.assertIn("PREVIOUS_PRIMARY_REVISION", raw, "Failed post-promotion verification must trigger rollback")
