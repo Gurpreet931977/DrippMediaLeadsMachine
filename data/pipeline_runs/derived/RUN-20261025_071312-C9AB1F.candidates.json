@@ -1,0 +1,133 @@
+{
+  "run_id": "RUN-20261025_071312-C9AB1F",
+  "pipeline_run_id": "PIPE-MAN-20261025-C112",
+  "artifact_type": "DERIVED_RECONSTRUCTED_CANDIDATES",
+  "provenance_status": "RECONSTRUCTED_FROM_RUN_LOGS",
+  "is_authoritative_original_pipeline_output": false,
+  "audit_summary": "During execution in Shadow Mode (dry_run: true), raw candidate objects were evaluated in memory and not persisted to Google Sheets or disk snapshots. These candidate records were reconstructed post-run from execution progress_logs. Authoritative qualification, rating, review counts, and outreach text are faithfully preserved, while candidate IDs and unverified fields are explicitly flagged.",
+  "candidate_provenance": {
+    "provenance_status": "RECONSTRUCTED_FROM_RUN_LOGS",
+    "is_authoritative_original_pipeline_output": false,
+    "source_pipeline_run_id": "PIPE-MAN-20261025-C112",
+    "source_run_id": "RUN-20261025_071312-C9AB1F",
+    "audit_summary": "During execution in Shadow Mode (dry_run: true), raw candidate objects were evaluated in memory and not persisted to Google Sheets or disk snapshots. These candidate records were reconstructed post-run from execution progress_logs. Authoritative qualification, rating, review counts, and outreach text are faithfully preserved, while candidate IDs and unverified fields are explicitly flagged."
+  },
+  "candidates": [
+    {
+      "lead_id": "CAND-WENDOVER-M14",
+      "id": "CAND-WENDOVER-M14",
+      "company_name": "The Wendover",
+      "name": "The Wendover",
+      "address": "Manchester, United Kingdom",
+      "postcode": null,
+      "city": "Manchester",
+      "country": "United Kingdom",
+      "rating": 2.7,
+      "review_count": 19,
+      "review_date": null,
+      "phone": null,
+      "website": "",
+      "website_status": "Confirmed No Official Website",
+      "qualification_state": "RESEARCH_ONLY",
+      "qualification_status": "RESEARCH_ONLY",
+      "qualification_reason": "Research Only: Low rating (2.7\u2605) and low traction (19 reviews).",
+      "is_shadow_mode": true,
+      "is_dry_run": true,
+      "run_id": "RUN-20261025_071312-C9AB1F",
+      "pipeline_run_id": "PIPE-MAN-20261025-C112",
+      "data_provenance": {
+        "status": "RECONSTRUCTED_FROM_RUN_LOGS",
+        "is_authoritative_original_pipeline_output": false,
+        "source_pipeline_run_id": "PIPE-MAN-20261025-C112",
+        "source_log_line": "progress_logs lines 118-126",
+        "authoritative_fields": [
+          "company_name",
+          "address",
+          "city",
+          "country",
+          "rating",
+          "review_count",
+          "qualification_state",
+          "qualification_status",
+          "qualification_reason",
+          "website_status"
+        ],
+        "reconstructed_or_placeholder_fields": {
+          "lead_id": "Derived inspection key (CAND-WENDOVER-M14). In-memory RES identifier was not persisted by the dry run.",
+          "postcode": "Missing from discovery output; set to null to avoid inventing unverified data.",
+          "phone": "Logged as N/A during discovery; set to null."
+        }
+      }
+    },
+    {
+      "lead_id": "CAND-DOG-PARTRIDGE-M20",
+      "id": "CAND-DOG-PARTRIDGE-M20",
+      "company_name": "Dog and Partridge",
+      "name": "Dog and Partridge",
+      "address": "665-667, Wilmslow Road, Manchester, M20 6RA, United Kingdom",
+      "postcode": "M20 6RA",
+      "city": "Manchester",
+      "country": "United Kingdom",
+      "rating": 4.3,
+      "review_count": 88,
+      "review_date": "2026-09-10",
+      "phone": null,
+      "website": "",
+      "website_status": "Confirmed No Official Website",
+      "qualification_state": "OUTREACH_READY",
+      "qualification_status": "OUTREACH_READY",
+      "score": 53,
+      "priority": "LOW",
+      "operational_evidence": "Established Manchester pub with 88 reviews (4.3\u2605), active Instagram (@dogandpartridgedidsbury), Facebook (@thedogandpartridgepub), verified active operations (ACTIVE_CONFIRMED), and confirmed absence of an official website.",
+      "qualification_reason": "Established Manchester pub with 88 reviews (4.3\u2605), Instagram (@dogandpartridgedidsbury), Facebook (@thedogandpartridgepub), verified active operations (ACTIVE_CONFIRMED), and confirmed absence of an official website.",
+      "outreach_angle": "No dedicated official website was identified in our checks for Dog and Partridge. Your business has an established customer presence in Manchester with 88 reviews (4.3\u2605) and active Instagram & Facebook channels. A dedicated website could give customers one place to find your menu, location, opening information, and contact details.",
+      "instagram_url": "https://instagram.com/dogandpartridgedidsbury",
+      "facebook_url": "https://facebook.com/thedogandpartridgepub",
+      "verified_social_urls": [
+        "https://instagram.com/dogandpartridgedidsbury",
+        "https://facebook.com/thedogandpartridgepub"
+      ],
+      "creator_evidence_urls": [
+        "https://instagram.com/dogandpartridgedidsbury",
+        "https://facebook.com/thedogandpartridgepub"
+      ],
+      "creator_evidence_summary": "Pub profile verified on Instagram (@dogandpartridgedidsbury) and Facebook (@thedogandpartridgepub) with 88 verified customer reviews.",
+      "is_shadow_mode": true,
+      "is_dry_run": true,
+      "run_id": "RUN-20261025_071312-C9AB1F",
+      "pipeline_run_id": "PIPE-MAN-20261025-C112",
+      "data_provenance": {
+        "status": "RECONSTRUCTED_FROM_RUN_LOGS",
+        "is_authoritative_original_pipeline_output": false,
+        "source_pipeline_run_id": "PIPE-MAN-20261025-C112",
+        "source_log_line": "progress_logs lines 127-137",
+        "authoritative_fields": [
+          "company_name",
+          "address",
+          "postcode",
+          "city",
+          "country",
+          "rating",
+          "review_count",
+          "review_date",
+          "qualification_state",
+          "qualification_status",
+          "score",
+          "priority",
+          "operational_evidence",
+          "qualification_reason",
+          "outreach_angle",
+          "website_status"
+        ],
+        "reconstructed_or_placeholder_fields": {
+          "lead_id": "Derived inspection key (CAND-DOG-PARTRIDGE-M20). In-memory LEAD-MAN identifier was discarded by the dry run.",
+          "phone": "Logged as N/A during this dry run. Historical cache had +44 161 943 9081, but it was not captured in this run discovery output. Set to null to avoid unverified claims.",
+          "instagram_url": "Synthesized from handle @dogandpartridgedidsbury in qualification log.",
+          "facebook_url": "Synthesized from handle @thedogandpartridgepub in qualification log.",
+          "creator_evidence_urls": "Derived from verified social handles in qualification log.",
+          "creator_evidence_summary": "Synthesized summary based on verified social handles and review counts in qualification log."
+        }
+      }
+    }
+  ]
+}

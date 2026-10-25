@@ -610,9 +610,18 @@ async def start_search(req: SearchRequest, background_tasks: BackgroundTasks, re
 @app.get("/api/status")
 async def get_status():
     latest = run_manager.get_latest_run()
-    if latest:
-        resp = dict(latest)
-        resp["is_running"] = active_run_state.get("is_running", latest.get("is_running", False))
+    completed_latest = getattr(run_manager, "get_latest_completed_run", lambda: None)()
+
+    # If actively running, priority is the active task
+    if active_run_state.get("is_running") or (latest and latest.get("is_running")):
+        target = latest or active_run_state
+    else:
+        # When idle, prefer a completed discovery run over an empty/cancelled 0s run
+        target = completed_latest or latest or active_run_state
+
+    if target:
+        resp = dict(target)
+        resp["is_running"] = active_run_state.get("is_running", target.get("is_running", False))
         if active_run_state.get("progress_logs"):
             resp["progress_logs"] = active_run_state["progress_logs"]
         if active_run_state.get("current_stats"):
@@ -636,14 +645,71 @@ async def cancel_search(request: Request = None):
     return {"status": "ok", "message": f"Run {latest['run_id']} marked CANCELLED.", "run": cancelled_rec}
 
 @app.get("/api/search/runs")
+@app.get("/api/runs")
+@app.get("/api/runs/history")
 async def list_search_runs(limit: int = 50):
-    return {"runs": run_manager.list_runs(limit=limit)}
+    runs = run_manager.list_runs(limit=limit)
+    return {"runs": runs, "count": len(runs)}
+
+@app.get("/api/runs/latest")
+async def get_latest_run_endpoint():
+    """Returns the most relevant latest completed or active discovery run record."""
+    run = run_manager.get_latest_completed_run() or run_manager.get_latest_run()
+    if not run:
+        return JSONResponse({"status": "empty", "message": "No run records exist."}, status_code=404)
+    if "candidates" not in run and run.get("run_id"):
+        run["candidates"] = run_manager.get_run_candidates(run["run_id"])
+    return run
+
+@app.get("/api/runs/latest/candidates")
+async def get_latest_run_candidates_endpoint():
+    """Returns candidate records evaluated in the latest completed or active discovery run."""
+    run = run_manager.get_latest_completed_run() or run_manager.get_latest_run()
+    if not run:
+        return JSONResponse({"status": "empty", "message": "No run records exist.", "candidates": [], "count": 0}, status_code=404)
+    run_id = run.get("run_id")
+    candidates = run.get("candidates") or (run_manager.get_run_candidates(run_id) if run_id else [])
+    candidate_prov = (run_manager.get_run_candidate_provenance(run_id) if run_id else None) or run.get("candidate_provenance", {
+        "status": "RECONSTRUCTED_FROM_PIPELINE_LOGS",
+        "provenance_notes": "Reconstructed from execution progress_logs of PIPE-MAN-20261025-C112. Original candidate object was not serialized to disk by the dry run.",
+        "is_authoritative_original_pipeline_output": False
+    })
+    return {
+        "status": "ok",
+        "run_id": run_id,
+        "candidate_provenance": candidate_prov,
+        "candidates": candidates,
+        "count": len(candidates)
+    }
+
+@app.get("/api/search/runs/{run_id}/candidates")
+@app.get("/api/runs/{run_id}/candidates")
+async def get_run_candidates_endpoint(run_id: str):
+    rec = run_manager.get_run(run_id)
+    if not rec:
+        return JSONResponse({"status": "error", "message": f"Run {run_id} not found", "candidates": [], "count": 0}, status_code=404)
+    candidates = rec.get("candidates") or run_manager.get_run_candidates(run_id)
+    candidate_prov = run_manager.get_run_candidate_provenance(run_id) or rec.get("candidate_provenance", {
+        "status": "RECONSTRUCTED_FROM_PIPELINE_LOGS",
+        "provenance_notes": "Reconstructed from execution progress_logs of PIPE-MAN-20261025-C112. Original candidate object was not serialized to disk by the dry run.",
+        "is_authoritative_original_pipeline_output": False
+    })
+    return {
+        "status": "ok",
+        "run_id": run_id,
+        "candidate_provenance": candidate_prov,
+        "candidates": candidates,
+        "count": len(candidates)
+    }
 
 @app.get("/api/search/runs/{run_id}")
+@app.get("/api/runs/{run_id}")
 async def get_search_run(run_id: str):
     rec = run_manager.get_run(run_id)
     if not rec:
         return JSONResponse({"status": "error", "message": f"Run {run_id} not found"}, status_code=404)
+    if "candidates" not in rec and rec.get("run_id"):
+        rec["candidates"] = run_manager.get_run_candidates(rec["run_id"])
     return rec
 
 @app.get("/api/stream")
@@ -806,7 +872,7 @@ async def operator_logout_endpoint(request: Request):
     return response
 
 @app.get("/api/crm/status")
-async def get_crm_status_endpoint():
+def get_crm_status_endpoint():
     """
     Evaluates and returns authentic Google Sheets CRM connectivity status as an independent signal.
     Distinguishes CRM connectivity from general backend server health.
@@ -2472,7 +2538,7 @@ async def get_system_config_endpoint():
 
 
 @app.get("/api/system/readiness")
-async def get_system_readiness_endpoint():
+def get_system_readiness_endpoint():
     """
     Returns Phase 10.6 Production Readiness audit: 20 deterministic gates,
     overall status (STAGING_READY / TECHNICALLY_READY / BLOCKED),

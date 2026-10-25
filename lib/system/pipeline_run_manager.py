@@ -14,9 +14,12 @@ import os
 import json
 import time
 import uuid
+import logging
 from enum import Enum
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
+
+logger = logging.getLogger("PipelineRunManager")
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
@@ -365,6 +368,82 @@ class DurablePipelineRunManager:
         # Fallback to inspecting all run files
         runs = self.list_runs(limit=1)
         return runs[0] if runs else None
+
+    def get_latest_completed_run(self) -> Optional[Dict[str, Any]]:
+        """
+        Finds the most recent completed run record with valid discovery results.
+        If no completed run with results exists, returns get_latest_run().
+        """
+        runs = self.list_runs(limit=50)
+        for r in runs:
+            status = r.get("status")
+            results = r.get("results") or {}
+            discovered = results.get("candidates_discovered", 0)
+            researched = results.get("candidates_researched", 0)
+            if status in (PipelineRunStatus.COMPLETED.value, PipelineRunStatus.COMPLETED_WITH_ERRORS.value):
+                if discovered > 0 or researched > 0 or r.get("progress_logs"):
+                    return r
+        for r in runs:
+            results = r.get("results") or {}
+            if results.get("candidates_discovered", 0) > 0:
+                return r
+        return self.get_latest_run()
+
+    def get_run_candidates(self, run_id: str) -> List[Dict[str, Any]]:
+        """Returns structured candidate objects associated with a specific run."""
+        target_id = run_id
+        if run_id == "latest":
+            rec = self.get_latest_completed_run() or self.get_latest_run()
+            target_id = rec.get("run_id") if rec else None
+        else:
+            rec = self.get_run(run_id)
+
+        if not target_id:
+            return []
+
+        # 1. Check separate derived candidate artifact
+        derived_path = os.path.join(self.runs_dir, "derived", f"{target_id}.candidates.json")
+        if os.path.exists(derived_path):
+            try:
+                with open(derived_path, "r", encoding="utf-8") as f:
+                    derived_data = json.load(f)
+                    if isinstance(derived_data, dict) and "candidates" in derived_data:
+                        return derived_data["candidates"]
+                    elif isinstance(derived_data, list):
+                        return derived_data
+            except Exception as e:
+                logger.warning(f"Failed to load derived candidates from {derived_path}: {e}")
+
+        # 2. Check native serialized candidates in original run record
+        if rec and rec.get("candidates"):
+            return rec["candidates"]
+        return []
+
+    def get_run_candidate_provenance(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Returns provenance metadata for candidates associated with a run."""
+        target_id = run_id
+        if run_id == "latest":
+            rec = self.get_latest_completed_run() or self.get_latest_run()
+            target_id = rec.get("run_id") if rec else None
+        else:
+            rec = self.get_run(run_id)
+
+        if not target_id:
+            return None
+
+        derived_path = os.path.join(self.runs_dir, "derived", f"{target_id}.candidates.json")
+        if os.path.exists(derived_path):
+            try:
+                with open(derived_path, "r", encoding="utf-8") as f:
+                    derived_data = json.load(f)
+                    if isinstance(derived_data, dict) and "candidate_provenance" in derived_data:
+                        return derived_data["candidate_provenance"]
+            except Exception as e:
+                logger.warning(f"Failed to load derived candidate provenance from {derived_path}: {e}")
+
+        if rec and rec.get("candidate_provenance"):
+            return rec["candidate_provenance"]
+        return None
 
     def list_runs(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Returns list of runs sorted newest first, merging Firestore and local records."""

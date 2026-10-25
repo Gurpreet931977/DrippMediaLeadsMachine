@@ -25,7 +25,13 @@ credentials/
 poised-eye-509816-a4-5444ff3f8520.json
 
 # Local Runtime & Persistent Application State
-data/
+data/*
+!data/pipeline_runs/
+data/pipeline_runs/*
+!data/pipeline_runs/derived/
+!data/pipeline_runs/derived/RUN-20261025_071312-C9AB1F.candidates.json
+!data/pipeline_runs/RUN-20261025_071312-C9AB1F.json
+!data/pipeline_runs/latest_run.json
 backups/
 data_backup_sweep/
 data_backup*/

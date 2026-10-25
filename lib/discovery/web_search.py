@@ -1592,7 +1592,7 @@ class WebSearchProvider(DiscoveryProvider):
             res = self._search_tavily(query, num_results=num_results, advanced=advanced)
             if not isinstance(res, SearchResultList):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="TAVILY", query=query)
-            if res.succeeded and len(res) > 0:
+            if res.succeeded:
                 self._set_cache(cache_key, res, provider="TAVILY", query=query, advanced=advanced)
                 self._sync_stats()
                 return res
@@ -1604,7 +1604,7 @@ class WebSearchProvider(DiscoveryProvider):
             res = self._search_brave(query, num_results=num_results)
             if not isinstance(res, SearchResultList):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="BRAVE", query=query)
-            if res.succeeded and len(res) > 0:
+            if res.succeeded:
                 self._set_cache(cache_key, res, provider="BRAVE", query=query, advanced=advanced)
                 self._sync_stats()
                 return res
@@ -1612,7 +1612,8 @@ class WebSearchProvider(DiscoveryProvider):
             self.circuit_breakers["BRAVE"].fallback_usage += 1
 
         # 3. Local SearXNG if configured and circuit allows
-        if self.searxng_url and self.circuit_breakers["SEARXNG"].is_available():
+        searxng_usable = self._searxng_explicitly_set or (self.searxng_url and self._is_searxng_alive())
+        if searxng_usable and self.circuit_breakers["SEARXNG"].is_available():
             res = self._search_searxng(query, num_results=num_results)
             if not isinstance(res, SearchResultList):
                 res = SearchResultList(res, outcome=SearchOutcome.SEARCH_SUCCEEDED_WITH_RESULTS if res else SearchOutcome.SEARCH_SUCCEEDED_EMPTY, provider="SEARXNG", query=query)
@@ -1623,7 +1624,7 @@ class WebSearchProvider(DiscoveryProvider):
                 return res
             last_result = res
             self.circuit_breakers["SEARXNG"].fallback_usage += 1
-        elif self.searxng_url and not self.circuit_breakers["SEARXNG"].is_available():
+        elif searxng_usable and not self.circuit_breakers["SEARXNG"].is_available():
             cb = self.circuit_breakers["SEARXNG"]
             cb.circuit_open_queries += 1
             last_result = SearchResultList(

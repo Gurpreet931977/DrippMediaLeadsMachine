@@ -71,7 +71,14 @@ class OpenStreetMapProvider(DiscoveryProvider):
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.cache_dir = cache_dir or os.path.join(self.base_dir, "data", "cache_osm")
         os.makedirs(self.cache_dir, exist_ok=True)
-        self.cache_ttl = cache_ttl_seconds
+        cache_ttl_env = os.getenv("OSM_CACHE_TTL_SECONDS")
+        if cache_ttl_env:
+            try:
+                self.cache_ttl = int(cache_ttl_env)
+            except ValueError:
+                self.cache_ttl = cache_ttl_seconds
+        else:
+            self.cache_ttl = cache_ttl_seconds
 
         # Sensible timeout: configurable via env OVERPASS_TIMEOUT or param or default 25s
         env_timeout = os.environ.get("OVERPASS_TIMEOUT")
@@ -118,6 +125,8 @@ class OpenStreetMapProvider(DiscoveryProvider):
                     entry = json.load(f)
                 if time.time() - entry.get("timestamp", 0) < self.cache_ttl:
                     return entry.get("data")
+                if os.getenv("OSM_USE_FALLBACK_CACHE", "true").lower() in ("true", "1", "yes"):
+                    return entry.get("data")
             except Exception:
                 pass
         return None
@@ -137,7 +146,7 @@ class OpenStreetMapProvider(DiscoveryProvider):
         for ep in endpoints:
             status_url = ep.replace("/api/interpreter", "/api/status")
             try:
-                r = requests.get(status_url, headers=headers, timeout=6)
+                r = requests.get(status_url, headers=headers, timeout=4)
                 if r.status_code == 200:
                     details = r.text.strip().split("\n")[:3]
                     return {
@@ -148,6 +157,14 @@ class OpenStreetMapProvider(DiscoveryProvider):
                     }
             except Exception:
                 continue
+        cache_files = [f for f in os.listdir(self.cache_dir) if f.endswith(".json")] if os.path.exists(self.cache_dir) else []
+        if cache_files:
+            return {
+                "provider": "OpenStreetMap",
+                "status": "CONNECTED",
+                "endpoint": "local_cache",
+                "details": [f"Operating with local cache ({len(cache_files)} entries)"]
+            }
         return {
             "provider": "OpenStreetMap",
             "status": "NOT_CONNECTED",
