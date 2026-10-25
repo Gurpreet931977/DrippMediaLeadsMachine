@@ -8,6 +8,11 @@ name: "05 - Production Cloud Run Deployment"
         required: true
         default: ""
         type: string
+      promote_traffic:
+        description: "Promote candidate to 100% primary traffic ('true' or 'false'). Set to 'false' for zero-traffic candidate deployment."
+        required: false
+        default: "true"
+        type: string
 
 permissions:
   contents: read
@@ -399,6 +404,7 @@ jobs:
           " "${EXPECTED_IMAGE}" "${{ env.RUNTIME_SERVICE_ACCOUNT }}"
 
       - name: "Promote Verified API Revision to Primary Traffic"
+        if: ${{ github.event.inputs.promote_traffic != 'false' }}
         env:
           CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
         run: |
@@ -410,6 +416,7 @@ jobs:
             --quiet
 
       - name: "Verify Primary Traffic & Health (Rollback on Failure)"
+        if: ${{ github.event.inputs.promote_traffic != 'false' }}
         env:
           CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
           PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
