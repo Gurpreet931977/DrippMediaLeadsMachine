@@ -1119,7 +1119,9 @@ class TestEmailAPIEndpoints(unittest.TestCase):
 
     def setUp(self):
         os.environ["EMAIL_SANDBOX_MODE"] = "true"
-        self.client = TestClient(app)
+        op_key = os.getenv("OPERATOR_KEY") or os.getenv("DRIPP_OPERATOR_KEY") or "test-unit-operator-key"
+        os.environ["OPERATOR_KEY"] = op_key
+        self.client = TestClient(app, headers={"X-Operator-Key": op_key})
 
     def tearDown(self):
         SystemConfig.set_automated_email(False)

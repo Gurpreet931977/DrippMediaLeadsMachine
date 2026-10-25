@@ -247,7 +247,9 @@ class TestOSMOverpassResilience(unittest.TestCase):
             phone="01618343456",
             raw_website="https://www.rudyspizza.co.uk",
             discovery_source="WEB_SEARCH",
-            operational_status="UNKNOWN"
+            operational_status="UNKNOWN",
+            instagram_url="https://www.instagram.com/rudyspizzanapoletana/",
+            facebook_url="https://www.facebook.com/rudyspizza"
         )
 
         with patch.object(engine.osm, "search_businesses", side_effect=OverpassQueryError("All Overpass endpoints down")), \

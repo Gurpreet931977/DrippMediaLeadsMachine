@@ -75,6 +75,11 @@ class TestGoogleSheetsLiveIntegration(unittest.TestCase):
         """5. An empty sheet returns count 0, not a fallback or invented default."""
         mock_fetch.return_value = []
         client = TestClient(app)
+        op_key = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+        if op_key:
+            from server import create_operator_session
+            sess = create_operator_session()
+            client.headers.update({"Authorization": f"Bearer {sess['session_token']}", "X-Requested-With": "XMLHttpRequest"})
         resp = client.get("/api/leads")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -88,6 +93,11 @@ class TestBackendAPIAndCORS(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
+        op_key = os.getenv("OPERATOR_KEY", "").strip() or os.getenv("OPERATOR_API_KEY", "").strip()
+        if op_key:
+            from server import create_operator_session
+            sess = create_operator_session()
+            self.client.headers.update({"Authorization": f"Bearer {sess['session_token']}", "X-Requested-With": "XMLHttpRequest"})
 
     @patch("server.GoogleSheetsStorageProvider.fetch_all_leads")
     def test_leads_endpoint_returns_rich_metadata(self, mock_fetch):
@@ -150,9 +160,10 @@ class TestBackendAPIAndCORS(unittest.TestCase):
 
     def test_operator_authorization_protection(self):
         """10. Sensitive endpoints independently enforce operator authorization when key is set."""
-        with patch.dict(os.environ, {"OPERATOR_API_KEY": "secure-operator-key-998"}):
+        with patch.dict(os.environ, {"OPERATOR_API_KEY": "secure-operator-key-998", "OPERATOR_KEY": "secure-operator-key-998"}):
+            clean_client = TestClient(app)
             # 1. Unauthenticated search trigger blocked
-            resp_no_auth = self.client.post("/api/search", json={
+            resp_no_auth = clean_client.post("/api/search", json={
                 "country": "United Kingdom",
                 "cities": ["Manchester"],
                 "industry": "Restaurants"
@@ -161,7 +172,7 @@ class TestBackendAPIAndCORS(unittest.TestCase):
             self.assertIn("Unauthorized", resp_no_auth.json().get("message", ""))
 
             # 2. Invalid bearer token blocked
-            resp_bad_auth = self.client.post("/api/search", json={
+            resp_bad_auth = clean_client.post("/api/search", json={
                 "country": "United Kingdom",
                 "cities": ["Manchester"],
                 "industry": "Restaurants"
@@ -169,7 +180,7 @@ class TestBackendAPIAndCORS(unittest.TestCase):
             self.assertEqual(resp_bad_auth.status_code, 401)
 
             # 3. Unauthenticated cancel blocked
-            resp_cancel_no_auth = self.client.post("/api/search/cancel")
+            resp_cancel_no_auth = clean_client.post("/api/search/cancel")
             self.assertEqual(resp_cancel_no_auth.status_code, 401)
 
 

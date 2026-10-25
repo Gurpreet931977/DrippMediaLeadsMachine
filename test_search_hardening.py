@@ -45,6 +45,9 @@ class TestSearchOutcomeModel(unittest.TestCase):
 
     def setUp(self):
         self.provider = WebSearchProvider()
+        self.provider.tavily_key = ""
+        self.provider.brave_key = ""
+        self.provider.searxng_url = None
         self.provider.circuit_breakers["DUCKDUCKGO_FALLBACK"].reset()
         self.provider.cache_hits = 0
         self.provider.cache_misses = 0
@@ -516,6 +519,9 @@ class TestLiveSearchHardeningAndEvidenceIntegrity(unittest.TestCase):
 
     def setUp(self):
         self.provider = WebSearchProvider()
+        self.provider.tavily_key = ""
+        self.provider.brave_key = ""
+        self.provider.searxng_url = None
         self.provider.circuit_breakers["DUCKDUCKGO_FALLBACK"].reset()
         self.provider.cache_hits = 0
         self.provider.cache_misses = 0

@@ -51,7 +51,15 @@ from lib.validation.rule_b_criteria import (
 
 @pytest.fixture(scope="module")
 def client():
-    return TestClient(server.app)
+    c = TestClient(server.app)
+    op_key = server._configured_operator_key()
+    if op_key:
+        sess = server.create_operator_session()
+        c.headers.update({
+            "Authorization": f"Bearer {sess['session_token']}",
+            "X-Requested-With": "XMLHttpRequest",
+        })
+    return c
 
 
 @pytest.fixture(autouse=True)
