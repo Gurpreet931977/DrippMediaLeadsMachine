@@ -273,8 +273,8 @@ jobs:
             --format='value(status.imageDigest)')
           echo "Candidate image digest from Cloud Run: $CAND_DIGEST"
           EXPECTED_DIGEST="sha256:991bb03c169edd467eb3c4c8548f6907f5d749d5ca69f6a800541d173812cc89"
-          if [ -n "$CAND_DIGEST" ] && [ "$CAND_DIGEST" != "$EXPECTED_DIGEST" ]; then
-            echo "::error::Candidate image digest mismatch! Expected $EXPECTED_DIGEST, got $CAND_DIGEST"
+          if [[ "$CAND_DIGEST" != *"$EXPECTED_DIGEST"* ]]; then
+            echo "::error::Candidate image digest mismatch! Expected $EXPECTED_DIGEST in $CAND_DIGEST"
             exit 1
           fi
           echo "Candidate image digest matches verified immutable artifact."
