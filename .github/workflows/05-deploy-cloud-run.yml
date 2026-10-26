@@ -456,6 +456,7 @@ jobs:
         env:
           CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
           PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
+          DRIPP_OPERATOR_KEY: ${{ secrets.DRIPP_OPERATOR_KEY }}
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
           DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
