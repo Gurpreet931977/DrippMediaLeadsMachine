@@ -531,7 +531,8 @@ jobs:
           data = json.load(sys.stdin)
           env_dict = {e.get("name"): e.get("value") for e in data if isinstance(e, dict)}
           for k in ["TRAVEL_MODE", "COMMERCIAL_ACTIONS_ENABLED", "AUTOMATED_EMAIL_ENABLED", "TECHNICAL_AUTOMATION_ENABLED"]:
-              print(f"  {k} = {env_dict.get(k, \"NOT SET\")}")
+              val = env_dict.get(k, "NOT SET")
+              print("  " + k + " = " + str(val))
           '
 
           echo "========================================================================"
