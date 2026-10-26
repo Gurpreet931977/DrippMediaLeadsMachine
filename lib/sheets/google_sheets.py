@@ -404,6 +404,57 @@ class ResearchLogMap(dict):
         return None
 
 
+CANONICAL_PRODUCTION_SHEET_ID = "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
+
+OPERATIONAL_TABS = {
+    "OVERVIEW",
+    "LEADS",
+    "RESEARCH_LOG",
+    "REVIEW_QUEUE",
+    "RESEARCH_LOG_QUARANTINE",
+}
+
+TEST_NAMESPACE_PREFIX = "TEST_ONLY_"
+
+TEST_TAB_MAP = {
+    "OVERVIEW": "TEST_ONLY_OVERVIEW",
+    "LEADS": "TEST_ONLY_LEADS",
+    "RESEARCH_LOG": "TEST_ONLY_RESEARCH_LOG",
+    "REVIEW_QUEUE": "TEST_ONLY_REVIEW_QUEUE",
+    "RESEARCH_LOG_QUARANTINE": "TEST_ONLY_RESEARCH_LOG_QUARANTINE",
+}
+
+QUARANTINE_PROVENANCE_HEADERS = ["original_sheet_row", "quarantined_at", "quarantine_reason"]
+QUARANTINE_COLUMNS = QUARANTINE_PROVENANCE_HEADERS + RESEARCH_LOG_COLUMNS
+
+
+class NamespaceSpreadsheetProxy:
+    """
+    Guards gspread.Spreadsheet in test_namespace mode to prevent any code from
+    accessing or mutating operational tabs. Fails closed immediately if an
+    operational tab is requested directly without the test namespace prefix.
+    """
+    def __init__(self, spreadsheet, provider):
+        self._spreadsheet = spreadsheet
+        self._provider = provider
+
+    def __getattr__(self, name):
+        return getattr(self._spreadsheet, name)
+
+    def worksheet(self, title: str):
+        if self._provider.test_namespace:
+            if title in OPERATIONAL_TABS:
+                raise PermissionError(
+                    f"[Test Namespace Safety Block] Attempted to open operational tab '{title}' directly while test_namespace=True. "
+                    f"Test operations must strictly target '{TEST_NAMESPACE_PREFIX}*' tabs."
+                )
+        return self._spreadsheet.worksheet(title)
+
+
+# Backward compatibility alias
+TestNamespaceSpreadsheetProxy = NamespaceSpreadsheetProxy
+
+
 class GoogleSheetsStorageProvider:
     """
     Storage provider interfacing with Google Sheets as the single source of truth.
@@ -412,16 +463,49 @@ class GoogleSheetsStorageProvider:
       - REVIEW_QUEUE: Contains MANUAL_REVIEW prospects awaiting human verification.
       - RESEARCH_LOG: Contains all discovered & researched businesses including rejected/disqualified.
     Implements normalization, deduplication, row updating, and text-safe phone formatting.
+    Supports isolated test namespaces via TEST_ONLY_* tabs in the canonical spreadsheet.
     """
-    def __init__(self, sheet_url: Optional[str] = None):
-        sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
-        default_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
-        self.sheet_url = sheet_url or os.getenv("GOOGLE_SHEET_URL") or default_url
+    def __init__(
+        self,
+        sheet_url: Optional[str] = None,
+        staging_mode: bool = False,
+        test_namespace: bool = False,
+    ):
+        self.test_namespace = (
+            test_namespace
+            or os.getenv("TEST_NAMESPACE", "").lower() in ("true", "1", "active")
+            or os.getenv("PERSISTENCE_TEST_NAMESPACE", "").lower() in ("true", "1", "active")
+        )
+        self.staging_mode = staging_mode or os.getenv("STAGING_MODE", "").lower() in ("true", "1", "active")
+        if self.staging_mode:
+            staging_id = os.getenv("STAGING_GOOGLE_SHEET_ID")
+            if not staging_id or not staging_id.strip():
+                raise ValueError(
+                    "[Staging Configuration Error] Staging mode is active, but STAGING_GOOGLE_SHEET_ID is missing or empty. "
+                    "Refusing to fall back to the production spreadsheet."
+                )
+            if staging_id.strip() == CANONICAL_PRODUCTION_SHEET_ID:
+                raise ValueError(
+                    "[Staging Isolation Violation] STAGING_GOOGLE_SHEET_ID matches CANONICAL_PRODUCTION_SHEET_ID. "
+                    "Staging tests cannot write to the canonical production spreadsheet."
+                )
+            sheet_id = staging_id.strip()
+            default_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
+            self.sheet_url = sheet_url or default_url
+        else:
+            sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or CANONICAL_PRODUCTION_SHEET_ID
+            default_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
+            self.sheet_url = sheet_url or os.getenv("GOOGLE_SHEET_URL") or default_url
+
         self._gc = None
+        self._raw_spreadsheet = None
         self._spreadsheet = None
         self._leads_ws = None
         self._review_ws = None
         self._research_ws = None
+        self._overview_ws = None
+        self._quarantine_ws = None
+        self._worksheets_cache = {}
         self.matcher = BusinessIdentityMatcher()
         self.stats = {
             "new_businesses": 0,
@@ -446,19 +530,29 @@ class GoogleSheetsStorageProvider:
         return self._gc
 
     @property
-    def spreadsheet(self):
-        if not self._spreadsheet:
-            sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
+    def raw_spreadsheet(self):
+        if not self._raw_spreadsheet:
+            if self._spreadsheet and not isinstance(self._spreadsheet, TestNamespaceSpreadsheetProxy):
+                return self._spreadsheet
+            if self.staging_mode:
+                sheet_id = os.getenv("STAGING_GOOGLE_SHEET_ID", "").strip()
+                if not sheet_id:
+                    raise ValueError("[Staging Error] STAGING_GOOGLE_SHEET_ID is missing in staging mode.")
+                if sheet_id == CANONICAL_PRODUCTION_SHEET_ID:
+                    raise ValueError("[Staging Isolation Error] Attempted to open production spreadsheet in staging mode.")
+            else:
+                sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or CANONICAL_PRODUCTION_SHEET_ID
+
             if not self.sheet_url:
                 self.sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit"
             try:
                 if sheet_id:
                     try:
-                        self._spreadsheet = self.gc.open_by_key(sheet_id)
+                        self._raw_spreadsheet = self.gc.open_by_key(sheet_id)
                     except Exception:
-                        self._spreadsheet = self.gc.open_by_url(self.sheet_url)
+                        self._raw_spreadsheet = self.gc.open_by_url(self.sheet_url)
                 else:
-                    self._spreadsheet = self.gc.open_by_url(self.sheet_url)
+                    self._raw_spreadsheet = self.gc.open_by_url(self.sheet_url)
                 try:
                     from lib.monitoring.detectors import GoogleSheetsMonitor
                     GoogleSheetsMonitor().record_success()
@@ -471,42 +565,138 @@ class GoogleSheetsStorageProvider:
                 except Exception:
                     pass
                 raise
+        return self._raw_spreadsheet
+
+    @property
+    def spreadsheet(self):
+        if not self._spreadsheet:
+            raw = self.raw_spreadsheet
+            if self.test_namespace:
+                self._spreadsheet = TestNamespaceSpreadsheetProxy(raw, self)
+            else:
+                self._spreadsheet = raw
         return self._spreadsheet
 
+    def resolve_tab_name(self, title: str) -> str:
+        """
+        Resolves the logical worksheet name to either an operational tab (production)
+        or a dedicated TEST_ONLY_* tab (test namespace mode).
+        Fails closed if in test mode and an operational tab is requested without mapping,
+        or if an unmapped operational write is attempted.
+        """
+        if self.test_namespace:
+            if title in TEST_TAB_MAP:
+                return TEST_TAB_MAP[title]
+            if title.startswith(TEST_NAMESPACE_PREFIX):
+                return title
+            if title in OPERATIONAL_TABS:
+                raise PermissionError(
+                    f"[Test Namespace Safety Violation] Test mode is active, but an unmapped operational tab '{title}' was targeted. "
+                    f"Operational tabs must never be accessed or targeted in test mode."
+                )
+            raise PermissionError(
+                f"[Test Namespace Safety Violation] Cannot access tab '{title}' in test namespace mode. "
+                f"All operations must target tabs with prefix '{TEST_NAMESPACE_PREFIX}'."
+            )
+        else:
+            return title
+
     def _get_or_create_worksheet(self, title: str, cols: int = 40) -> gspread.Worksheet:
-        try:
-            return self.spreadsheet.worksheet(title)
-        except gspread.WorksheetNotFound:
-            if title == "LEADS":
-                try:
-                    s1 = self.spreadsheet.worksheet("Sheet1")
-                    s1.update_title("LEADS")
-                    return s1
-                except Exception:
-                    pass
-            print(f"[GoogleSheets] Creating new worksheet tab: '{title}'...")
-            return self.spreadsheet.add_worksheet(title=title, rows=1000, cols=cols)
+        resolved_title = self.resolve_tab_name(title)
+        if self.test_namespace:
+            if resolved_title in OPERATIONAL_TABS or not resolved_title.startswith(TEST_NAMESPACE_PREFIX):
+                raise PermissionError(
+                    f"[Test Namespace Violation] Refusing to open or create operational tab '{resolved_title}' while test_namespace=True."
+                )
+
+        if resolved_title in self._worksheets_cache:
+            return self._worksheets_cache[resolved_title]
+
+        import time
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                ws = self.raw_spreadsheet.worksheet(resolved_title)
+                self._worksheets_cache[resolved_title] = ws
+                return ws
+            except gspread.WorksheetNotFound:
+                if not self.test_namespace and resolved_title == "LEADS":
+                    try:
+                        s1 = self.raw_spreadsheet.worksheet("Sheet1")
+                        s1.update_title("LEADS")
+                        self._worksheets_cache[resolved_title] = s1
+                        return s1
+                    except Exception:
+                        pass
+                print(f"[GoogleSheets] Creating new worksheet tab: '{resolved_title}'...")
+                ws = self.raw_spreadsheet.add_worksheet(title=resolved_title, rows=1000, cols=cols)
+                self._worksheets_cache[resolved_title] = ws
+                return ws
+            except gspread.exceptions.APIError as e:
+                err_msg = str(e)
+                if "429" in err_msg or "Quota exceeded" in err_msg or (hasattr(e, 'response') and getattr(e.response, 'status_code', None) == 429):
+                    wait_s = (attempt + 1) * 8
+                    print(f"[GoogleSheets Rate Limit] 429 while accessing '{resolved_title}', backing off {wait_s}s (attempt {attempt + 1}/{max_attempts})...")
+                    time.sleep(wait_s)
+                    if attempt == max_attempts - 1:
+                        raise
+                else:
+                    raise
+
+    def get_worksheet(self, title: str, cols: Optional[int] = None) -> gspread.Worksheet:
+        resolved_title = self.resolve_tab_name(title)
+        if cols is None:
+            if "LEADS" in resolved_title:
+                cols = len(LEADS_COLUMNS) + 2
+            elif "REVIEW" in resolved_title:
+                cols = len(REVIEW_QUEUE_COLUMNS) + 2
+            elif "RESEARCH" in resolved_title or "QUARANTINE" in resolved_title:
+                cols = len(RESEARCH_LOG_COLUMNS) + 5
+            elif "OVERVIEW" in resolved_title:
+                cols = 20
+            else:
+                cols = 40
+        return self._get_or_create_worksheet(resolved_title, cols=cols)
 
     @property
     def leads_worksheet(self) -> gspread.Worksheet:
         if not self._leads_ws:
-            self._leads_ws = self._get_or_create_worksheet("LEADS", cols=len(LEADS_COLUMNS) + 2)
+            tab_name = self.resolve_tab_name("LEADS")
+            self._leads_ws = self._get_or_create_worksheet(tab_name, cols=len(LEADS_COLUMNS) + 2)
             self.ensure_leads_columns()
         return self._leads_ws
 
     @property
     def review_queue_worksheet(self) -> gspread.Worksheet:
         if not self._review_ws:
-            self._review_ws = self._get_or_create_worksheet("REVIEW_QUEUE", cols=len(REVIEW_QUEUE_COLUMNS) + 2)
+            tab_name = self.resolve_tab_name("REVIEW_QUEUE")
+            self._review_ws = self._get_or_create_worksheet(tab_name, cols=len(REVIEW_QUEUE_COLUMNS) + 2)
             self.ensure_review_queue_columns()
         return self._review_ws
 
     @property
     def research_worksheet(self) -> gspread.Worksheet:
         if not self._research_ws:
-            self._research_ws = self._get_or_create_worksheet("RESEARCH_LOG", cols=len(RESEARCH_LOG_COLUMNS) + 2)
+            tab_name = self.resolve_tab_name("RESEARCH_LOG")
+            self._research_ws = self._get_or_create_worksheet(tab_name, cols=len(RESEARCH_LOG_COLUMNS) + 2)
             self.ensure_research_columns()
         return self._research_ws
+
+    @property
+    def overview_worksheet(self) -> gspread.Worksheet:
+        if not self._overview_ws:
+            tab_name = self.resolve_tab_name("OVERVIEW")
+            self._overview_ws = self._get_or_create_worksheet(tab_name, cols=20)
+            self.ensure_overview_tab()
+        return self._overview_ws
+
+    @property
+    def quarantine_worksheet(self) -> gspread.Worksheet:
+        if not self._quarantine_ws:
+            tab_name = self.resolve_tab_name("RESEARCH_LOG_QUARANTINE")
+            self._quarantine_ws = self._get_or_create_worksheet(tab_name, cols=len(QUARANTINE_COLUMNS) + 2)
+            self.ensure_quarantine_columns()
+        return self._quarantine_ws
 
     # Backward compatibility alias
     @property
@@ -575,6 +765,121 @@ class GoogleSheetsStorageProvider:
             except Exception as e:
                 print(f"[GoogleSheets] RESEARCH_LOG header styling note: {e}")
 
+    def ensure_overview_tab(self):
+        """Ensures the OVERVIEW (or TEST_ONLY_OVERVIEW) tab is initialized."""
+        ws = self.overview_worksheet
+        try:
+            existing = ws.row_values(1)
+        except Exception:
+            existing = []
+        if not existing:
+            headers = ["METRIC", "VALUE", "LAST_UPDATED", "NOTES"]
+            end_col = col_to_letter(len(headers))
+            ws.update(values=[headers], range_name=f"A1:{end_col}1")
+            try:
+                ws.format(f"A1:{end_col}1", {
+                    "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 0.84, "blue": 0.0}},
+                    "backgroundColor": {"red": 0.08, "green": 0.08, "blue": 0.09}
+                })
+                ws.freeze(rows=1)
+            except Exception:
+                pass
+
+    def ensure_quarantine_columns(self):
+        """Ensures the required columns are set up in Row 1 of RESEARCH_LOG_QUARANTINE."""
+        ws = self.quarantine_worksheet
+        needed_cols = len(QUARANTINE_COLUMNS)
+        if ws.col_count < needed_cols:
+            try:
+                ws.add_cols(needed_cols - ws.col_count + 5)
+            except Exception as e:
+                print(f"[GoogleSheets] Add cols note: {e}")
+
+        existing_headers = ws.row_values(1)
+        if not existing_headers or existing_headers != QUARANTINE_COLUMNS:
+            print(f"[GoogleSheets] Initializing {ws.title} headers...")
+            end_col = col_to_letter(len(QUARANTINE_COLUMNS))
+            ws.update(values=[QUARANTINE_COLUMNS], range_name=f"A1:{end_col}1")
+            try:
+                ws.format(f"A1:{end_col}1", {
+                    "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 0.84, "blue": 0.0}},
+                    "backgroundColor": {"red": 0.08, "green": 0.08, "blue": 0.09}
+                })
+                ws.freeze(rows=1, cols=3)
+            except Exception as e:
+                print(f"[GoogleSheets] Quarantine header styling note: {e}")
+
+    def ensure_test_namespace_tabs(self) -> Dict[str, str]:
+        """
+        Explicitly initializes all 5 dedicated test tabs in the spreadsheet:
+        - TEST_ONLY_OVERVIEW
+        - TEST_ONLY_LEADS
+        - TEST_ONLY_RESEARCH_LOG
+        - TEST_ONLY_REVIEW_QUEUE
+        - TEST_ONLY_RESEARCH_LOG_QUARANTINE
+        Fails closed if self.test_namespace is False.
+        """
+        if not self.test_namespace:
+            raise PermissionError("ensure_test_namespace_tabs requires test_namespace=True.")
+        
+        self.ensure_overview_tab()
+        self.ensure_leads_columns()
+        self.ensure_review_queue_columns()
+        self.ensure_research_columns()
+        self.ensure_quarantine_columns()
+        return {k: self.resolve_tab_name(k) for k in TEST_TAB_MAP}
+
+    def clear_test_tab_data(self, tab_name: str) -> int:
+        """
+        Clears all data rows (rows 2+) from a test-only tab, preserving row 1 headers.
+        Only allowed when self.test_namespace is True and tab resolves to a TEST_ONLY_* tab.
+        """
+        if not self.test_namespace:
+            raise PermissionError("clear_test_tab_data is only allowed when test_namespace is True.")
+        resolved_title = self.resolve_tab_name(tab_name)
+        if not resolved_title.startswith(TEST_NAMESPACE_PREFIX) or resolved_title in OPERATIONAL_TABS:
+            raise PermissionError(f"Cannot clear data on non-test tab '{resolved_title}'.")
+        ws = self.get_worksheet(resolved_title)
+        import time
+        vals = []
+        for attempt in range(5):
+            try:
+                vals = ws.get_all_values()
+                break
+            except gspread.exceptions.APIError as e:
+                err_msg = str(e)
+                if "429" in err_msg or "Quota exceeded" in err_msg or (hasattr(e, 'response') and getattr(e.response, 'status_code', None) == 429):
+                    wait_s = (attempt + 1) * 8
+                    print(f"[GoogleSheets Rate Limit] 429 during clear_test_tab_data get_all_values for '{resolved_title}', backing off {wait_s}s...")
+                    time.sleep(wait_s)
+                    if attempt == 4:
+                        raise
+                else:
+                    raise
+
+        if len(vals) <= 1:
+            return 0
+        cleared_rows = len(vals) - 1
+        end_col = col_to_letter(max(len(r) for r in vals) if vals else 40)
+        clear_range = f"A2:{end_col}{len(vals)}"
+        
+        for attempt in range(5):
+            try:
+                ws.batch_clear([clear_range])
+                break
+            except gspread.exceptions.APIError as e:
+                err_msg = str(e)
+                if "429" in err_msg or "Quota exceeded" in err_msg or (hasattr(e, 'response') and getattr(e.response, 'status_code', None) == 429):
+                    wait_s = (attempt + 1) * 8
+                    print(f"[GoogleSheets Rate Limit] 429 during batch_clear for '{resolved_title}', backing off {wait_s}s...")
+                    time.sleep(wait_s)
+                    if attempt == 4:
+                        raise
+                else:
+                    raise
+
+        return cleared_rows
+
     def normalize_identity(
         self,
         company_name: str,
@@ -601,12 +906,12 @@ class GoogleSheetsStorageProvider:
 
     def get_existing_leads_map(self) -> Dict[str, Tuple[int, Dict[str, Any]]]:
         """
-        Loads all existing rows from LEADS tab and indexes them by normalized identity.
+        Loads all existing rows from LEADS (or TEST_ONLY_LEADS) tab and indexes them by normalized identity.
         Returns: { normalized_id: (row_index_1_based, row_dict) }
         """
         try:
-            # Read-only helper: do not use the schema-repairing worksheet property.
-            rows = self.spreadsheet.worksheet("LEADS").get_all_records()
+            ws = self.leads_worksheet
+            rows = ws.get_all_records()
         except Exception:
             return {}
 
@@ -628,12 +933,12 @@ class GoogleSheetsStorageProvider:
         Correctly parses normal rows (A:AB) and shifted malformed rows (AA:BB).
         """
         try:
-            ws = getattr(self, "_research_ws", None) or self.spreadsheet.worksheet("RESEARCH_LOG")
+            ws = self.research_worksheet
             raw_rows = ws.get_all_values()
         except Exception as exc:
             if fail_closed:
                 raise RuntimeError(
-                    "[GoogleSheets Deduplication Block] Could not read RESEARCH_LOG before writing; "
+                    f"[GoogleSheets Deduplication Block] Could not read {self.resolve_tab_name('RESEARCH_LOG')} before writing; "
                     "refusing to append or update research records without a complete deduplication snapshot."
                 ) from exc
             return ResearchLogMap()
@@ -774,28 +1079,39 @@ class GoogleSheetsStorageProvider:
         Supports both worksheet title strings and worksheet objects.
         """
         ws_title = worksheet if isinstance(worksheet, str) else getattr(worksheet, "title", str(worksheet))
-        if confirm_token != "CONFIRM_DESTRUCTIVE_CLEAR":
-            raise PermissionError(
-                f"Destructive clear on worksheet '{ws_title}' blocked: "
-                "requires confirm_token='CONFIRM_DESTRUCTIVE_CLEAR'."
-            )
-        ws = self.spreadsheet.worksheet(worksheet) if isinstance(worksheet, str) else worksheet
+        if self.test_namespace:
+            if ws_title in OPERATIONAL_TABS or not ws_title.startswith(TEST_NAMESPACE_PREFIX):
+                raise PermissionError(
+                    f"[Test Namespace Safety Block] In test mode, clearing operational tab '{ws_title}' is strictly prohibited! "
+                    f"Only '{TEST_NAMESPACE_PREFIX}*' tabs can be cleared in test mode."
+                )
+            resolved_title = ws_title
+            ws = self.get_worksheet(resolved_title) if isinstance(worksheet, str) else worksheet
+        else:
+            resolved_title = ws_title
+            if confirm_token != "CONFIRM_DESTRUCTIVE_CLEAR":
+                raise PermissionError(
+                    f"Destructive clear on worksheet '{ws_title}' blocked: "
+                    "requires confirm_token='CONFIRM_DESTRUCTIVE_CLEAR'."
+                )
+            ws = self.spreadsheet.worksheet(worksheet) if isinstance(worksheet, str) else worksheet
+
         vals = ws.get_all_values()
 
         # Save pre-clear backup
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         os.makedirs(backup_dir, exist_ok=True)
-        backup_file = os.path.join(backup_dir, f"pre_clear_{ws_title}_{ts}.json")
+        backup_file = os.path.join(backup_dir, f"pre_clear_{resolved_title}_{ts}.json")
         with open(backup_file, "w", encoding="utf-8") as f:
             json.dump({
-                "worksheet": ws_title,
+                "worksheet": resolved_title,
                 "timestamp": ts,
                 "row_count": len(vals),
                 "values": vals,
             }, f, indent=2)
 
         ws.clear()
-        return {"status": "CLEARED", "worksheet": ws_title, "rows_cleared": len(vals), "backup_path": backup_file}
+        return {"status": "CLEARED", "worksheet": resolved_title, "rows_cleared": len(vals), "backup_path": backup_file}
 
     def get_existing_review_queue_map(self, *, fail_closed: bool = False) -> Dict[str, Tuple[int, Dict[str, Any]]]:
         """
@@ -803,13 +1119,12 @@ class GoogleSheetsStorageProvider:
         Read/display callers may tolerate a failed read; write callers must fail closed.
         """
         try:
-            # Reuse an already-injected/initialized worksheet, but never create or repair a tab here.
-            ws = getattr(self, "_review_ws", None) or self.spreadsheet.worksheet("REVIEW_QUEUE")
+            ws = self.review_queue_worksheet
             rows = ws.get_all_records()
         except Exception as exc:
             if fail_closed:
                 raise RuntimeError(
-                    "[GoogleSheets Deduplication Block] Could not read REVIEW_QUEUE before writing; "
+                    f"[GoogleSheets Deduplication Block] Could not read {self.resolve_tab_name('REVIEW_QUEUE')} before writing; "
                     "refusing to append a review candidate without a complete deduplication snapshot."
                 ) from exc
             return {}
@@ -1271,7 +1586,7 @@ class GoogleSheetsStorageProvider:
         Normalizes blank outreach_status values to 'NOT_READY' deterministically.
         """
         # Dashboard reads must never rewrite headers, add columns, or create tabs.
-        records = self.spreadsheet.worksheet("LEADS").get_all_records()
+        records = self.leads_worksheet.get_all_records()
         for r in records:
             r["outreach_status"] = normalize_outreach_status(r.get("outreach_status"))
         return records
@@ -1281,7 +1596,7 @@ class GoogleSheetsStorageProvider:
         Fetches all manual review candidates from REVIEW_QUEUE tab.
         """
         # Read the existing tab directly; schema setup belongs to explicit write/setup workflows.
-        return self.spreadsheet.worksheet("REVIEW_QUEUE").get_all_records()
+        return self.review_queue_worksheet.get_all_records()
 
     def fetch_research_log(self) -> List[Dict[str, Any]]:
         """
@@ -1289,7 +1604,7 @@ class GoogleSheetsStorageProvider:
         Uses expected_headers to handle trailing empty column headers safely.
         """
         # Read-only path: never invoke schema repair or implicit worksheet creation.
-        worksheet = self.spreadsheet.worksheet("RESEARCH_LOG")
+        worksheet = self.research_worksheet
         try:
             return worksheet.get_all_records(expected_headers=RESEARCH_LOG_COLUMNS)
         except Exception:

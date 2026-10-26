@@ -97,7 +97,23 @@ def get_sheet_client():
         "Set GOOGLE_SERVICE_ACCOUNT_JSON in environment, GOOGLE_APPLICATION_CREDENTIALS, or attach a Service Account with ADC."
     )
 
-def get_worksheet(sheet_url=None, worksheet_name="Sheet1"):
+def get_worksheet(sheet_url=None, worksheet_name="Sheet1", test_namespace=False):
+    is_test = test_namespace or os.getenv("TEST_NAMESPACE", "").lower() in ("true", "1", "active") or os.getenv("PERSISTENCE_TEST_NAMESPACE", "").lower() in ("true", "1", "active")
+    if is_test:
+        from lib.sheets.google_sheets import TEST_TAB_MAP, OPERATIONAL_TABS, TEST_NAMESPACE_PREFIX
+        if worksheet_name in TEST_TAB_MAP:
+            worksheet_name = TEST_TAB_MAP[worksheet_name]
+        elif worksheet_name.startswith(TEST_NAMESPACE_PREFIX):
+            pass
+        elif worksheet_name in OPERATIONAL_TABS:
+            raise PermissionError(
+                f"[Test Namespace Safety Block] Attempted to access operational tab '{worksheet_name}' while TEST_NAMESPACE is active."
+            )
+        else:
+            raise PermissionError(
+                f"[Test Namespace Safety Block] Cannot access tab '{worksheet_name}' in test namespace mode."
+            )
+
     url = sheet_url or os.getenv("GOOGLE_SHEET_URL")
     sheet_id = os.getenv("GOOGLE_SHEET_ID") or os.getenv("SPREADSHEET_ID") or "1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc"
     gc = get_sheet_client()
