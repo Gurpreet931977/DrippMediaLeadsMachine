@@ -439,6 +439,7 @@ class HybridDiscoveryEngine(DiscoveryProvider):
         # Free-First Stack:
         # Step 1: OpenStreetMap (Primary Discovery)
         osm_error = None
+        osm_candidates = []
         try:
             osm_candidates = self.osm.search_businesses(city=city, country=country, industry=industry, limit=limit)
             for cand in osm_candidates:
@@ -468,16 +469,25 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                     pool[canon_id] = cand
 
         # Step 3: Web Search Discovery & Enrichment
-        # A) Primary failure fallback: When primary OSM encounters an outage,
-        # invoke independent WebSearch discovery fallback to surface candidate businesses.
+        # A) Primary failure & zero-yield fallback (Phase 2B):
+        # When primary OSM encounters an outage, OR returns zero candidates,
+        # invoke independent WebSearch discovery fallback without causing unnecessary searches on successful runs.
         web_fallback_error = None
-        if osm_error is not None and len(pool) < limit:
+        budget_searches = getattr(self, "budget", {}).get("max_web_searches", 20)
+        web_fallback_on_empty = os.getenv("DISCOVERY_WEB_FALLBACK_ON_EMPTY", "false").lower() == "true"
+        needs_web_discovery = (
+            (osm_error is not None or (web_fallback_on_empty and len(osm_candidates) == 0 and len(pool) == 0))
+            and len(pool) < limit
+            and budget_searches > 0
+        )
+        if needs_web_discovery:
             try:
+                deficit = limit - len(pool)
                 web_candidates = self.discover_from_web_search(
                     city=city,
                     country=country,
                     industry=industry,
-                    limit=limit - len(pool)
+                    limit=deficit
                 )
                 for cand in web_candidates:
                     self.transparency_stats["businesses_discovered_total"] += 1
@@ -698,6 +708,13 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                 )
             logger.error(f"[HybridDiscovery] {err_msg}")
             raise RuntimeError(err_msg) from osm_error
+        elif not pool and web_fallback_error is not None:
+            err_msg = (
+                f"Discovery provider outage: Primary OSM discovery yielded 0 candidates "
+                f"and web-search fallback failed ({web_fallback_error})."
+            )
+            logger.error(f"[HybridDiscovery] {err_msg}")
+            raise RuntimeError(err_msg) from web_fallback_error
 
         # Candidate prioritization for Dripp Media (Targeting businesses without website)
         # 0: No website listed

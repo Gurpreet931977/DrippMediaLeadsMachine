@@ -56,18 +56,19 @@ class FoursquareProvider(DiscoveryProvider):
             pass
 
     def health_check(self) -> Dict[str, Any]:
-        """Checks Foursquare credentials and endpoint readiness."""
+        """Checks Foursquare credentials and endpoint readiness with differentiated statuses."""
         if not self.api_key:
             return {
                 "provider": "Foursquare",
-                "status": "NOT_CONNECTED",
+                "status": "NOT_CONFIGURED",
                 "connected": False,
                 "reason": "FOURSQUARE_API_KEY is not configured"
             }
         
         headers = {
             "Accept": "application/json",
-            "Authorization": self.api_key
+            "Authorization": self.api_key if self.api_key.startswith("Bearer ") else self.api_key,
+            "Accept-Language": "en"
         }
         try:
             r = requests.get(FOURSQUARE_SEARCH_URL, params={"near": "London, UK", "limit": 1}, headers=headers, timeout=5)
@@ -78,16 +79,44 @@ class FoursquareProvider(DiscoveryProvider):
                     "connected": True,
                     "endpoint": FOURSQUARE_SEARCH_URL
                 }
+            elif r.status_code in [401, 403]:
+                return {
+                    "provider": "Foursquare",
+                    "status": "AUTH_ERROR",
+                    "connected": False,
+                    "reason": f"HTTP {r.status_code}: Invalid or unauthorized API key"
+                }
+            elif r.status_code == 429:
+                return {
+                    "provider": "Foursquare",
+                    "status": "RATE_LIMITED",
+                    "connected": False,
+                    "reason": "HTTP 429: Quota or rate limit exceeded"
+                }
+            elif r.status_code >= 500:
+                return {
+                    "provider": "Foursquare",
+                    "status": "DEGRADED",
+                    "connected": False,
+                    "reason": f"HTTP {r.status_code}: Service temporarily unavailable"
+                }
             return {
                 "provider": "Foursquare",
-                "status": "NOT_CONNECTED",
+                "status": "FAILED",
                 "connected": False,
                 "reason": f"HTTP {r.status_code}: {r.text[:100]}"
+            }
+        except requests.exceptions.Timeout:
+            return {
+                "provider": "Foursquare",
+                "status": "TIMEOUT",
+                "connected": False,
+                "reason": "Health check timed out after 5.0s"
             }
         except Exception as ex:
             return {
                 "provider": "Foursquare",
-                "status": "NOT_CONNECTED",
+                "status": "FAILED",
                 "connected": False,
                 "reason": str(ex)
             }
@@ -114,7 +143,8 @@ class FoursquareProvider(DiscoveryProvider):
 
         headers = {
             "Accept": "application/json",
-            "Authorization": self.api_key
+            "Authorization": self.api_key if self.api_key.startswith("Bearer ") else self.api_key,
+            "Accept-Language": "en"
         }
         params = {
             "near": f"{city}, {country}",
@@ -168,6 +198,12 @@ class FoursquareProvider(DiscoveryProvider):
                 cats = item.get("categories", [])
                 category_name = cats[0].get("name") if cats else industry
 
+                # Foursquare rating is on a 0-10 scale; normalize to 0-5 scale
+                raw_rating = item.get("rating")
+                rating = round(float(raw_rating) / 2.0, 1) if raw_rating is not None else None
+                stats = item.get("stats") or {}
+                review_count = stats.get("ratings_total") or stats.get("total_ratings") or None
+
                 norm_key = f"{re.sub(r'[^a-z0-9]', '', name.lower())}@{city.lower()}"
                 if norm_key in seen_names:
                     continue
@@ -194,6 +230,8 @@ class FoursquareProvider(DiscoveryProvider):
                     address=address,
                     phone=phone,
                     raw_website=website,
+                    rating=rating,
+                    review_count=review_count,
                     google_maps_url=f"https://foursquare.com/v/{fsq_id}" if fsq_id else "",
                     instagram_url=ig_url,
                     facebook_url=fb_url,

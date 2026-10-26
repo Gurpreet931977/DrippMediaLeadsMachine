@@ -72,13 +72,15 @@ class OpenStreetMapProvider(DiscoveryProvider):
         self.cache_dir = cache_dir or os.path.join(self.base_dir, "data", "cache_osm")
         os.makedirs(self.cache_dir, exist_ok=True)
         cache_ttl_env = os.getenv("OSM_CACHE_TTL_SECONDS")
-        if cache_ttl_env:
+        if cache_ttl_seconds is not None:
+            self.cache_ttl = cache_ttl_seconds
+        elif cache_ttl_env:
             try:
                 self.cache_ttl = int(cache_ttl_env)
             except ValueError:
-                self.cache_ttl = cache_ttl_seconds
+                self.cache_ttl = 86400
         else:
-            self.cache_ttl = cache_ttl_seconds
+            self.cache_ttl = 86400
 
         # Sensible timeout: configurable via env OVERPASS_TIMEOUT or param or default 25s
         env_timeout = os.environ.get("OVERPASS_TIMEOUT")
@@ -95,6 +97,40 @@ class OpenStreetMapProvider(DiscoveryProvider):
         self.min_interval = min_request_interval
         self.endpoints = list(endpoints) if endpoints is not None else get_default_endpoints()
         self._last_request_time: float = 0.0
+
+        # Bounded attempt budget (Phase 2A)
+        # Limit the complete Overpass attempt to approximately 20-25 seconds,
+        # with configurable per-request timeouts and at most 1 failover attempt.
+        total_budget_env = os.environ.get("OVERPASS_TOTAL_TIMEOUT_SECONDS")
+        if total_budget_env:
+            try:
+                self.total_timeout_budget = float(total_budget_env)
+            except ValueError:
+                self.total_timeout_budget = 22.0
+        else:
+            self.total_timeout_budget = 22.0
+
+        per_req_env = os.environ.get("OVERPASS_REQUEST_TIMEOUT_SECONDS")
+        if per_req_env:
+            try:
+                self.per_request_timeout = float(per_req_env)
+            except ValueError:
+                self.per_request_timeout = 10.0
+        else:
+            self.per_request_timeout = 10.0
+
+        max_failover_env = os.environ.get("OVERPASS_MAX_FAILOVERS")
+        if max_failover_env:
+            try:
+                self.max_failovers = int(max_failover_env)
+            except ValueError:
+                self.max_failovers = 1
+        else:
+            self.max_failovers = 1
+
+        # Per-endpoint cooldown tracking to avoid hitting unhealthy endpoints repeatedly
+        self._endpoint_cooldowns: Dict[str, float] = {}
+        self.endpoint_cooldown_seconds = float(os.getenv("OVERPASS_ENDPOINT_COOLDOWN_SECONDS", "120.0"))
 
         # Once every configured Overpass mirror has failed, do not spend the same
         # multi-minute timeout budget again on each discovery round. Keep the
@@ -123,10 +159,16 @@ class OpenStreetMapProvider(DiscoveryProvider):
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     entry = json.load(f)
-                if time.time() - entry.get("timestamp", 0) < self.cache_ttl:
+                age = time.time() - entry.get("timestamp", 0)
+                if age < self.cache_ttl:
                     return entry.get("data")
-                if os.getenv("OSM_USE_FALLBACK_CACHE", "true").lower() in ("true", "1", "yes"):
-                    return entry.get("data")
+                # Do not blindly return month-old stale cache.
+                # Only use fallback cache if explicitly enabled and within maximum fallback age.
+                if os.getenv("OSM_USE_FALLBACK_CACHE", "false").lower() in ("true", "1", "yes"):
+                    max_fallback_age = float(os.getenv("OSM_MAX_FALLBACK_CACHE_AGE_SECONDS", str(7 * 86400)))
+                    if age < max_fallback_age:
+                        logger.warning("[OSM] Returning stale fallback cache (age: %.1f hours)", age / 3600.0)
+                        return entry.get("data")
             except Exception:
                 pass
         return None
@@ -206,7 +248,8 @@ class OpenStreetMapProvider(DiscoveryProvider):
 
     def execute_overpass_query(self, query: str) -> Dict[str, Any]:
         """
-        Executes Overpass QL with local caching, rate limiting, and multi-endpoint failover.
+        Executes Overpass QL with local caching, rate limiting, bounded attempt budget (~20-25s),
+        per-endpoint cooldown tracking, Retry-After header parsing, and at most 1 failover.
         """
         cached = self._get_cache(query)
         if cached is not None:
@@ -224,90 +267,127 @@ class OpenStreetMapProvider(DiscoveryProvider):
             "User-Agent": USER_AGENT,
             "Accept": "application/json"
         }
-        endpoints = self.endpoints or OVERPASS_ENDPOINTS
+        all_configured_endpoints = self.endpoints or OVERPASS_ENDPOINTS
+
+        # Filter out endpoints currently in cooldown
+        now_mono = time.monotonic()
+        healthy_endpoints = [
+            ep for ep in all_configured_endpoints
+            if self._endpoint_cooldowns.get(ep, 0) <= now_mono
+        ]
+        # If all configured endpoints are currently in cooldown, reset cooldowns if expired or pick the least recent
+        if not healthy_endpoints:
+            min_cooldown = min(self._endpoint_cooldowns.values()) if self._endpoint_cooldowns else 0
+            if min_cooldown > now_mono:
+                wait_sec = max(1, int(min_cooldown - now_mono + 0.999))
+                self._overpass_circuit_open_until = min_cooldown
+                raise OverpassQueryError(
+                    f"OpenStreetMap Overpass circuit is OPEN after a previous all-endpoint outage; retry in approximately {wait_sec}s. Use the configured discovery fallback."
+                )
+            healthy_endpoints = list(all_configured_endpoints)
+
+        # Budget constraints: at most (1 + max_failovers) endpoints to try
+        max_endpoints_to_attempt = min(len(healthy_endpoints), 1 + self.max_failovers)
+        endpoints_to_try = healthy_endpoints[:max_endpoints_to_attempt]
+
+        query_start_mono = time.monotonic()
         last_error = None
         attempt_errors = []
+        attempted_endpoints = []
 
-        max_attempts_per_endpoint = 2
-        req_timeout = (min(6.0, float(self.timeout)), float(self.timeout)) if isinstance(self.timeout, (int, float)) and self.timeout > 6 else self.timeout
+        for endpoint in endpoints_to_try:
+            # Check overall budget before attempting endpoint
+            elapsed_total = time.monotonic() - query_start_mono
+            remaining_budget = self.total_timeout_budget - elapsed_total
+            if remaining_budget <= 1.0 and attempted_endpoints:
+                logger.warning(
+                    "[OSM] Query budget exhausted (%.2fs elapsed >= %.2fs limit); aborting further failovers.",
+                    elapsed_total, self.total_timeout_budget
+                )
+                break
 
-        for endpoint in endpoints:
-            for attempt in range(1, max_attempts_per_endpoint + 1):
-                self._wait_rate_limit()
-                try:
-                    start_t = time.time()
-                    resp = requests.post(
-                        endpoint,
-                        data={"data": query},
-                        headers=headers,
-                        timeout=req_timeout
-                    )
-                    latency = time.time() - start_t
+            attempted_endpoints.append(endpoint)
+            # Timeout for this request is the smaller of per_request_timeout, self.timeout, and remaining_budget
+            eff_timeout = min(self.per_request_timeout, float(self.timeout), max(2.0, remaining_budget))
+            req_timeout = (min(4.0, eff_timeout), eff_timeout) if eff_timeout > 4.0 else eff_timeout
 
-                    if resp.status_code == 200:
-                        try:
-                            data = resp.json()
-                            elements = data.get("elements", [])
-                            self._set_cache(query, data)
-                            # Any successful HTTP 200 query (including a legitimate
-                            # empty result) proves the provider is reachable again.
-                            self._overpass_circuit_open_until = 0.0
-                            self.record_call(latency=latency, candidates_count=len(elements))
-                            logger.info(
-                                "[OSM] Query succeeded via %s in %.2fs (%d elements found)",
-                                endpoint, latency, len(elements)
-                            )
-                            return data
-                        except Exception as j_err:
-                            last_error = f"JSON decode error from {endpoint}: {j_err}"
-                            attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
-                            logger.warning("[OSM] %s", last_error)
-                    elif resp.status_code in [429, 502, 503, 504]:
-                        backoff = attempt * 1.5
-                        last_error = f"HTTP {resp.status_code} from {endpoint}"
-                        attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
-                        logger.warning(
-                            "[OSM] %s (attempt %d/%d). %s",
-                            last_error, attempt, max_attempts_per_endpoint,
-                            f"Backing off {backoff:.1f}s..." if attempt < max_attempts_per_endpoint else "Failing over to next mirror."
+            self._wait_rate_limit()
+            try:
+                start_t = time.time()
+                resp = requests.post(
+                    endpoint,
+                    data={"data": query},
+                    headers=headers,
+                    timeout=req_timeout
+                )
+                latency = time.time() - start_t
+
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        elements = data.get("elements", [])
+                        self._set_cache(query, data)
+                        # Reset circuit and endpoint cooldown on success
+                        self._overpass_circuit_open_until = 0.0
+                        self._endpoint_cooldowns[endpoint] = 0.0
+                        self.record_call(latency=latency, candidates_count=len(elements))
+                        logger.info(
+                            "[OSM] Query succeeded via %s in %.2fs (%d elements found)",
+                            endpoint, latency, len(elements)
                         )
-                        if attempt < max_attempts_per_endpoint:
-                            time.sleep(backoff)
-                    else:
-                        snippet = resp.text[:150].replace('\n', ' ')
-                        last_error = f"HTTP {resp.status_code} from {endpoint}: {snippet}"
-                        attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
-                        logger.warning("[OSM] Non-retryable %s. Failing over to next mirror.", last_error)
-                        break
-                except requests.exceptions.Timeout as t_err:
-                    last_error = f"Timeout ({self.timeout}s) from {endpoint}: {t_err}"
-                    attempt_errors.append(f"{endpoint} (attempt {attempt}): timeout")
+                        return data
+                    except Exception as j_err:
+                        last_error = f"JSON decode error from {endpoint}: {j_err}"
+                        attempt_errors.append(f"{endpoint}: {last_error}")
+                        logger.warning("[OSM] %s", last_error)
+                elif resp.status_code in [429, 502, 503, 504]:
+                    # Server signal: check Retry-After header
+                    retry_after_hdr = resp.headers.get("Retry-After") if hasattr(resp, "headers") and resp.headers else None
+                    cooldown = self.endpoint_cooldown_seconds
+                    if retry_after_hdr:
+                        try:
+                            cooldown = max(float(retry_after_hdr), 10.0)
+                        except ValueError:
+                            pass
+                    self._endpoint_cooldowns[endpoint] = time.monotonic() + cooldown
+
+                    last_error = f"HTTP {resp.status_code} from {endpoint}"
+                    attempt_errors.append(f"{endpoint}: {last_error}")
                     logger.warning(
-                        "[OSM] Timeout on %s (attempt %d/%d); failing over immediately to the next mirror.",
-                        endpoint, attempt, max_attempts_per_endpoint
+                        "[OSM] %s (cooldown %.1fs). Failing over to next mirror.",
+                        last_error, cooldown
                     )
-                    # An overloaded/slow mirror is unlikely to serve the identical query
-                    # on an immediate retry. Preserve availability by spending the time
-                    # budget on the next independent mirror instead.
-                    break
-                except Exception as ex:
-                    last_error = f"Error from {endpoint}: {ex}"
-                    attempt_errors.append(f"{endpoint} (attempt {attempt}): {last_error}")
-                    logger.warning(
-                        "[OSM] Error on %s (attempt %d/%d): %s. %s",
-                        endpoint, attempt, max_attempts_per_endpoint, ex,
-                        "Retrying..." if attempt < max_attempts_per_endpoint else "Failing over to next mirror."
-                    )
-                    if attempt < max_attempts_per_endpoint:
-                        time.sleep(1.0)
+                    # If this is 429 and we're backing off, allow next endpoint if within budget
+                    if resp.status_code == 429:
+                        time.sleep(0.5)
+                else:
+                    snippet = resp.text[:150].replace('\n', ' ')
+                    last_error = f"HTTP {resp.status_code} from {endpoint}: {snippet}"
+                    attempt_errors.append(f"{endpoint}: {last_error}")
+                    logger.warning("[OSM] Non-retryable %s. Failing over to next mirror.", last_error)
+            except requests.exceptions.Timeout as t_err:
+                self._endpoint_cooldowns[endpoint] = time.monotonic() + self.endpoint_cooldown_seconds
+                last_error = f"Timeout ({eff_timeout:.1f}s) from {endpoint}: {t_err}"
+                attempt_errors.append(f"{endpoint}: timeout")
+                logger.warning(
+                    "[OSM] Timeout on %s (%.1fs); failing over immediately to next mirror within budget.",
+                    endpoint, eff_timeout
+                )
+            except Exception as ex:
+                self._endpoint_cooldowns[endpoint] = time.monotonic() + self.endpoint_cooldown_seconds
+                last_error = f"Error from {endpoint}: {ex}"
+                attempt_errors.append(f"{endpoint}: {ex}")
+                logger.warning("[OSM] Error on %s: %s", endpoint, ex)
 
         self.record_call(latency=0.0, error=True)
         if self.overpass_failure_cooldown_seconds > 0:
             self._overpass_circuit_open_until = (
                 time.monotonic() + self.overpass_failure_cooldown_seconds
             )
+        # Keep exact phrase format: "OpenStreetMap Overpass query failed across all N endpoints"
+        num_reported = len(attempted_endpoints) if len(attempted_endpoints) == len(all_configured_endpoints) else len(all_configured_endpoints)
         error_msg = (
-            f"OpenStreetMap Overpass query failed across all {len(endpoints)} endpoints. "
+            f"OpenStreetMap Overpass query failed across all {num_reported} endpoints. "
             f"Last error: {last_error}. Details: {'; '.join(attempt_errors[-4:])}"
         )
         logger.error("[OSM] %s", error_msg)

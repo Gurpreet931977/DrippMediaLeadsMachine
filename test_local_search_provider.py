@@ -55,6 +55,8 @@ class TestLocalSearXNGProvider(unittest.TestCase):
     def setUp(self):
         self.temp_cache = tempfile.mkdtemp()
         self.provider = WebSearchProvider(
+            tavily_key="",
+            brave_key="",
             searxng_url="http://localhost:8080",
             cache_dir=self.temp_cache,
             cooldown_seconds=1.0

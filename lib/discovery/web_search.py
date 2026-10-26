@@ -443,7 +443,7 @@ def convert_search_result_to_candidate(
         "manchestereveningnews.co.uk", "eater.com", "cntraveller.com",
         "visitmanchester.com", "confidentialguides.com", "squaremeal.co.uk",
         "happycow.net", "trevors.org", "linkedin.com", "youtube.com",
-        "x.com", "twitter.com"
+        "x.com", "twitter.com", "michelin.com"
     ]
     raw_url_lower = raw_url.lower()
     if any(host in raw_url_lower for host in DISALLOWED_DISCOVERY_HOSTS):
@@ -478,7 +478,12 @@ def convert_search_result_to_candidate(
         r'\bsuppliers?\b',
         r'\blink\s+to\b',
         r'\bno\s+website\b',
-        r'\bfamily\s+friendly\s+restaurants?\b'
+        r'\bfamily\s+friendly\s+restaurants?\b',
+        r'\b\d+\s+(?:restaurants?|cafes?|places?|spots?|bars?|pubs?|eats?|bistros?)\b',
+        r'\b(?:michelin|michelin guide)\b',
+        r'\bnot to miss\b',
+        r'\bmust[- ](?:try|visit|eat)\b',
+        r'\bbucket list\b'
     ]
     for pat in LISTICLE_PATTERNS:
         if re.search(pat, title, re.IGNORECASE):
@@ -711,11 +716,11 @@ class WebSearchProvider(DiscoveryProvider):
         failure_threshold: int = 2
     ):
         super().__init__(name="WebSearch")
-        self.tavily_key = tavily_key or os.getenv("TAVILY_API_KEY") or ""
-        self.brave_key = brave_key or os.getenv("BRAVE_API_KEY") or ""
-        configured_searxng = searxng_url or os.getenv("SEARXNG_URL")
-        self.searxng_url = (configured_searxng or "http://localhost:8080").rstrip("/")
-        self._searxng_explicitly_set = bool(configured_searxng)
+        self.tavily_key = tavily_key if tavily_key is not None else (os.getenv("TAVILY_API_KEY") or "")
+        self.brave_key = brave_key if brave_key is not None else (os.getenv("BRAVE_API_KEY") or "")
+        configured_searxng = searxng_url if searxng_url is not None else os.getenv("SEARXNG_URL")
+        self.searxng_url = (configured_searxng or "").rstrip("/")
+        self._searxng_explicitly_set = bool(configured_searxng and str(configured_searxng).strip())
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.cache_dir = cache_dir or os.path.join(self.base_dir, "data", "cache_search")
         os.makedirs(self.cache_dir, exist_ok=True)
@@ -834,11 +839,11 @@ class WebSearchProvider(DiscoveryProvider):
 
     def check_searxng_health(self) -> str:
         """
-        Explicit health probe for local SearXNG instance (Part 1 & 2).
-        Exposes: CONNECTED, NOT_CONNECTED, ERROR.
+        Explicit health probe for local SearXNG instance.
+        Exposes: CONNECTED, NOT_CONFIGURED, NOT_CONNECTED, ERROR.
         """
-        if not self.searxng_url:
-            return "NOT_CONNECTED"
+        if not self._searxng_explicitly_set or not self.searxng_url:
+            return "NOT_CONFIGURED"
         try:
             r = requests.get(f"{self.searxng_url}/", timeout=1.0)
             if r.status_code in [200, 301, 302]:
@@ -1612,7 +1617,7 @@ class WebSearchProvider(DiscoveryProvider):
             self.circuit_breakers["BRAVE"].fallback_usage += 1
 
         # 3. Local SearXNG if configured and circuit allows
-        searxng_usable = self._searxng_explicitly_set or (self.searxng_url and self._is_searxng_alive())
+        searxng_usable = self._searxng_explicitly_set and bool(self.searxng_url)
         if searxng_usable and self.circuit_breakers["SEARXNG"].is_available():
             res = self._search_searxng(query, num_results=num_results)
             if not isinstance(res, SearchResultList):
