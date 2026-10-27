@@ -120,16 +120,12 @@ app.post('/api/search', (req, res) => {
     });
   }
 
-  const {
-    country = 'United Kingdom',
-    cities = ['Manchester'],
-    industry = 'Restaurants',
-    limit = 10,
-    batch_size = 10,
-    max_research_multiplier = 5
-  } = req.body;
-
-  const qualifiedNeeded = parseInt(limit, 10) || 10;
+  const country = req.body.country || 'United Kingdom';
+  const cities = req.body.cities || ['Manchester'];
+  const industry = req.body.industry || 'Restaurants';
+  const qualifiedNeeded = parseInt(req.body.qualified_leads_needed || req.body.limit, 10) || 10;
+  const batch_size = parseInt(req.body.batch_size || req.body.batch, 10) || 10;
+  const max_research_multiplier = parseInt(req.body.max_research_multiplier || req.body.multiplier, 10) || 5;
   const cityStr = Array.isArray(cities) ? cities.join(',') : (cities || 'Manchester');
 
   activeRunState.is_running = true;
