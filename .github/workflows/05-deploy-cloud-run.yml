@@ -9,9 +9,9 @@ name: "05 - Production Cloud Run Deployment"
         default: ""
         type: string
       promote_traffic:
-        description: "Promote candidate to 100% primary traffic ('true' or 'false'). Set to 'false' for zero-traffic candidate deployment."
+        description: "Promote candidate to 100% primary traffic ('true' or 'false'). Default is 'false' (zero-traffic candidate deployment). Operator must explicitly set to 'true' to route production traffic."
         required: false
-        default: "true"
+        default: "false"
         type: string
       promote_only_candidate:
         description: "Candidate revision to promote directly (e.g. 'dripp-leads-api-00020-c6x'). Skips build, container deploy, and job update; validates candidate and promotes to 100% traffic."
@@ -80,11 +80,15 @@ jobs:
           FULL_SHA="${{ github.sha }}"
           IMAGE_BASE="${{ env.REGISTRY_HOST }}/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.PACKAGE_NAME }}"
           
-          # Immutable deployment strictly uses the full Git commit SHA unless promoting existing candidate
+          # For standard deployment, strictly use the full Git commit SHA.
+          # For promote-only candidate workflows, the candidate artifact is resolved directly from Cloud Run & Artifact Registry.
           PROMOTE_ONLY="${{ github.event.inputs.promote_only_candidate }}"
           if [ -n "${PROMOTE_ONLY}" ]; then
-            DEPLOY_TAG="123ee3bbce9b1207a50a7a6c8828cb24014c5ce2"
+            echo "deployment_mode=promote_only" >> $GITHUB_OUTPUT
+            echo "promote_only_candidate=${PROMOTE_ONLY}" >> $GITHUB_OUTPUT
+            DEPLOY_TAG=""
           else
+            echo "deployment_mode=build_and_deploy" >> $GITHUB_OUTPUT
             DEPLOY_TAG="${FULL_SHA}"
           fi
           
@@ -93,7 +97,7 @@ jobs:
           echo "full_sha=${FULL_SHA}" >> $GITHUB_OUTPUT
           
           echo "Target Image Base: ${IMAGE_BASE}"
-          echo "Deploy Image Tag (Immutable Full SHA): ${DEPLOY_TAG}"
+          echo "Deploy Image Tag: ${DEPLOY_TAG:-'(resolved from candidate)'}"
 
       - name: "Authenticate to Google Cloud via Workload Identity Federation"
         id: auth
@@ -205,6 +209,37 @@ jobs:
           echo "Pushing immutable full SHA tag ${DEPLOY_TAG}..."
           docker push "${IMAGE_BASE}:${DEPLOY_TAG}"
 
+      - name: "Resolve & Verify Built Artifact Digest"
+        id: artifact_built
+        if: ${{ github.event.inputs.promote_only_candidate == '' }}
+        run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
+          FULL_SHA="${{ steps.tags.outputs.full_sha }}"
+
+          python3 scripts/resolve_deployment_artifact.py resolve-built \
+            --image-base "${IMAGE_BASE}" \
+            --tag "${DEPLOY_TAG}" \
+            --full-sha "${FULL_SHA}" \
+            --output-file "$RUNNER_TEMP/artifact_resolution.json" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: "Resolve Existing Candidate Artifact Digest"
+        id: artifact_candidate
+        if: ${{ github.event.inputs.promote_only_candidate != '' }}
+        run: |
+          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
+          PROMOTE_ONLY="${{ github.event.inputs.promote_only_candidate }}"
+
+          python3 scripts/resolve_deployment_artifact.py resolve-candidate \
+            --service "$API_SERVICE" \
+            --revision "${PROMOTE_ONLY}" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --authorized-image-base "${IMAGE_BASE}" \
+            --output-file "$RUNNER_TEMP/artifact_resolution.json" \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: "Deploy & Update Cloud Run API Service"
         if: ${{ github.event.inputs.promote_only_candidate == '' }}
         run: |
@@ -237,9 +272,7 @@ jobs:
             exit 0
           fi
 
-          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
-          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
-          EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
+          EXPECTED_IMAGE=$(python3 -c 'import json; print(json.load(open("'"$RUNNER_TEMP/artifact_resolution.json"'"))["expected_image"])')
 
           # Identify the created revision by immutable image, assign only the candidate
           # URL tag while retaining the old 100% primary, then probe that URL until
@@ -263,21 +296,34 @@ jobs:
           PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
         run: |
           IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
-          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
-          EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
 
           echo "Revalidating candidate revision image digest before promotion..."
-          CAND_DIGEST=$(gcloud run revisions describe "$CANDIDATE_REVISION" \
+          python3 scripts/resolve_deployment_artifact.py verify-candidate-digest \
+            --service "$API_SERVICE" \
+            --revision "$CANDIDATE_REVISION" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --artifact-file "$RUNNER_TEMP/artifact_resolution.json" \
+            --authorized-image-base "$IMAGE_BASE"
+
+          EXPECTED_IMAGE=$(python3 -c 'import json; print(json.load(open("'"$RUNNER_TEMP/artifact_resolution.json"'"))["expected_image"])')
+
+          gcloud run services describe "$API_SERVICE" \
             --region="$GCP_REGION" \
             --project="$GCP_PROJECT_ID" \
-            --format='value(status.imageDigest)')
-          echo "Candidate image digest from Cloud Run: $CAND_DIGEST"
-          EXPECTED_DIGEST="sha256:991bb03c169edd467eb3c4c8548f6907f5d749d5ca69f6a800541d173812cc89"
-          if [[ "$CAND_DIGEST" != *"$EXPECTED_DIGEST"* ]]; then
-            echo "::error::Candidate image digest mismatch! Expected $EXPECTED_DIGEST in $CAND_DIGEST"
-            exit 1
-          fi
-          echo "Candidate image digest matches verified immutable artifact."
+            --format=json > "$RUNNER_TEMP/api-service-deployed.json"
+          python3 scripts/verify_cloud_run_api_service.py candidate \
+            "$RUNNER_TEMP/api-service-deployed.json" \
+            "$API_RUNTIME_SERVICE_ACCOUNT" \
+            "$API_URL" \
+            "$EXPECTED_IMAGE" \
+            "$CANDIDATE_REVISION" \
+            "$PREVIOUS_PRIMARY_REVISION"
+          echo "Checking candidate liveness (candidate tag only; primary traffic is not changed)..."
+          curl --fail --silent --show-error \
+            --connect-timeout 5 --max-time 30 \
+            "$API_CANDIDATE_URL/api/system/health" -o /dev/null
+          echo "Candidate API liveness probe passed."
 
           gcloud run services describe "$API_SERVICE" \
             --region="$GCP_REGION" \
@@ -440,7 +486,7 @@ jobs:
           " "${EXPECTED_IMAGE}" "${{ env.RUNTIME_SERVICE_ACCOUNT }}"
 
       - name: "Promote Verified API Revision to Primary Traffic"
-        if: ${{ github.event.inputs.promote_traffic != 'false' }}
+        if: ${{ github.event.inputs.promote_traffic == 'true' }}
         env:
           CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
         run: |
@@ -452,15 +498,13 @@ jobs:
             --quiet
 
       - name: "Verify Primary Traffic & Health (Rollback on Failure)"
-        if: ${{ github.event.inputs.promote_traffic != 'false' }}
+        if: ${{ github.event.inputs.promote_traffic == 'true' }}
         env:
           CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
           PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
           DRIPP_OPERATOR_KEY: ${{ secrets.DRIPP_OPERATOR_KEY }}
         run: |
-          IMAGE_BASE="${{ steps.tags.outputs.image_base }}"
-          DEPLOY_TAG="${{ steps.tags.outputs.deploy_tag }}"
-          EXPECTED_IMAGE="$IMAGE_BASE:$DEPLOY_TAG"
+          EXPECTED_IMAGE=$(python3 -c 'import json; print(json.load(open("'"$RUNNER_TEMP/artifact_resolution.json"'"))["expected_image"])')
 
           rollback() {
             echo "::error::Primary revision verification failed; attempting rollback to $PREVIOUS_PRIMARY_REVISION."
@@ -539,5 +583,24 @@ jobs:
           echo "PROMOTION COMPLETE: dripp-leads-api is serving 100% production traffic on $CANDIDATE_REVISION."
           echo "NO DISCOVERY JOB WAS TRIGGERED OR DEPLOYED."
           echo "ALL COMMERCIAL ACTIONS REMAIN DISABLED."
+          echo "========================================================================"
+
+      - name: "Report Candidate Ready (Zero-Traffic Deployment Complete)"
+        if: ${{ github.event.inputs.promote_traffic != 'true' }}
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.revision }}
+          PREVIOUS_PRIMARY_REVISION: ${{ steps.capture_primary.outputs.revision }}
+        run: |
+          echo "========================================================================"
+          echo "ZERO-TRAFFIC CANDIDATE DEPLOYMENT COMPLETE"
+          echo "Candidate revision: $CANDIDATE_REVISION"
+          echo "Candidate URL: ${{ env.API_CANDIDATE_URL }}"
+          echo "Primary production traffic remains 100% on $PREVIOUS_PRIMARY_REVISION"
+          echo "All pre-promotion readiness and health checks PASSED."
+          echo "Discovery Job updated in Cloud Run and verified (NOT triggered)."
+          echo "To promote this candidate to production traffic, rerun the workflow with:"
+          echo "  promote_only_candidate: $CANDIDATE_REVISION"
+          echo "  promote_traffic: true"
+          echo "  confirm_deployment: CONFIRM_PROMOTE_API_TO_PRODUCTION"
           echo "========================================================================"
 
