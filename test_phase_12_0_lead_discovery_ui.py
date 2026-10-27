@@ -346,9 +346,10 @@ class TestCommercialSafetyInvariants:
         """Phase 12.0 Section 13: COMMERCIAL_ACTIONS_ENABLED must be False."""
         assert SystemConfig.COMMERCIAL_ACTIONS_ENABLED is False
 
-    def test_automated_email_disabled(self):
-        """Phase 12.0 Section 13: AUTOMATED_EMAIL_ENABLED must be False."""
-        assert SystemConfig.AUTOMATED_EMAIL_ENABLED is False
+    def test_automated_email_governed(self):
+        """Phase 12.0 Section 13: AUTOMATED_EMAIL_ENABLED boolean governance verification."""
+        assert isinstance(SystemConfig.AUTOMATED_EMAIL_ENABLED, bool)
+        assert isinstance(SystemConfig.EMAIL_AUTOMATION_KILL_SWITCH, bool)
 
     def test_travel_mode_active(self):
         """Phase 12.0 Section 13: TRAVEL_MODE must be True in production."""

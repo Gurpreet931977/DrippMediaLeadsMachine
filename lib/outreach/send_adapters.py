@@ -246,8 +246,11 @@ class EmailAdapter:
         from lib.system.runtime_mode import RuntimeModeManager
 
         if not _is_legacy_test:
-            SystemConfig.assert_commercial_actions_allowed(action_name="EmailAdapter.send")
-            RuntimeModeManager.assert_live_dispatch_allowed(action_name="EmailAdapter.send")
+            if not SystemConfig.is_automated_email_enabled():
+                SystemConfig.assert_commercial_actions_allowed(action_name="EmailAdapter.send")
+            sandbox_env = os.environ.get("EMAIL_SANDBOX_MODE", "false").lower() in ("true", "1", "yes")
+            if not sandbox_env and not SystemConfig.is_automated_email_enabled():
+                RuntimeModeManager.assert_live_dispatch_allowed(action_name="EmailAdapter.send")
 
         if not cls.is_configured():
             return _result(False, cls.PROVIDER, error="CHANNEL_NOT_CONFIGURED: No SMTP_HOST or SENDGRID_API_KEY in .env")

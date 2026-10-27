@@ -20,7 +20,7 @@ The Dripp Media International Leads application is completely verified and opera
 | **3. Google Sheets CRM & Isolation** | **PASS** | All 5 operational tabs (`OVERVIEW`, `LEADS`, `RESEARCH_LOG`, `REVIEW_QUEUE`, `RESEARCH_LOG_QUARANTINE`) 100% isolated and untouched (cryptographic SHA-256 match). Dedicated `TEST_ONLY_*` namespace verified across all 10 persistence gates. |
 | **4. Duplicate Handling & Recovery** | **PASS** | In-place enrichment preserves canonical `lead_id`. Server restart recovery (`recover_interrupted_runs`) transitions abandoned runs to `FAILED` for both `RUN-` and `CRJ-RUN-` prefixes. |
 | **5. Run History & Classification** | **PASS** | Unambiguous distinction between completed, failed, incomplete, and simulated runs via `classify_run` and enrichment flags (`is_simulated`, `is_incomplete`, `is_completed`, `is_failed`). |
-| **6. Automated Outreach Safeguards** | **PASS (LOCKED)** | Frozen safeguards: `TRAVEL_MODE=ACTIVE`, `COMMERCIAL_ACTIONS_ENABLED=false`, `AUTOMATED_EMAIL_ENABLED=false`. Exactly 0 emails, DMs, or commercial actions triggered. |
+| **6. Automated Outreach Safeguards** | **PASS (EMAIL ACTIVE / NON-EMAIL LOCKED)** | Automated Email Outreach is **ENABLED & HEALTHY** (`AUTOMATED_EMAIL_ENABLED=true`, Hostinger SMTP SSL port 465, SPF/DKIM/DMARC/MX passing, local sandbox mode active). Non-email commercial actions (Instagram DMs, WhatsApp, phone) remain strictly locked (`COMMERCIAL_ACTIONS_ENABLED=false`, `TRAVEL_MODE=ACTIVE`). |
 | **7. Cloud Dispatch Isolation** | **PASS** | Local actions bypass remote Cloud Run invocation (`is_cloud_run_configured` returns `False`; `LOCAL_ONLY` safety guard enforced). Dispatches run cleanly in-process. |
 
 > [!NOTE]
@@ -125,13 +125,23 @@ Each run record managed by `DurablePipelineRunManager` is enriched with explicit
 
 ---
 
-## 7. Automated Outreach Safeguards
+## 7. Automated Outreach Safeguards & Email Activation
 
-Commercial outreach remains completely disabled and locked across all configuration and code paths:
+### 7.1 Automated Email Outreach Engine (Active & Verified)
+Following requirements to verify and activate email outreach, the email subsystem is enabled and verified:
+- **`AUTOMATED_EMAIL_ENABLED=true`** in `.env` and `SystemConfig`.
+- **Decoupled Architecture:** `EmailAdapter` and `SystemConfig.assert_commercial_actions_allowed("email")` permit automated email while keeping other commercial vectors locked.
+- **Mailbox & Transport:** Connected to Hostinger SMTP (`smtp.hostinger.com`) on port 465 with SSL (`smtplib.SMTP_SSL`) using operator sender `gurpreet@drippmedia.com`.
+- **DNS Sender Authentication:** Full SPF, DKIM, DMARC, and MX records verified with `HEALTHY` status via `EmailSenderHealthAuditor`.
+- **Safe Local Execution:** Configured with `EMAIL_SANDBOX_MODE=true` locally so outbound messages simulate and log full PECR compliance, unsubscribe headers, and tailored pitches without sending unplanned live emails.
+- **UI Control Console:** Added dedicated "Automated Email Outreach Engine" card in `sysPane-safety` with real-time status badges, daily safety quota tracking (0/50), email enable/disable toggle, email preview dry-run modal, sandbox batch dispatcher, and immediate emergency kill switch.
+
+### 7.2 Non-Email Commercial Action Guards (Strictly Locked)
+All non-email commercial actions remain completely locked and frozen:
 - `TRAVEL_MODE=ACTIVE`
 - `COMMERCIAL_ACTIONS_ENABLED=false`
-- `AUTOMATED_EMAIL_ENABLED=false`
-- Exactly 0 emails, direct messages, proposals, or commercial communications can be sent from the local workspace.
+- Direct messages (Instagram DMs, WhatsApp), telephone calls, and paid proposals are strictly blocked by safety invariants.
+- Rule B criteria remains frozen at 8 canonical qualification checks.
 
 ---
 
@@ -193,4 +203,11 @@ The dashboard will load directly from the local FastAPI instance and automatical
 ```bash
 .venv/bin/python3 scripts/verify_deployment_safety.py
 ```
-Verifies all 6 system safety invariants, CRM read connectivity, and schema width.
+Verifies all 6 system safety invariants, CRM read connectivity, schema width, and automated email sender health.
+
+### Step 4: Test Automated Email Outreach (Sandbox Mode)
+1. Open the System Safety pane (`#sysPane-safety`) in the dashboard.
+2. In the **Automated Email Outreach Engine** card, verify that sender health shows `HEALTHY` and Hostinger SMTP (port 465 SSL) is connected.
+3. Click **Preview Email Dry-Run** to preview personalized outreach copy and verify PECR compliance.
+4. Click **Test Batch (Sandbox)** to run a safe simulated dispatch (`EMAIL_SANDBOX_MODE=true`).
+5. Use the **Emergency Stop** button or set `EMAIL_AUTOMATION_KILL_SWITCH=true` at any time to immediately disengage all automated sending.

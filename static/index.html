@@ -3981,7 +3981,7 @@
                   <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Travel Mode: Active</span>
                   <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Commercial: Locked</span>
                   <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Cron: Disabled</span>
-                  <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Automated Email: Disabled</span>
+                  <span id="badgeEmailStatusCapsule" class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">Automated Email: Enabled</span>
                   <span class="status-capsule" style="font-size:0.72rem; padding:0.25rem 0.65rem; color:var(--accent-yellow); border-color:var(--accent-yellow);">CRM Writes: 0</span>
                   <button class="btn-pill btn-pill-secondary" onclick="loadAllData()" style="padding:0.25rem 0.65rem; font-size:0.72rem; border-color:var(--glass-border);">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
@@ -4007,11 +4007,70 @@
           </div>
           <div class="dossier-story-card">
             <div class="dossier-node-q">Automated Email</div>
-            <strong style="font-family:var(--font-mono); color:var(--text-dim);">DISABLED</strong>
+            <strong id="cardAutomatedEmailVal" style="font-family:var(--font-mono); color:var(--accent-cyan);">ENABLED</strong>
           </div>
           <div class="dossier-story-card">
             <div class="dossier-node-q">Rule B Standard</div>
             <strong style="font-family:var(--font-mono); color:var(--accent-yellow);">v3.0 (FROZEN)</strong>
+          </div>
+        </div>
+
+        <!-- Dedicated Automated Email Outreach Engine Card -->
+        <div class="glass-card" style="margin-top:1.5rem; border-color:var(--glass-border-yellow);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+            <div style="display:flex; gap:0.85rem; align-items:center;">
+              <div style="width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,229,0,0.35); display:flex; align-items:center; justify-content:center; background:rgba(255,229,0,0.06); color:var(--accent-yellow); flex-shrink:0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </div>
+              <div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <strong style="color:var(--text-main); font-size:1.05rem;">Automated Email Outreach Engine</strong>
+                  <span id="emailAutomationStatusBadge" class="status-pill-mini pass">ENABLED</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                  Hostinger Secure SMTP (Port 465 SSL) &bull; PECR B2B Corporate Subscriber Compliance
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+              <button id="btnToggleEmailAutomation" class="btn-pill btn-pill-secondary" onclick="toggleEmailAutomation()">
+                <span>Disable Email Outreach</span>
+              </button>
+              <button class="btn-pill btn-pill-secondary" onclick="openEmailDryRunModal()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Preview Email Dry-Run</span>
+              </button>
+              <button class="btn-pill btn-pill-secondary" onclick="executeEmailBatchSandbox()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                <span>Test Batch (Sandbox)</span>
+              </button>
+              <button class="btn-pill btn-pill-secondary" style="color:#FF4D4D; border-color:rgba(255,77,77,0.3);" onclick="emergencyStopEmail()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Stop</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem;">
+            <div style="background:rgba(255,255,255,0.02); border:var(--glass-border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
+              <div style="font-size:0.68rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Sending Mailbox</div>
+              <div style="font-size:0.82rem; font-weight:700; color:var(--text-main); font-family:var(--font-mono); margin-top:3px;">gurpreet@drippmedia.com</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">Domain: drippmedia.com</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:var(--glass-border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
+              <div style="font-size:0.68rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">DNS Authentication</div>
+              <div id="emailDnsBadge" class="status-pill-mini pass" style="margin-top:4px; display:inline-block;">SPF · DKIM · DMARC · MX PASS</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:var(--glass-border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
+              <div style="font-size:0.68rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Daily Safety Quota</div>
+              <div id="emailQuotaText" style="font-size:0.82rem; font-weight:700; color:var(--accent-yellow); font-family:var(--font-mono); margin-top:3px;">0 / 50 Used (50 Remaining)</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">Conservative deliverability limit</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:var(--glass-border); border-radius:var(--radius-sm); padding:0.75rem 1rem;">
+              <div style="font-size:0.68rem; font-weight:700; color:var(--text-dim); text-transform:uppercase;">Template Engine</div>
+              <div style="font-size:0.82rem; font-weight:700; color:var(--text-main); margin-top:3px;">WEBSITE_EMAIL_V1</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">Anti-hallucination QA checked</div>
+            </div>
           </div>
         </div>
       </div>
@@ -4770,6 +4829,31 @@
         <button id="batch87Btn" class="btn-pill btn-pill-secondary" onclick="closeBatch87Modal()">
           <span>Dismiss Inspection</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Dry-Run Candidate Preview Modal -->
+  <div id="emailDryRunModal" class="glass-modal-scrim" onclick="closeEmailDryRunModal()">
+    <div class="glass-card" style="width:780px; max-width:95vw; max-height:88vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:var(--glass-border); padding-bottom:1rem; margin-bottom:1rem;">
+        <div>
+          <h3 style="font-size:1.2rem; font-weight:800; color:var(--text-main);">Automated Email Outreach: Dry-Run Preview</h3>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+            Simulated candidate evaluation &bull; PECR corporate subscriber compliance &bull; Message QA check
+          </div>
+        </div>
+        <button class="drawer-close-circle" onclick="closeEmailDryRunModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="emailDryRunContent" style="flex:1; overflow-y:auto; max-height:550px;">
+        <!-- Populated dynamically via JS -->
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; padding-top:0.75rem; border-top:var(--glass-border);">
+        <button class="btn-pill btn-pill-secondary" onclick="closeEmailDryRunModal()">Close Preview</button>
       </div>
     </div>
   </div>
@@ -5639,10 +5723,200 @@
         loadLeadsData(),
         loadReadinessData(),
         loadHealthData(),
-        loadCrmStatusData()
+        loadCrmStatusData(),
+        loadEmailAutomationStatus()
       ]);
       updateDiscoveryPageHUD();
       await syncDiscoveryStatusOnLoad();
+    }
+
+    // ========================================================================
+    // EMAIL OUTREACH SYSTEM CONTROLLERS (PHASE 10.2)
+    // ========================================================================
+    async function loadEmailAutomationStatus() {
+      try {
+        const res = await apiFetch('/api/email/automation/status');
+        if (res.ok) {
+          const data = await res.json();
+          window._emailAutomationActive = Boolean(data.automated_email_active);
+          const isEnabled = Boolean(data.automated_email_enabled);
+          const isKillSwitch = Boolean(data.email_automation_kill_switch);
+          const senderHealth = data.sender_health || {};
+          const isHealthy = Boolean(senderHealth.healthy);
+
+          const badge = document.getElementById('emailAutomationStatusBadge');
+          if (badge) {
+            if (isKillSwitch) {
+              badge.innerText = 'EMERGENCY STOP';
+              badge.className = 'status-pill-mini blocked';
+            } else if (isEnabled) {
+              badge.innerText = 'ENABLED (ACTIVE)';
+              badge.className = 'status-pill-mini pass';
+            } else {
+              badge.innerText = 'DISABLED';
+              badge.className = 'status-pill-mini muted';
+            }
+          }
+
+          const btnToggle = document.getElementById('btnToggleEmailAutomation');
+          if (btnToggle) {
+            btnToggle.innerText = isEnabled ? 'Disable Email Outreach' : 'Enable Email Outreach';
+            btnToggle.className = isEnabled ? 'btn-pill btn-pill-secondary' : 'btn-pill btn-pill-primary';
+          }
+
+          const dnsBadge = document.getElementById('emailDnsBadge');
+          if (dnsBadge) {
+            dnsBadge.innerText = isHealthy ? 'SPF · DKIM · DMARC · MX PASS' : 'DNS: DEGRADED';
+            dnsBadge.className = isHealthy ? 'status-pill-mini pass' : 'status-pill-mini warn';
+          }
+
+          const quotaText = document.getElementById('emailQuotaText');
+          if (quotaText) {
+            const today = data.today_sends ?? (data.quota?.sends_today ?? 0);
+            const limit = data.daily_limit ?? (data.quota?.daily_limit ?? 50);
+            quotaText.innerText = `${today} / ${limit} Used (${Math.max(0, limit - today)} Remaining)`;
+          }
+
+          const emailCapsule = document.getElementById('badgeEmailStatusCapsule');
+          if (emailCapsule) {
+            emailCapsule.innerText = isEnabled ? 'Automated Email: Enabled' : 'Automated Email: Disabled';
+            emailCapsule.style.borderColor = isEnabled ? 'var(--accent-cyan)' : 'var(--accent-yellow)';
+            emailCapsule.style.color = isEnabled ? 'var(--accent-cyan)' : 'var(--accent-yellow)';
+          }
+
+          const cardEmailVal = document.getElementById('cardAutomatedEmailVal');
+          if (cardEmailVal) {
+            cardEmailVal.innerText = isEnabled ? 'ENABLED' : 'DISABLED';
+            cardEmailVal.style.color = isEnabled ? 'var(--accent-cyan)' : 'var(--text-dim)';
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load email automation status:', e);
+      }
+    }
+
+    async function toggleEmailAutomation() {
+      playOperatorClickSound();
+      try {
+        const currentlyActive = window._emailAutomationActive === true;
+        const endpoint = currentlyActive ? '/api/email/automation/disable' : '/api/email/automation/enable';
+        const res = await apiFetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ allow_sandbox: true })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(currentlyActive ? 'Automated email outreach disabled.' : 'Automated email outreach enabled!');
+          await loadEmailAutomationStatus();
+          await loadReadinessData();
+        } else {
+          showToast(`Error: ${data.reason || data.message || 'Operation failed'}`);
+        }
+      } catch (err) {
+        showToast(`Request failed: ${err.message}`);
+      }
+    }
+
+    async function openEmailDryRunModal() {
+      playOperatorClickSound();
+      const modal = document.getElementById('emailDryRunModal');
+      const bodyEl = document.getElementById('emailDryRunContent');
+      if (!modal || !bodyEl) return;
+
+      bodyEl.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted);">Evaluating audience eligibility, PECR compliance, and message QA...</div>';
+      modal.classList.add('active');
+
+      try {
+        const res = await apiFetch('/api/email/automation/dry-run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ max_batch: 5 })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          bodyEl.innerHTML = `<div style="padding:1.5rem; color:#FF4D4D;">Error running dry-run: ${escapeHtml(data.message || 'Failed')}</div>`;
+          return;
+        }
+
+        const previews = data.preview_results || [];
+        if (previews.length === 0) {
+          bodyEl.innerHTML = `
+            <div style="padding:2rem; text-align:center; color:var(--text-muted);">
+              <div>No eligible candidates currently in queue for automated email.</div>
+              <div style="font-size:0.8rem; margin-top:6px;">Candidates must be qualified, verified without website, and meet PECR corporate subscriber rules.</div>
+            </div>
+          `;
+          return;
+        }
+
+        bodyEl.innerHTML = previews.map(p => {
+          const compColor = p.compliance_decision === 'CLEAR' ? 'var(--accent-yellow)' : (p.compliance_decision === 'BLOCKED' ? '#FFA500' : 'var(--text-dim)');
+          return `
+            <div style="background:rgba(255,255,255,0.02); border:var(--glass-border); border-radius:var(--radius-sm); padding:1rem; margin-bottom:1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.5rem;">
+                <div>
+                  <strong style="color:var(--text-main); font-size:1rem;">${escapeHtml(p.company_name)}</strong>
+                  <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono); margin-left:8px;">${escapeHtml(p.recipient_email || 'No email')}</span>
+                </div>
+                <div style="display:flex; gap:0.4rem; align-items:center;">
+                  <span class="status-pill-mini" style="color:${compColor}; border-color:${compColor}; font-size:0.65rem;">PECR: ${escapeHtml(p.compliance_decision || 'EVALUATED')}</span>
+                  <span class="status-pill-mini pass" style="font-size:0.65rem;">QA: ${p.qa_passed ? 'PASS' : 'FAIL'}</span>
+                </div>
+              </div>
+              <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.5rem;">
+                <strong>Subject:</strong> <span style="color:var(--text-main);">${escapeHtml(p.message_preview?.subject || '--')}</span>
+              </div>
+              <div style="font-size:0.78rem; color:var(--text-secondary); background:#050505; border:1px solid rgba(255,255,255,0.05); border-radius:6px; padding:0.75rem; font-family:var(--font-mono); white-space:pre-wrap; line-height:1.5;">${escapeHtml(p.message_preview?.body || 'No template rendered')}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        bodyEl.innerHTML = `<div style="padding:1.5rem; color:#FF4D4D;">Failed to connect to backend: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function closeEmailDryRunModal() {
+      const modal = document.getElementById('emailDryRunModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    async function executeEmailBatchSandbox() {
+      playOperatorClickSound();
+      if (!confirm('Execute automated email batch test in Sandbox Mode (Max 5 candidates)?')) return;
+      try {
+        const res = await apiFetch('/api/email/automation/execute-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ allow_sandbox: true, max_batch: 5 })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Email batch completed! Submitted: ${data.metrics?.submitted ?? 0}, Evaluated: ${data.metrics?.eligible ?? 0}`);
+          await loadEmailAutomationStatus();
+        } else {
+          showToast(`Batch blocked: ${data.reason || data.message || 'Execution failed'}`);
+        }
+      } catch (err) {
+        showToast(`Request failed: ${err.message}`);
+      }
+    }
+
+    async function emergencyStopEmail() {
+      playOperatorClickSound();
+      if (!confirm('TRIGGER EMERGENCY STOP: Halt all automated email outreach immediately?')) return;
+      try {
+        const res = await apiFetch('/api/email/automation/emergency-stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'Manual operator emergency stop', operator: 'LOCAL_OPERATOR' })
+        });
+        const data = await res.json();
+        showToast('EMERGENCY STOP ACTIVATED: Automated email outreach halted.');
+        await loadEmailAutomationStatus();
+      } catch (err) {
+        showToast(`Emergency stop failed: ${err.message}`);
+      }
     }
 
     async function loadCrmStatusData() {
@@ -5947,9 +6221,9 @@
 
       container.innerHTML = readyList.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
-        const rating = lead.rating ? `${lead.rating} Stars` : '4.5 Stars';
-        const revCount = lead.review_count || 50;
-        const id = lead.lead_id || lead.id || 'LEAD-000000';
+        const rating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
+        const revCount = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'No reviews';
+        const id = lead.lead_id || lead.id || '--';
         const address = lead.address || lead.postcode || 'Manchester, UK';
 
         return `
@@ -5957,7 +6231,7 @@
             <div>
               <div style="font-size:1.05rem; font-weight:700; color:var(--text-main);">${escapeHtml(name)}</div>
               <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
-                <span>${rating} &bull; ${revCount} reviews</span>
+                <span>${rating} &bull; ${revCount}</span>
                 <span>&bull;</span>
                 <span>${escapeHtml(address)}</span>
               </div>
@@ -6025,9 +6299,9 @@
 
       streamContainer.innerHTML = filtered.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
-        const rating = lead.rating ? `${lead.rating} Stars` : '4.5 Stars';
-        const revCount = lead.review_count || 50;
-        const id = lead.lead_id || lead.id || 'LEAD-000000';
+        const rating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
+        const revCount = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'No reviews';
+        const id = lead.lead_id || lead.id || '--';
         const isSelected = selectedLead && (selectedLead.lead_id === id || selectedLead.id === id);
         const isReviewQueue = currentFilter === 'NEEDS_REVIEW' || (id && id.startsWith('REV-'));
         const isDryRun = lead.is_shadow_mode || lead.is_dry_run || (id && id.startsWith('CAND-'));
@@ -6041,7 +6315,7 @@
             <div class="lead-stream-sub">
               <span>${escapeHtml(lead.postcode || lead.address || 'Manchester, UK')}</span>
               <span>&bull;</span>
-              <span>${revCount} reviews</span>
+              <span>${revCount}</span>
               <span>&bull;</span>
               <span style="font-family:var(--font-mono); font-size:0.68rem;">${id}</span>
             </div>
@@ -6386,12 +6660,13 @@
 
       container.innerHTML = candidates.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
-        const id = lead.lead_id || lead.id || 'LEAD-000000';
+        const id = lead.lead_id || lead.id || '--';
+        const ratingStr = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
         return `
           <div class="home-ready-lead-row" onclick="selectAndOpenDrawer('${id}')">
             <div>
               <div style="font-weight:700; color:var(--text-main); font-size:0.95rem;">${escapeHtml(name)}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(lead.address || lead.postcode || 'Manchester, UK')} &bull; ${lead.rating ? lead.rating + ' Stars' : '4.5 Stars'} &bull; <span style="font-family:var(--font-mono); font-size:0.7rem;">${id}</span></div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(lead.address || lead.postcode || 'Manchester, UK')} &bull; ${ratingStr} &bull; <span style="font-family:var(--font-mono); font-size:0.7rem;">${id}</span></div>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span class="lead-mini-tag yellow">${stageNames[currentPipelineStageIdx]}</span>
@@ -6579,8 +6854,11 @@
         ${creatorCardHtml}
       `;
 
+      const displayRating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
+      const displayReviews = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'unrecorded reviews';
+
       document.getElementById('dossierWhyQualified').innerText = `
-        Confirmed 100% absence of an official business domain. Customer rating is ${lead.rating || 4.5} Stars across ${lead.review_count || 50} reviews. ${lead.qualification_reason || 'Frozen Rule B criteria strictly met.'}
+        Confirmed 100% absence of an official business domain. Customer rating is ${displayRating} across ${displayReviews}. ${lead.qualification_reason || 'Frozen Rule B criteria strictly met.'}
       `;
 
       document.getElementById('dossierEvidence').innerText = `
@@ -6594,9 +6872,12 @@
       `;
 
       const isDryMode = lead.is_shadow_mode || lead.is_dry_run;
+      const emailOutreachActive = window._emailAutomationActive === true;
       document.getElementById('dossierOutreachPossible').innerText = isDryMode
-        ? 'LOCKED. Candidate evaluated in Shadow Mode dry run (0 saved to CRM/Sheets). Outreach dispatch physically prevented by safety architecture (TRAVEL_MODE=true, COMMERCIAL_ACTIONS_ENABLED=false).'
-        : 'LOCKED. Protected Travel Mode is currently ACTIVE. Commercial outreach dispatch is physically prevented at the architecture boundary.';
+        ? 'LOCKED. Candidate evaluated in Shadow Mode dry run (0 saved to CRM/Sheets). Outreach dispatch physically prevented by safety architecture.'
+        : (emailOutreachActive
+            ? 'ACTIVE FOR EMAIL. Automated email outreach is enabled and operational. Social and phone commercial actions remain locked.'
+            : 'LOCKED. Commercial outreach dispatch is physically prevented at the architecture boundary (TRAVEL_MODE=true, COMMERCIAL_ACTIONS_ENABLED=false).');
 
       // Dynamic Rule B Evaluation in Drawer
       const rating = parseFloat(lead.rating) || 0;
@@ -6631,14 +6912,15 @@
 
       const rBPoly = document.getElementById('ruleBPolygonBadge');
       if (rBPoly) {
-        rBPoly.innerText = 'PASS';
-        rBPoly.style.color = 'var(--accent-yellow)';
+        const polyPass = lead.in_polygon !== false && lead.within_market_polygon !== false;
+        rBPoly.innerText = polyPass ? 'PASS' : 'WARN';
+        rBPoly.style.color = polyPass ? 'var(--accent-yellow)' : '#FFA500';
       }
 
       const ruleBRatingText = document.getElementById('ruleBRatingText');
-      if (ruleBRatingText) ruleBRatingText.innerText = `2. Customer Rating >= 4.0 Stars (${lead.rating ? lead.rating + ' Stars' : '4.5 Stars'})`;
+      if (ruleBRatingText) ruleBRatingText.innerText = `2. Customer Rating >= 4.0 Stars (${displayRating})`;
       const ruleBReviewCountText = document.getElementById('ruleBReviewCountText');
-      if (ruleBReviewCountText) ruleBReviewCountText.innerText = `3. Minimum Reviews Satisfied (${lead.review_count != null ? lead.review_count : 50} reviews)`;
+      if (ruleBReviewCountText) ruleBReviewCountText.innerText = `3. Minimum Reviews Satisfied (${displayReviews})`;
 
       // Dynamic Freshness Dimensions
       const freshWeb = document.getElementById('freshWebsiteVal');

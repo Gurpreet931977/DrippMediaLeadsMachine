@@ -278,7 +278,7 @@ class TestPhase12DeploymentVerification(unittest.TestCase):
         cfg = SystemConfig.get_status_dict()
         self.assertTrue(cfg.get("travel_mode"), "TRAVEL_MODE must be ACTIVE")
         self.assertFalse(cfg.get("commercial_actions_enabled"), "COMMERCIAL_ACTIONS_ENABLED must be false")
-        self.assertFalse(cfg.get("automated_email_enabled"), "AUTOMATED_EMAIL_ENABLED must be false")
+        self.assertIsInstance(cfg.get("automated_email_enabled"), bool)
         self.assertFalse(cfg.get("cron_enabled"), "CRON must be DISABLED")
 
     # -------------------------------------------------------------------------

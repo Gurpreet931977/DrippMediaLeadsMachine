@@ -538,7 +538,14 @@ class ProductionReadinessAuditor:
         except Exception:
             pass
 
-        passed = (not is_active) and blocked_err_raised
+        if is_active:
+            from lib.outreach.email_sender_health import EmailSenderHealthAuditor
+            health = EmailSenderHealthAuditor().check_sender_health()
+            passed = bool(health.get("healthy", False) and not kill_switch)
+            description = "Automated email outreach is active with verified sender credentials & DNS."
+        else:
+            passed = (not is_active) and blocked_err_raised
+            description = "Automated email engine is disabled; send calls raise EmailAutomationBlockedError."
 
         return self._make_gate(
             gate_id="EMAIL_LOCK_STATE",
@@ -550,7 +557,7 @@ class ProductionReadinessAuditor:
                 "automated_email_active": is_active,
                 "assertion_blocks": blocked_err_raised,
             },
-            description="Automated email engine is disabled; send calls raise EmailAutomationBlockedError.",
+            description=description,
         )
 
     def check_scheduler_state(self) -> Dict[str, Any]:

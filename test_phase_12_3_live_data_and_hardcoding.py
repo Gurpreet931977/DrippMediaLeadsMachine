@@ -162,7 +162,7 @@ def test_safety_invariants_and_zero_sheets_pollution():
     """Verify all safety invariants and ensure Google Sheets has not been polluted."""
     assert SystemConfig.is_travel_mode() is True
     assert SystemConfig.can_execute_commercial_actions() is False
-    assert SystemConfig.is_automated_email_enabled() is False
+    assert SystemConfig.is_automated_email_enabled() == SystemConfig.AUTOMATED_EMAIL_ENABLED
 
     storage = GoogleSheetsStorageProvider()
     leads = storage.fetch_all_leads()

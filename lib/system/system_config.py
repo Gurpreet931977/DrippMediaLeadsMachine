@@ -212,6 +212,10 @@ class SystemConfig:
         if is_legacy_test_running():
             return
 
+        # Phase 10.2: Automated email outreach can run independently when explicitly enabled
+        if "email" in action_name.lower() and cls.is_automated_email_enabled():
+            return
+
         if cls.TRAVEL_MODE:
             raise CommercialActionForbiddenError(
                 f"Commercial action '{action_name}' is BLOCKED: TRAVEL_MODE is ACTIVE. "

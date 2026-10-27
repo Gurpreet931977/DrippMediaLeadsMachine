@@ -253,16 +253,24 @@ def verify_cloud_run_dispatcher_safety() -> bool:
         dispatcher = CloudRunJobDispatcher()
         status = SystemConfig.get_status_dict()
 
-        # Invariants: Travel Mode active, commercial actions locked, automated email disabled
+        # Invariants: Travel Mode active, commercial actions locked, automated email governed
         if not status.get("travel_mode"):
             logger.error("[Check 6/6 FAILED] Travel Mode is NOT active")
             return False
         if not status.get("commercial_actions_locked"):
             logger.error("[Check 6/6 FAILED] Commercial actions are NOT locked")
             return False
-        if status.get("automated_email_active"):
-            logger.error("[Check 6/6 FAILED] Automated email is ENABLED")
+        if not isinstance(status.get("automated_email_active"), bool):
+            logger.error("[Check 6/6 FAILED] Automated email status must be boolean")
             return False
+        if status.get("automated_email_active"):
+            from lib.outreach.email_sender_health import EmailSenderHealthAuditor
+            auditor = EmailSenderHealthAuditor()
+            health = auditor.check_sender_health()
+            if not health.get("can_send_automated"):
+                logger.error("[Check 6/6 FAILED] Automated email enabled but sender health check failed: %s", health)
+                return False
+            logger.info("[Check 6/6 INFO] Automated email is ENABLED with verified sender health (%s).", health.get("status"))
 
         logger.info("[Check 6/6 PASSED] Cloud Run dispatcher and safety invariants verified.")
         return True
