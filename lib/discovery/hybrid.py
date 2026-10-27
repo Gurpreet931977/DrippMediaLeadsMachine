@@ -346,7 +346,8 @@ class HybridDiscoveryEngine(DiscoveryProvider):
         city: str,
         country: str,
         industry: str,
-        limit: int = 40
+        limit: int = 40,
+        round_number: int = 1
     ) -> List[DiscoveredBusiness]:
         """
         Independent web-search discovery fallback when primary providers fail.
@@ -356,7 +357,8 @@ class HybridDiscoveryEngine(DiscoveryProvider):
             city=city,
             country=country,
             industry=industry,
-            limit=limit
+            limit=limit,
+            round_number=round_number
         )
 
     def search_businesses(
@@ -487,7 +489,8 @@ class HybridDiscoveryEngine(DiscoveryProvider):
                     city=city,
                     country=country,
                     industry=industry,
-                    limit=deficit
+                    limit=deficit,
+                    round_number=round_number
                 )
                 for cand in web_candidates:
                     self.transparency_stats["businesses_discovered_total"] += 1

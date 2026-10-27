@@ -785,6 +785,46 @@ class TestWebDiscoveryLocationEvidenceHardening(unittest.TestCase):
         self.assertIsNotNone(candidate)
         self.assertEqual(candidate.raw_website, "https://examplegrill.co.uk/")
 
+    def test_rejects_exclamation_mark_clickbait_and_headline(self):
+        candidate = self._convert(
+            "MANCHESTER IS THE BEST FOODIE CITY IN THE UK! Here's",
+            "Food and dining scene in Manchester, England UK.",
+            "https://example.com/foodie-city",
+        )
+        self.assertIsNone(candidate)
+
+    def test_rejects_geographic_area_as_business_name(self):
+        candidate = self._convert(
+            "Didsbury - Manchester",
+            "A popular suburb in south Manchester, England, UK.",
+            "https://example.com/didsbury",
+        )
+        self.assertIsNone(candidate)
+
+    def test_rejects_satellite_map_and_guide_listings(self):
+        candidate = self._convert(
+            "Didsbury Map, Satellite view of Didsbury, Greater , England",
+            "Street and satellite map view of Manchester, England, UK.",
+            "https://example.com/map",
+        )
+        self.assertIsNone(candidate)
+
+    def test_rejects_news_headline_verb_phrases(self):
+        candidate = self._convert(
+            "Ancoats Fave Cafe Cotton Opens A New Site - Manchester",
+            "Cafe Cotton opens a new site in Ancoats, Manchester, England, UK.",
+            "https://example.com/cotton-new-site",
+        )
+        self.assertIsNone(candidate)
+
+    def test_rejects_town_and_village_guide(self):
+        candidate = self._convert(
+            "Town and Village Guide - Manchester",
+            "Directory and guide to Manchester towns and suburbs in England, UK.",
+            "https://example.com/guide",
+        )
+        self.assertIsNone(candidate)
+
 
 
 class TestCountrySpecificDiscoveryQueries(unittest.TestCase):

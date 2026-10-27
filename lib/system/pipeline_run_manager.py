@@ -429,7 +429,7 @@ class DurablePipelineRunManager:
         Finds the most recent completed run record with valid discovery results.
         If no completed run with results exists, returns get_latest_run().
         """
-        runs = self.list_runs(limit=50)
+        runs = self.list_runs(limit=250)
         for r in runs:
             status = r.get("status")
             results = r.get("results") or {}

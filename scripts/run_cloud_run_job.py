@@ -89,6 +89,7 @@ def run_discovery_task(args) -> int:
     is_dry_run = bool(args.dry_run or (os.environ.get("DRY_RUN", "").strip().lower() in ("true", "1", "yes")))
 
     # 1. Enforce safety invariants
+    SystemConfig.reload_from_env()
     # In Cloud Run Job runtime, TRAVEL_MODE must be explicitly set and active.
     # Missing, inactive, or invalid values must abort safely.
     is_mocked = hasattr(SystemConfig.get_status_dict, "assert_called")

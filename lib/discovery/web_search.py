@@ -449,8 +449,8 @@ def convert_search_result_to_candidate(
     if any(host in raw_url_lower for host in DISALLOWED_DISCOVERY_HOSTS):
         return None
 
-    # Reject forum questions and discussion titles
-    if "?" in title:
+    # Reject forum questions, discussion titles, and exclamation-heavy headlines/clickbait
+    if "?" in title or "!" in title:
         return None
 
     # 1b. Reject listicles, directories, roundups, articles
@@ -483,7 +483,22 @@ def convert_search_result_to_candidate(
         r'\b(?:michelin|michelin guide)\b',
         r'\bnot to miss\b',
         r'\bmust[- ](?:try|visit|eat)\b',
-        r'\bbucket list\b'
+        r'\bbucket list\b',
+        r'\bfirst look\b',
+        r'#\w+',
+        r'\bsee you at\b',
+        r'\btour\b',
+        r'\bconcert\b',
+        r'\bfestival\b',
+        r'\b(?:map|satellite|view of|aerial)\b',
+        r'\b(?:village guide|town guide|city guide|visitor guide|town and village)\b',
+        r'\bopens?\s+(?:a\s+)?new\b',
+        r'\blaunches\b',
+        r'\bwelcomes\b',
+        r'\bhere\'?s\b',
+        r'\bfoodie\b',
+        r'\bis the best\b',
+        r'\bfave\b'
     ]
     for pat in LISTICLE_PATTERNS:
         if re.search(pat, title, re.IGNORECASE):
@@ -523,8 +538,30 @@ def convert_search_result_to_candidate(
         return None
     if not re.search(r'[a-zA-Z]', company_name):
         return None
+    if company_name.startswith(("#", "@", "'", "’")) or "#" in company_name:
+        return None
+    if any(char in company_name for char in [",", "!", ";", "?", "|", "/"]):
+        return None
+    if len(company_name.split()) > 5:
+        return None
 
     low_name = company_name.lower()
+    GEOGRAPHIC_AREAS = {
+        "ancoats", "didsbury", "chorlton", "deansgate", "northern quarter",
+        "spinningfields", "castlefield", "rusholme", "fallowfield", "salford",
+        "trafford", "wythenshawe", "cheetham", "cheetham hill", "prestwich",
+        "piccadilly", "oxford road", "peter street", "king street", "cross street",
+        "arndale", "greater manchester", "manchester", "withington", "levenshulme",
+        "hulme", "moss side", "west didsbury", "east didsbury", "chorlton-cum-hardy",
+        "city centre", "manchester city centre", "town and village guide", "village guide",
+        "town guide", "curry mile"
+    }
+    if low_name in GEOGRAPHIC_AREAS or low_name == city.lower() or low_name == "greater manchester":
+        return None
+
+    if re.search(r'\b(?:map|satellite|guide|directory|listings?|fave|opens?|launches|welcomes|here\'?s|is the best|welcome to|things to do|foodie)\b', low_name):
+        return None
+
     GENERIC_NAME_BLACKLIST = {
         "restaurant", "restaurants", "cafe", "cafes", "bistro", "bistros",
         "bar", "bars", "pub", "pubs", "food", "dining", "eatery", "eateries",
@@ -1763,6 +1800,7 @@ class WebSearchProvider(DiscoveryProvider):
         country: str,
         industry: str,
         limit: int = 40,
+        round_number: int = 1,
         **kwargs
     ) -> List[DiscoveredBusiness]:
         """
@@ -1770,6 +1808,7 @@ class WebSearchProvider(DiscoveryProvider):
         Queries diverse discovery families and converts valid search results
         into validated DiscoveredBusiness records with strict location and identity gates.
         """
+        round_num = int(kwargs.get("round_number", round_number) or 1)
         city_label = (city or "").strip()
         country_label = (country or "").strip()
         industry_label = (industry or "").strip().lower()
@@ -1779,20 +1818,47 @@ class WebSearchProvider(DiscoveryProvider):
         # name alone returned unrelated places that share the same name
         # (e.g. Manchester, Vermont or Maryland) when Overpass was unavailable.
         if country_key in {"unitedkingdom", "uk", "greatbritain", "gb", "england", "scotland", "wales"}:
-            queries = [
-                f'"independent {industry_label}" "{city_label}" England UK',
-                f'"{industry_label}" "{city_label}" England "no website"',
-                f'"{industry_label}" "{city_label}" "{country_label}"',
-                f'"family-run {industry_label}" "{city_label}" England UK',
-            ]
             if city_label.casefold() == "manchester":
-                # Greater Manchester terminology is common in local listings;
-                # retain it as a separate query family rather than widening the
-                # location gate or accepting ambiguous city-name matches.
-                queries.extend([
-                    f'"independent {industry_label}" "Greater Manchester" England',
-                    f'"{industry_label}" "Greater Manchester" "no website"',
+                rounds_map = {
+                    1: [
+                        f'independent {industry_label} "Northern Quarter" "{city_label}" England',
+                        f'restaurant cafe "Ancoats" "{city_label}" England',
+                        f'"{industry_label}" "{city_label}" England "no website"',
+                        f'"{industry_label}" "Greater Manchester" England',
+                    ],
+                    2: [
+                        f'restaurants Didsbury {city_label} England',
+                        f'restaurants Chorlton {city_label} England',
+                        f'family-run {industry_label} Didsbury Chorlton {city_label} England',
+                    ],
+                    3: [
+                        f'restaurants Deansgate {city_label} England',
+                        f'restaurants Castlefield {city_label} England',
+                        f'restaurants Spinningfields {city_label} England',
+                    ],
+                    4: [
+                        f'restaurants Rusholme {city_label} England',
+                        f'bistro cafe Oxford Road {city_label} England',
+                        f'independent {industry_label} Peter Street {city_label} England',
+                    ],
+                    5: [
+                        f'restaurants Fallowfield {city_label} England',
+                        f'restaurants Withington {city_label} England',
+                        f'independent {industry_label} Levenshulme {city_label} England',
+                    ]
+                }
+                queries = rounds_map.get(round_num, [
+                    f'independent {industry_label} {city_label} England',
+                    f'family-run {industry_label} {city_label} England',
+                    f'"{industry_label}" "{city_label}" "no website"'
                 ])
+            else:
+                queries = [
+                    f'"independent {industry_label}" "{city_label}" England UK',
+                    f'"{industry_label}" "{city_label}" England "no website"',
+                    f'"{industry_label}" "{city_label}" "{country_label}"',
+                    f'"family-run {industry_label}" "{city_label}" England UK',
+                ]
         else:
             queries = [
                 f'"independent {industry_label}" "{city_label}" "{country_label}"',
@@ -1810,7 +1876,7 @@ class WebSearchProvider(DiscoveryProvider):
             if len(candidates) >= limit:
                 break
             any_query_attempted = True
-            search_res = self.search_web(q, num_results=min(limit, 10))
+            search_res = self.search_web(q, num_results=min(max(limit, 10), 15))
             is_succeeded = getattr(search_res, "succeeded", True if isinstance(search_res, list) and not hasattr(search_res, "succeeded") else False)
             if is_succeeded:
                 all_failed = False

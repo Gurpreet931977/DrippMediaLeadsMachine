@@ -423,6 +423,11 @@ def run_pipeline_task(
         active_run_state["progress_logs"].append(msg)
         if len(active_run_state["progress_logs"]) > 300:
             active_run_state["progress_logs"].pop(0)
+        if data and isinstance(data, dict):
+            if "stats" in data and isinstance(data["stats"], dict):
+                active_run_state["current_stats"].update(data["stats"])
+            if "discovery_transparency" in data and isinstance(data["discovery_transparency"], dict):
+                active_run_state["discovery_transparency"].update(data["discovery_transparency"])
         run_manager.append_log(run_id, msg, data.get("stats") if data else None)
 
     try:
