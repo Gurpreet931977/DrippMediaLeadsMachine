@@ -5048,8 +5048,13 @@
         if (typeof window.DRIPP_BACKEND_URL !== 'undefined' && window.DRIPP_BACKEND_URL) {
           return window.DRIPP_BACKEND_URL.replace(/\/$/, '');
         }
-        // If loaded directly from local backend server (port 8000 or localhost without dev port):
-        if (window.location.port === '8000' || (window.location.hostname === 'localhost' && window.location.port !== '3000')) {
+        // If loaded directly from local backend server (port 8000, 8080 or localhost/127.0.0.1/0.0.0.0):
+        const host = window.location.hostname.toLowerCase();
+        const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+        if (isLocalHost && window.location.port !== '3000' && window.location.port !== '5173') {
+          return '';
+        }
+        if (window.location.port === '8000' || window.location.port === '8080') {
           return '';
         }
         // Production frontend domains use the same-origin /api proxy configured in vercel.json.

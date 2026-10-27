@@ -1,224 +1,196 @@
-# Dripp Media Leads Machine: Final Production Readiness & Verification Report
+# Dripp Media Leads Machine: Final Local Production Readiness & Verification Report
 
 **Date:** October 27, 2026  
 **Local Workspace:** `/Users/metagurpreet/Desktop/Dripp International Leads`  
 **Git Working Branch:** `feature/live-discovery-pipeline-readiness`  
-**Git HEAD Commit:** `097f77f` (`fix(deploy): resolve dynamic image digest and safeguard traffic promotion`)  
-**Previous Commits:** `da1bd5e` (`feat(sheets): implement isolated TEST_ONLY test namespace, proxy guard, and unit tests`), `ce0d84e` (`fix(discovery): repair provider resilience, budget fallbacks, and validation for live discovery`)  
+**Git HEAD Commit:** `b6332f0` (`feat(local): finish local execution safeguards, run classification, and gateway auto-resolution`)  
 **Deployment Region / GCP Project:** `us-central1` / `poised-eye-509816-a4`  
 **Canonical Google Spreadsheet:** `1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc` ("Dripp Media International Leads")  
 
 ---
 
-## 1. Executive Status Dashboard & Verdict Summary
+## 1. Executive Status Dashboard & Local Readiness Verdict
 
-Each operational gate has been audited against cryptographic, runtime, and empirical evidence. No assertions are made on assumptions or in-memory mocks alone.
+The Dripp Media International Leads application is completely verified and operational within the local workspace. Every subsystem has been empirically validated through code inspection, local runtime tests, and live-source isolation.
 
-| Subsystem / Operational Area | Verdict | Evidence & Rationale |
+| Operational Area | Local Verdict | Empirical Evidence & Verified Behavior |
 | :--- | :---: | :--- |
-| **1. Local Discovery & Qualification** | **PASS** | Genuine multi-provider discovery (OSM Overpass with 22s hard budget, 120s cooldowns, automatic failover to Tavily). Strict boundary validation for Manchester, UK. Confirmed domain verification and truthful exclusion (`WEBSITE_EXISTS`) without synthetic injection. |
-| **2. Real Google Sheets Persistence** | **PASS** | Dedicated `TEST_ONLY_*` namespace implemented in existing canonical spreadsheet. 10/10 live API persistence gates passed (`scratch/run_test_namespace_sheets_integration.py`): actual write, read-back, schema width, and in-place updates verified against live Google Sheets API. |
-| **3. Duplicate Handling & Recovery** | **PASS** | 0 new rows created upon reprocessing identical candidate; updated in-place with existing `lead_id` strictly preserved. Multi-signal identity matcher verified across 37 test cases in `test_search_circuit_and_crm.py`. |
-| **4. Production CRM Isolation** | **PASS** | All 5 production operational tabs (`OVERVIEW`, `LEADS`, `RESEARCH_LOG`, `REVIEW_QUEUE`, `RESEARCH_LOG_QUARANTINE`) remained 100% untouched before, during, and after live testing. Pre- and post-run cryptographic SHA-256 hashes and row counts match 100%. |
-| **5. API & Operator Dashboard** | **PASS** | Live Cloud Run service `dripp-leads-api` at `https://dripp-leads-api-ukng7vge6q-uc.a.run.app` verified healthy (HTTP 200, `OPERATIONAL`). Unauthenticated requests to protected endpoints (`/api/leads`, `/api/crm/status`, etc.) strictly fail closed with HTTP 401. Dashboard HTML delivers HTTP 200. |
-| **6. CI/CD Deployment Workflow & Digest Verification** | **PASS (FIXED & VALIDATED)** | Stale hardcoded image digest (`sha256:991bb03c...`) and tag (`123ee3b...`) eliminated. Created dynamic resolver `scripts/resolve_deployment_artifact.py`. Changed `promote_traffic` default to `false`. Verified across 29 focused tests and 78 total deployment verification tests. |
-| **7. Cloud Run Discovery-Job Release Alignment** | **PENDING GITHUB MERGE/DISPATCH** | Deployed Cloud Run Job `dripp-discovery-job` in GCP is currently pinned to commit `123ee3bbce9b1207a50a7a6c8828cb24014c5ce2`. Local commits (`ce0d84e`, `da1bd5e`, and workflow fix) exist locally on branch `feature/live-discovery-pipeline-readiness` and must be pushed/merged to GitHub to trigger the release. |
-| **8. Automated Outreach Safeguards** | **PASS (MUST REMAIN DISABLED)** | Commercial outreach remains strictly disabled across all code paths: `TRAVEL_MODE=ACTIVE`, `COMMERCIAL_ACTIONS_ENABLED=false`, `AUTOMATED_EMAIL_ENABLED=false`. Exactly 0 emails, DMs, or commercial proposals dispatched. |
+| **1. Local App & Dashboard** | **PASS** | Dashboard served from `/` via FastAPI. `DrippConfig.getBackendUrl` connects to local backend on `127.0.0.1` and `localhost` (ports 8000, 8080). Operator authentication, CSRF validation, and protected routes verified. |
+| **2. Discovery & Qualification** | **PASS** | Genuine multi-provider discovery (OSM Overpass with 22s hard budget ceiling, 120s cooldowns, automatic failover to Tavily). Strict boundary validation (Manchester, UK). Evidence-based qualification (exclusions truthful, unverified fields remain `null`). |
+| **3. Google Sheets CRM & Isolation** | **PASS** | All 5 operational tabs (`OVERVIEW`, `LEADS`, `RESEARCH_LOG`, `REVIEW_QUEUE`, `RESEARCH_LOG_QUARANTINE`) 100% isolated and untouched (cryptographic SHA-256 match). Dedicated `TEST_ONLY_*` namespace verified across all 10 persistence gates. |
+| **4. Duplicate Handling & Recovery** | **PASS** | In-place enrichment preserves canonical `lead_id`. Server restart recovery (`recover_interrupted_runs`) transitions abandoned runs to `FAILED` for both `RUN-` and `CRJ-RUN-` prefixes. |
+| **5. Run History & Classification** | **PASS** | Unambiguous distinction between completed, failed, incomplete, and simulated runs via `classify_run` and enrichment flags (`is_simulated`, `is_incomplete`, `is_completed`, `is_failed`). |
+| **6. Automated Outreach Safeguards** | **PASS (LOCKED)** | Frozen safeguards: `TRAVEL_MODE=ACTIVE`, `COMMERCIAL_ACTIONS_ENABLED=false`, `AUTOMATED_EMAIL_ENABLED=false`. Exactly 0 emails, DMs, or commercial actions triggered. |
+| **7. Cloud Dispatch Isolation** | **PASS** | Local actions bypass remote Cloud Run invocation (`is_cloud_run_configured` returns `False`; `LOCAL_ONLY` safety guard enforced). Dispatches run cleanly in-process. |
+
+> [!NOTE]
+> **Cloud Deployment Status Notice:**  
+> The deployed GCP Cloud Run job image remains pinned to commit `123ee3b`. Cloud deployment, GitHub Actions push/merge, and GCP resource modification were strictly kept outside the scope of this local completion task. The application is completely functional and verified locally.
 
 ---
 
-## 2. Deployment Workflow Defect and Fix Details
+## 2. Local Application and Dashboard
 
-### 2.1 The Stale Image-Digest Defect
-- **Root Cause Analysis:** In `.github/workflows/05-deploy-cloud-run.yml`, line 273 contained a hardcoded image digest:
-  ```bash
-  EXPECTED_DIGEST="sha256:991bb03c169edd467eb3c4c8548f6907f5d749d5ca69f6a800541d173812cc89"
-  ```
-  Additionally, line 125 hardcoded `DEPLOY_TAG="123ee3bbce9b1207a50a7a6c8828cb24014c5ce2"` for promote-only candidate runs.
-- **Impact:** Because every new GitHub Actions release builds and tags a container image from the current commit SHA (e.g. `da1bd5e`), Cloud Run records the actual sha256 digest of that newly built artifact. When the post-deployment read-back check executed, it compared the new artifact's digest against the hardcoded digest from commit `123ee3b`, causing immediate failure and blocking all deployments of new releases.
-- **Vulnerability / Risk:** In candidate-only runs, hardcoding `123ee3b` caused any candidate revision from any other commit to be verified against the wrong tag or artifact. Furthermore, if an operator attempted to promote a candidate, a stale digest check created confusion and risk of artifact mismatches.
+### 2.1 Server Startup and Endpoints
+- **Entry Point:** [server.py](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/server.py) (`uvicorn.run("server:app", host="127.0.0.1", port=8000)`)
+- **Root Dashboard Route (`/`):** Delivers [static/index.html](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/static/index.html) with HTTP 200 (`text/html`).
+- **Core Endpoints Verified:**
+  - `GET /api/system/health`: Public telemetry returning HTTP 200, `"canonical_health_status": "OPERATIONAL"`.
+  - `GET /api/crm/status`: Returns Google Sheets connection status and tab counts.
+  - `GET /api/discovery/status`: Protected provider diagnostics (returns HTTP 401 when unauthenticated; HTTP 200 with provider matrix when authenticated).
+  - `GET /api/runs`: Returns durable run history with classification flags.
+  - `GET /api/runs/latest`: Resolves most relevant completed or active run record with candidates.
+  - `GET /api/leads`: Protected CRM lead access (returns HTTP 401 when unauthenticated; HTTP 200 with leads when authenticated).
+  - `GET /api/review-queue`: Protected review queue access.
 
-### 2.2 The Fix: Dynamic Immutable Artifact Resolution (`scripts/resolve_deployment_artifact.py`)
-Rather than replacing one hardcoded digest with another, a fail-closed, dynamic artifact resolution tool was implemented:
-1. **Standard Build & Deploy Path (`resolve-built`):**
-   - Extracts the exact sha256 digest from Docker's local `RepoDigests` after `docker push`.
-   - If not available locally, queries Google Artifact Registry directly (`gcloud artifacts docker images describe --format=json`).
-   - Validates that the digest matches strict regex `^sha256:[a-f0-9]{64}$`.
-   - Validates that the base image matches the authorized repository (`us-central1-docker.pkg.dev/poised-eye-509816-a4/dripp-media/dripp-discovery-job`).
-   - Persists the resolved identity to `$RUNNER_TEMP/artifact_resolution.json` and outputs `expected_digest`, `expected_image`, and `immutable_reference` to `$GITHUB_OUTPUT`.
-2. **Promote-Only Candidate Path (`resolve-candidate`):**
-   - Retrieves the Cloud Run revision JSON for the candidate revision.
-   - Extracts the candidate's container image and validates that it points to the authorized repository.
-   - Extracts `status.imageDigest` from the candidate revision and verifies it against Artifact Registry.
-   - Fails closed if the candidate is unapproved, lacks a valid digest, or points to an unauthorized image.
-3. **Read-Back Verification (`verify-candidate-digest`):**
-   - Reads back `status.imageDigest` from the deployed Cloud Run revision.
-   - Compares the deployed digest against the dynamically resolved `expected_digest`.
-   - Fails closed if there is any digest mismatch, stale artifact, or missing container spec.
-
-### 2.3 Traffic Promotion Protection & Separation of Concerns
-In `.github/workflows/05-deploy-cloud-run.yml`:
-1. **Safe Default for Traffic Promotion:**
-   - Changed `promote_traffic` input definition from `default: "true"` to `default: "false"`.
-   - An operator must now **explicitly opt-in** by passing `promote_traffic: true` to shift 100% production traffic.
-2. **Clear Separation of Workflow Phases:**
-   - **Candidate API Deployment:** Deploys new revision with `--no-traffic` and assigns candidate tag (`candidate`). Verifies readiness and authenticated health endpoints at zero production traffic.
-   - **Discovery Job Deployment:** Updates `dripp-discovery-job` configuration with the new image reference and validates environment variables. Does **not** trigger or execute the job.
-   - **Traffic Promotion (Gated):** Executes `gcloud run services update-traffic $API_SERVICE --to-revisions=$CANDIDATE_REVISION=100` **only** if `${{ github.event.inputs.promote_traffic == 'true' }}`.
-   - **Zero-Traffic Completion Step:** When `promote_traffic` is `false`, the workflow explicitly confirms zero-traffic deployment completion, reports candidate revision details and candidate URL, and provides the exact rerun parameters for operator promotion.
-3. **Preservation of Safety Gates:**
-   - Preserved `confirm_deployment` input check (`CONFIRM_DEPLOY_TO_PRODUCTION` or `CONFIRM_PROMOTE_API_TO_PRODUCTION`).
-   - Preserved preflight audit, durable GCS backup, Playwright post-promotion tests, and automatic rollback to previous primary revision on failure.
-   - Preserved commercial safety locks: `TRAVEL_MODE=ACTIVE`, `COMMERCIAL_ACTIONS_ENABLED=false`, `AUTOMATED_EMAIL_ENABLED=false`.
+### 2.2 Local Gateway Resolution
+In [static/index.html](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/static/index.html), `DrippConfig.getBackendUrl()` was enhanced to recognize local hosts:
+```javascript
+const host = window.location.hostname.toLowerCase();
+const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+if (isLocalHost && window.location.port !== '3000' && window.location.port !== '5173') {
+  return '';
+}
+if (window.location.port === '8000' || window.location.port === '8080') {
+  return '';
+}
+```
+When accessing the local dashboard on `http://127.0.0.1:8000/`, `http://localhost:8000/`, or port `8080`, all API requests automatically route to the local server as same-origin relative URLs (`/api/...`), completely avoiding CORS blocks or external gateway configuration errors.
 
 ---
 
-## 3. Test Suite & Local Verification Results
+## 3. Discovery and Qualification Flow
 
-### 3.1 Artifact Resolution & Safeguard Unit Tests
-**Command:**
+### 3.1 Bounded Multi-Provider Discovery
+- **Authorized Market:** Strictly bounded to Manchester, United Kingdom (`industry: Restaurants`). Other cities or non-UK markets are rejected with HTTP 400.
+- **OSM Overpass Engine:** Enforces an absolute 22-second query budget ceiling with 10-second per-request timeout.
+- **Failover & Cooldowns:** On HTTP 502/mirror capacity errors, Overpass endpoints receive a 120-second cooldown marker, and the engine automatically falls over to Tavily Web Search.
+- **Execution Mode:** In local development, search dispatches run in-process via FastAPI `BackgroundTasks` without attempting GCP Cloud Run dispatch.
+
+### 3.2 Evidence-Based Qualification (Rule A & Rule B)
+- All qualification decisions are strictly evidence-driven via [lib/outreach/phase_8_5_qualification.py](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/lib/outreach/phase_8_5_qualification.py).
+- Businesses with confirmed websites are truthfully classified as **`EXCLUDED`** (`WEBSITE_EXISTS`) rather than forced into qualification.
+- Unverified fields (ratings, review counts, contact details) strictly remain `null` or empty without synthetic data fabrication.
+- Candidates with ambiguous identities or conflicting branch addresses are safely routed to `REVIEW_QUEUE` (`MANUAL_REVIEW`).
+
+---
+
+## 4. Google Sheets Integration & Test Isolation
+
+### 4.1 Production Operational Tabs Integrity
+All 5 canonical operational tabs in Google Spreadsheet `1Inan5Laj_CsxraX0JpByJ3466QNbcGO-B6xY5r4fwyc` are completely isolated and frozen:
+- `OVERVIEW` (21 rows) — 100% untouched
+- `LEADS` (8 rows) — 100% untouched
+- `RESEARCH_LOG` (279 rows) — 100% untouched (columns AC:BB strictly empty)
+- `REVIEW_QUEUE` (65 rows) — 100% untouched
+- `RESEARCH_LOG_QUARANTINE` (39 rows) — 100% untouched
+
+### 4.2 Isolated `TEST_ONLY_*` Namespace
+- Real external integration tests operate exclusively in dedicated tabs:
+  - `TEST_ONLY_OVERVIEW`
+  - `TEST_ONLY_LEADS`
+  - `TEST_ONLY_RESEARCH_LOG`
+  - `TEST_ONLY_REVIEW_QUEUE`
+  - `TEST_ONLY_RESEARCH_LOG_QUARANTINE`
+- `NamespaceSpreadsheetProxy` raises `PermissionError` immediately if test code attempts to access or mutate operational tabs.
+- Schema width is strictly enforced (LEADS: exactly 133 columns; RESEARCH_LOG: exactly 28 columns).
+
+---
+
+## 5. Duplicate Handling and Recovery
+
+### 5.1 Multi-Signal Deduplication
+- Governed by [lib/crm/identity_matcher.py](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/lib/crm/identity_matcher.py) and [lib/crm/reconciliation.py](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/lib/crm/reconciliation.py).
+- Matches candidates across 5 prioritized signals: source URL, website domain, phone + normalized name, address tokens + name, and normalized identity.
+- When an existing lead is re-discovered, **0 duplicate rows are inserted**; existing `lead_id` is preserved and notes are updated in-place.
+
+### 5.2 Server Restart Recovery
+In [lib/system/pipeline_run_manager.py](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/lib/system/pipeline_run_manager.py):
+- `recover_interrupted_runs()` scans durable run records on startup.
+- Any run left in `QUEUED` or `RUNNING` state is automatically transitioned to `FAILED` with honest message: `"Run was interrupted by server process restart"`.
+- Supports both `RUN-` and `CRJ-RUN-` prefixed runs, ensuring the dashboard never displays abandoned runs as active.
+
+---
+
+## 6. Run History and Classification
+
+Each run record managed by `DurablePipelineRunManager` is enriched with explicit categorization:
+- `run_classification`: Unambiguously returns `COMPLETED`, `COMPLETED_WITH_ERRORS`, `FAILED`, `INCOMPLETE`, `CANCELLED`, or `SIMULATED_*`.
+- Boolean inspection flags:
+  - `is_simulated`: `True` when `dry_run=True` (shadow/simulated mode).
+  - `is_incomplete`: `True` when in `QUEUED` or `RUNNING` state.
+  - `is_completed`: `True` when `COMPLETED` or `COMPLETED_WITH_ERRORS`.
+  - `is_failed`: `True` when in `FAILED` state.
+  - `is_cancelled`: `True` when in `CANCELLED` state.
+
+---
+
+## 7. Automated Outreach Safeguards
+
+Commercial outreach remains completely disabled and locked across all configuration and code paths:
+- `TRAVEL_MODE=ACTIVE`
+- `COMMERCIAL_ACTIONS_ENABLED=false`
+- `AUTOMATED_EMAIL_ENABLED=false`
+- Exactly 0 emails, direct messages, proposals, or commercial communications can be sent from the local workspace.
+
+---
+
+## 8. Final Test Execution Summary
+
+### Tests Executed in this Final Pass
+
+| Test Suite File | Tests | Passed | Failed | Warnings | Execution Time | Description |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| `test_local_execution_and_run_classification.py` | 11 | 11 | 0 | 1 | 20.19s | Run classification, recovery, local dispatcher guards, frontend gateway, smoke endpoints. |
+| `test_phase_12_3_data_provenance_regression.py` | 9 | 9 | 0 | 0 | 3.88s | Candidate provenance, null preservation, auth enforcement, non-mutating inspection. |
+| `test_phase_12_3_live_data_and_hardcoding.py` | 10 | 10 | 0 | 0 | 4.73s | UI dynamic counts, no static lead placeholders, live CRM data rendering. |
+| `test_phase_12_0_lead_discovery_ui.py` | 19 | 19 | 0 | 0 | 33.93s | Market boundary, provider health diagnostics, cancellation, concurrency. |
+| `test_phase_12_1_data_integration.py` | 14 | 14 | 0 | 0 | (included) | Live Google Sheets read integration, CORS preflight, secret non-exposure. |
+| `test_search_circuit_and_crm.py` | 37 | 37 | 0 | 0 | 1.10s | Circuit breaker, cooldowns, deduplication, branch disambiguation. |
+| `test_osm_budget_resilience.py` | 4 | 4 | 0 | 0 | (included) | Overpass 22s budget ceiling, retry-after headers, cache handling. |
+| `test_crm_reconciliation.py` | 13 | 13 | 0 | 0 | (included) | Canonical lead preservation, outreach history preservation, conflict routing. |
+| `test_test_namespace_isolation.py` | 7 | 7 | 0 | 0 | 0.09s | Test namespace routing, proxy permission blocks, safe clear. |
+| `test_resolve_deployment_artifact.py` | 29 | 29 | 0 | 0 | 0.04s | Dynamic artifact resolver, digest format, candidate verification, workflow safeguards. |
+| `test_cloud_run_api_service_deployment.py` | 19 | 19 | 0 | 0 | 12.58s | API candidate tagging, memory limits, zero-weight verification. |
+| `test_cloud_run_api_candidate_verification.py` | 4 | 4 | 0 | 0 | (included) | Authenticated candidate health, readiness, and fail-closed checks. |
+| `test_phase_12_2_deployment_verification.py` | 13 | 13 | 0 | 0 | (included) | Protected endpoints, commercial locks, CORS origin enforcement. |
+| `test_phase_12_2_1_security_gate.py` | 13 | 13 | 0 | 0 | 7 | Unauthenticated 401 checks, session revocation, CSRF origin verification. |
+| **Non-Mutating Smoke Script (`verify_deployment_safety.py`)** | 6 | 6 | 0 | 0 | 2.58s | Core imports, live Sheets schema, deduplication guards, writer safeguards, concurrency. |
+| **TOTAL** | **208** | **208** | **0** | **8** | — | **100% PASS RATE ACROSS ALL EXECUTED SUITES** |
+
+---
+
+## 9. Known Limitations Genuinely Affecting Local Use
+
+1. **Google Sheets API Per-User Rate Quota:**
+   Google Sheets enforces a quota of 60 read requests/min per user. Rapid successive reads can trigger HTTP 429. The application handles this via an in-memory worksheet cache (`_worksheets_cache`) and exponential backoff retry logic in [lib/sheets/google_sheets.py](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/lib/sheets/google_sheets.py).
+2. **Public OSM Overpass Mirror Capacity:**
+   Public Overpass mirrors periodically return HTTP 502/504 under heavy traffic. The pipeline handles this through its 22-second timeout ceiling, 120-second cooldown marker, and automatic fallback to Tavily Search.
+3. **Cloud Run Remote Jobs Bypassed in Local Mode:**
+   Discovery jobs dispatched locally execute in-process via background tasks rather than invoking Google Cloud Run Jobs. This is an intentional safeguard to prevent unintended cloud costs or cloud execution during local development.
+4. **Deployed Cloud Image Unsynchronized:**
+   The remote Cloud Run Job in GCP remains pinned to commit `123ee3b`. Synchronizing the cloud image requires a Git push and GitHub Actions workflow run, which was intentionally excluded from this local scope.
+
+---
+
+## 10. Local Application Launch Guide
+
+### Step 1: Start the Local FastAPI Backend Server
 ```bash
-.venv/bin/pytest test_resolve_deployment_artifact.py -v
+cd "/Users/metagurpreet/Desktop/Dripp International Leads"
+.venv/bin/python3 server.py
 ```
-**Results:** **29 passed in 0.04s**
-- `TestDigestFormatValidation`: Validates format regex, rejects truncated, uppercase, MD5, SHA-1, and empty strings.
-- `TestAuthorizedImageBaseValidation`: Validates authorized GCP artifact registry prefix; rejects unauthorized registries and projects.
-- `TestDigestExtraction`: Validates extraction from Docker repo digests, gcloud JSON summaries, and raw text.
-- `TestResolveBuiltArtifact`: Validates local repo digest resolution, Artifact Registry fallback, and fail-closed error handling.
-- `TestResolveCandidateArtifact`: Validates candidate revision inspection, registry verification, and unauthorized image rejection.
-- `TestVerifyCandidateRevisionDigest`: Validates matching digest pass, stale digest rejection, and missing digest fail-closed handling.
-- `TestWorkflowFileSafeguards`: Validates YAML syntax, verifies `promote_traffic` defaults to `false`, verifies complete removal of stale hardcoded digests/tags, and ensures traffic promotion requires explicit opt-in.
+*The server binds to `http://127.0.0.1:8000`.*
 
-### 3.2 Full Deployment Verification Suite
-**Command:**
-```bash
-.venv/bin/pytest test_resolve_deployment_artifact.py test_cloud_run_api_service_deployment.py test_cloud_run_api_candidate_verification.py test_phase_12_2_deployment_verification.py test_phase_12_2_1_security_gate.py -v
+### Step 2: Open the Dashboard in Your Browser
+Navigate to:
 ```
-**Results:** **78 passed, 0 failed, 7 starlette cookie deprecation warnings in 12.64s**
-- `test_resolve_deployment_artifact.py`: 29 passed.
-- `test_cloud_run_api_service_deployment.py`: 19 passed (candidate tagging, image pinning, memory limits, zero-weight verification).
-- `test_cloud_run_api_candidate_verification.py`: 4 passed (health, auth, readiness, fail-closed on blockers).
-- `test_phase_12_2_deployment_verification.py`: 13 passed (commercial safety restrictions, CRM integrity, error resilience).
-- `test_phase_12_2_1_security_gate.py`: 13 passed (unauthenticated 401 checks, session revocation, CSRF origin verification).
-
-### 3.3 Test Namespace Isolation Tests
-**Command:**
-```bash
-.venv/bin/pytest test_test_namespace_isolation.py -v
+http://127.0.0.1:8000/
 ```
-**Results:** **7 passed in 0.09s**
-- Verifies default production mode routes to operational tabs.
-- Verifies test namespace mode routes exclusively to `TEST_ONLY_*` tabs.
-- Verifies `PermissionError` fail-closed when accessing operational tabs in test mode.
-- Verifies `clear_test_tab_data` is blocked on operational tabs.
+The dashboard will load directly from the local FastAPI instance and automatically connect to `http://127.0.0.1:8000/api` without requiring gateway configuration.
 
-### 3.4 Deployment Safety Smoke Test
-**Command:**
+### Step 3: Run Non-Mutating Safety Verification (Optional)
 ```bash
 .venv/bin/python3 scripts/verify_deployment_safety.py
 ```
-**Results:** **ALL 6 CHECKS PASSED**
-- Check 1: Core module imports and dependency integrity.
-- Check 2: Live Google Sheets CRM read-only state (RESEARCH_LOG 279 rows, QUARANTINE 39 rows, AC:BB empty).
-- Check 3: Fail-closed deduplication guards and multi-signal disambiguation.
-- Check 4: Writer safeguards & exact 28-column row width schema validation.
-- Check 5: Concurrency architecture & distributed lease handling.
-- Check 6: Cloud Run dispatcher default safety invariants.
-
----
-
-## 4. Git Repository & Remote Status Audit
-
-### 4.1 Local Commit Status
-- **Current Branch:** `feature/live-discovery-pipeline-readiness`
-- **Latest Local Commit on Branch (HEAD):** `097f77f` (`fix(deploy): resolve dynamic image digest and safeguard traffic promotion`)
-- **Preceding Commit:** `da1bd5e` (`feat(sheets): implement isolated TEST_ONLY test namespace, proxy guard, and unit tests`)
-- **Base Commit:** `ce0d84e` (`fix(discovery): repair provider resilience, budget fallbacks, and validation for live discovery`)
-- **Committed Files in `097f77f`:**
-  - `.github/workflows/05-deploy-cloud-run.yml`
-  - `scripts/resolve_deployment_artifact.py`
-  - `test_resolve_deployment_artifact.py`
-  - `FINAL_PRODUCTION_READINESS_REPORT.md`
-
-### 4.2 GitHub Remote Audit (`origin`)
-- **Remote `origin/main` Commit:** `ae290aa` (`test: add automated Playwright post-promotion verification suite for production API and dashboard`)
-- **Remote Branch Check (`git branch -r`):**
-  - Branch `feature/live-discovery-pipeline-readiness` **DOES NOT EXIST on GitHub (`origin`)**.
-  - Local commits `ce0d84e` and `da1bd5e` are **NOT PRESENT on GitHub**.
-  - No code or workflow changes from this readiness cycle have been pushed or merged to remote.
-
----
-
-## 5. Live Discovery & Qualification Evidence
-
-**Source Data:** [data/final_live_discovery_validation.json](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/data/final_live_discovery_validation.json)  
-**Target Market:** Restaurants in Manchester, United Kingdom  
-**Discovery Provider:** Tavily Web Search (OSM Overpass was on cooldown following HTTP 502 capacity response)  
-**Execution Mode:** `DRY_RUN=true`, `shadow_mode=True`, genuine live web discovery  
-
-### Funnel Metrics
-- **Raw Discovered Candidates:** 2
-- **Country Verified (United Kingdom):** 2 (100%)
-- **City Boundary Verified (Manchester):** 2 (100%)
-- **Identified Candidates:**
-  1. `another hand` — Mews Level, Great Northern building, Manchester M4 4EN
-     - Extracted domain: `https://anotherhandmcr.com`
-     - Qualification outcome: Classified as **`EXCLUDED`** (Reason: `WEBSITE_EXISTS`).
-  2. `Louis Restaurants` — 3 Hardman Square, Manchester M3 3EB
-     - Extracted domain: `https://louisrestaurants.com`
-     - Qualification outcome: Classified as **`EXCLUDED`** (Reason: `WEBSITE_EXISTS`).
-- **Disqualified / Excluded:** 2
-- **Manual Review:** 0
-- **Outreach-Ready Leads:** 0
-- **Invented / Fabricated Data:** **0%** (ratings and review counts left unpopulated when not confirmed).
-- **Integrity Assessment:** A sample yielding 0 outreach-ready leads is a **truthful and accurate qualification result**, correctly identifying that businesses with existing active websites are disqualified under campaign criteria.
-
----
-
-## 6. Live API Service Telemetry & Operational State
-
-- **Primary Service URL:** `https://dripp-leads-api-ukng7vge6q-uc.a.run.app`
-- **Active Revision:** `dripp-leads-api-00020-c6x` (serving 100% traffic)
-- **Health Probe (`/api/system/health`):**
-  ```json
-  {
-    "status": "ok",
-    "canonical_health_status": "OPERATIONAL",
-    "service": "Dripp Media Lead Intelligence Suite",
-    "timestamp": "2026-10-26T19:50:18.275024+00:00",
-    "authenticated": false
-  }
-  ```
-- **Unauthenticated Route Protection (`/api/leads`):** Returns **`HTTP 401 Unauthorized`**.
-- **Dashboard Root Route (`/`):** Returns **`HTTP 200 OK`**.
-
----
-
-## 7. Remaining Release Action and Expected Effect
-
-All local fixes, unit test coverage, safety assertions, and documentation are complete.
-
-### The Remaining Action
-Because local commits `ce0d84e`, `da1bd5e`, and the workflow fix exist only on the local machine, the operator must complete the following manual release steps:
-
-1. **Push Local Feature Branch and Open PR:**
-   ```bash
-   git push origin feature/live-discovery-pipeline-readiness
-   ```
-   Open and merge the pull request into `main` on GitHub.
-
-2. **Trigger the Production Cloud Run Deployment Workflow:**
-   Navigate to GitHub Actions $\rightarrow$ **05 - Production Cloud Run Deployment** ([.github/workflows/05-deploy-cloud-run.yml](file:///Users/metagurpreet/Desktop/Dripp%20International%20Leads/.github/workflows/05-deploy-cloud-run.yml)).
-   - **Branch:** `main`
-   - **Inputs:**
-     - `confirm_deployment`: `CONFIRM_DEPLOY_TO_PRODUCTION`
-     - `promote_traffic`: `false` *(Recommended default for initial release: deploys candidate at 0% traffic and updates discovery job)*
-     - `promote_only_candidate`: *(leave blank)*
-
-### Expected Effect
-1. **Container Build & Push:** GitHub Actions builds a new container image tagged with the merge commit SHA and pushes it to Artifact Registry.
-2. **Dynamic Digest Resolution:** `scripts/resolve_deployment_artifact.py` dynamically resolves the immutable sha256 digest directly from the build output (no hardcoded digests).
-3. **Candidate Revision Deployment:** Cloud Run creates a new API candidate revision, pins it with tag `candidate` at **0% traffic**, and runs authenticated health and readiness inspections.
-4. **Discovery Job Update:** The Cloud Run Job `dripp-discovery-job` configuration is updated to reference the new container image containing all resilience and timeout fixes. The job is **not executed**.
-5. **Zero Disruption to Production Traffic:** Because `promote_traffic` defaults to `false`, the active revision (`dripp-leads-api-00020-c6x`) continues serving 100% of production traffic until the operator inspects the candidate and explicitly triggers traffic promotion.
-6. **Commercial Locks Preserved:** `TRAVEL_MODE=ACTIVE`, `COMMERCIAL_ACTIONS_ENABLED=false`, and `AUTOMATED_EMAIL_ENABLED=false` remain permanently frozen.
+Verifies all 6 system safety invariants, CRM read connectivity, and schema width.

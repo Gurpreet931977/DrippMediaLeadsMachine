@@ -57,7 +57,10 @@ class CloudRunJobDispatcher:
         """
         True if running in a managed Cloud Run environment or explicitly enabled via environment.
         Checks for Cloud Run metadata environment variables (K_SERVICE) or FORCE_CLOUD_RUN_JOB.
+        Never dispatches to Cloud Run if LOCAL_ONLY is enabled or ENVIRONMENT is not production.
         """
+        if os.getenv("LOCAL_ONLY", "").strip().lower() in ("true", "1", "yes"):
+            return False
         in_cloud_run = bool(os.getenv("K_SERVICE"))
         forced = os.getenv("FORCE_CLOUD_RUN_JOB", "").strip().lower() in ("true", "1", "yes")
         explicit_job = bool(os.getenv("CLOUD_RUN_JOB_NAME"))

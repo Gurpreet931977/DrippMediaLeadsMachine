@@ -47,6 +47,54 @@ class DurablePipelineRunManager:
         self._active_run_id: Optional[str] = None
         self._cancellation_requested = False
 
+    @staticmethod
+    def classify_run(record: Dict[str, Any]) -> str:
+        """
+        Classifies run state to unambiguously distinguish:
+        - COMPLETED
+        - COMPLETED_WITH_ERRORS
+        - FAILED
+        - INCOMPLETE (QUEUED / RUNNING)
+        - CANCELLED
+        - SIMULATED_COMPLETED / SIMULATED_FAILED / SIMULATED_INCOMPLETE / SIMULATED_CANCELLED (when dry_run is True)
+        """
+        st = record.get("status")
+        is_dry = bool(record.get("dry_run", False))
+        if is_dry:
+            if st in (PipelineRunStatus.COMPLETED.value, PipelineRunStatus.COMPLETED_WITH_ERRORS.value):
+                return "SIMULATED_COMPLETED"
+            elif st == PipelineRunStatus.FAILED.value:
+                return "SIMULATED_FAILED"
+            elif st in (PipelineRunStatus.QUEUED.value, PipelineRunStatus.RUNNING.value):
+                return "SIMULATED_INCOMPLETE"
+            elif st == PipelineRunStatus.CANCELLED.value:
+                return "SIMULATED_CANCELLED"
+            return "SIMULATED"
+        if st in (PipelineRunStatus.COMPLETED.value, PipelineRunStatus.COMPLETED_WITH_ERRORS.value):
+            return st
+        elif st in (PipelineRunStatus.QUEUED.value, PipelineRunStatus.RUNNING.value):
+            return "INCOMPLETE"
+        elif st == PipelineRunStatus.FAILED.value:
+            return "FAILED"
+        elif st == PipelineRunStatus.CANCELLED.value:
+            return "CANCELLED"
+        return st or "UNKNOWN"
+
+    @classmethod
+    def enrich_run_record_classification(cls, record: Dict[str, Any]) -> Dict[str, Any]:
+        """Enriches run record with classification flags for transparent inspection."""
+        if not isinstance(record, dict):
+            return record
+        st = record.get("status")
+        is_dry = bool(record.get("dry_run", False))
+        record["run_classification"] = cls.classify_run(record)
+        record["is_simulated"] = is_dry
+        record["is_incomplete"] = st in (PipelineRunStatus.QUEUED.value, PipelineRunStatus.RUNNING.value)
+        record["is_completed"] = st in (PipelineRunStatus.COMPLETED.value, PipelineRunStatus.COMPLETED_WITH_ERRORS.value)
+        record["is_failed"] = st == PipelineRunStatus.FAILED.value
+        record["is_cancelled"] = st == PipelineRunStatus.CANCELLED.value
+        return record
+
     def _get_run_path(self, run_id: str) -> str:
         return os.path.join(self.runs_dir, f"{run_id}.json")
 
@@ -168,6 +216,7 @@ class DurablePipelineRunManager:
 
         self._active_run_id = run_id
         self._cancellation_requested = False
+        self.enrich_run_record_classification(record)
         self._save_record(record)
         return record
 
@@ -180,6 +229,7 @@ class DurablePipelineRunManager:
         record["started_at"] = datetime.now(timezone.utc).isoformat()
         record["is_running"] = True
         record["progress_logs"].append(f"[RUNNING] Pipeline execution started at {record['started_at']}")
+        self.enrich_run_record_classification(record)
         self._active_run_id = run_id
         self._save_record(record)
         return record
@@ -295,6 +345,7 @@ class DurablePipelineRunManager:
             f"Yield: {qualified} qualified, {manual_rev} manual-review, {discovered} raw discovered."
         )
 
+        self.enrich_run_record_classification(record)
         self._active_run_id = None
         self._save_record(record)
         return record
@@ -313,6 +364,7 @@ class DurablePipelineRunManager:
         record["results"]["final_status"] = PipelineRunStatus.FAILED.value
         record["progress_logs"].append(f"[FATAL_ERROR] Run aborted: {error_msg}")
 
+        self.enrich_run_record_classification(record)
         self._active_run_id = None
         self._save_record(record)
         return record
@@ -330,6 +382,7 @@ class DurablePipelineRunManager:
         record["results"]["final_status"] = PipelineRunStatus.CANCELLED.value
         record["progress_logs"].append(f"[CANCELLED] Operator requested run cancellation at {now_dt.isoformat()}")
 
+        self.enrich_run_record_classification(record)
         self._active_run_id = None
         self._cancellation_requested = True
         self._save_record(record)
@@ -347,13 +400,14 @@ class DurablePipelineRunManager:
                 from lib.system.firestore_state_store import firestore_store
                 remote = firestore_store.get_run_record(run_id)
                 if remote:
-                    return remote
+                    return self.enrich_run_record_classification(remote)
             except Exception:
                 pass
             return None
         try:
             with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                rec = json.load(f)
+                return self.enrich_run_record_classification(rec)
         except Exception:
             return None
 
@@ -362,7 +416,8 @@ class DurablePipelineRunManager:
         if os.path.exists(self.latest_file):
             try:
                 with open(self.latest_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    rec = json.load(f)
+                    return self.enrich_run_record_classification(rec)
             except Exception:
                 pass
         # Fallback to inspecting all run files
@@ -474,7 +529,7 @@ class DurablePipelineRunManager:
                     except Exception:
                         continue
 
-        records = list(by_id.values())
+        records = [self.enrich_run_record_classification(r) for r in by_id.values()]
         records.sort(
             key=lambda r: r.get("created_at") or r.get("started_at") or r.get("updated_at") or "",
             reverse=True
@@ -493,7 +548,7 @@ class DurablePipelineRunManager:
             return 0
 
         for fname in os.listdir(self.runs_dir):
-            if fname.startswith("RUN-") and fname.endswith(".json"):
+            if (fname.startswith("RUN-") or fname.startswith("CRJ-RUN-")) and fname.endswith(".json") and fname != "latest_run.json":
                 fpath = os.path.join(self.runs_dir, fname)
                 try:
                     with open(fpath, "r", encoding="utf-8") as f:
@@ -510,6 +565,7 @@ class DurablePipelineRunManager:
                         rec["progress_logs"].append(
                             f"[RECOVERY] Process restart detected at {now_dt}. Interrupted run transitioned to FAILED."
                         )
+                        self.enrich_run_record_classification(rec)
                         with open(fpath, "w", encoding="utf-8") as f:
                             json.dump(rec, f, indent=2)
                         recovered_count += 1
