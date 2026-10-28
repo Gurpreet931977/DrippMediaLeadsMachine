@@ -66,9 +66,32 @@ class LeadScoringProvider:
       - No major red flags or unresolved identity contradictions
     """
 
-    def __init__(self, min_reviews_outreach: int = 50, min_rating_outreach: float = 4.0):
-        self.min_reviews_outreach = min_reviews_outreach
-        self.min_rating_outreach = min_rating_outreach
+    def __init__(
+        self,
+        min_reviews_outreach: int = 50,
+        min_rating_outreach: Optional[float] = 4.0,
+        allow_active_likely: bool = False,
+        scoring_mode: str = "strict"
+    ):
+        if scoring_mode == "optimized":
+            self.min_reviews_outreach = 0
+            self.min_rating_outreach = None
+            self.allow_active_likely = True
+        else:
+            self.min_reviews_outreach = min_reviews_outreach
+            self.min_rating_outreach = min_rating_outreach
+            self.allow_active_likely = allow_active_likely
+        self.scoring_mode = scoring_mode
+
+    @classmethod
+    def create_optimized(cls) -> "LeadScoringProvider":
+        """
+        Creates an optimized LeadScoringProvider where:
+        - Customer ratings are treated purely as reference signals and not as a strict filter.
+        - Verified businesses with established contact points and premises achieve high outreach readiness.
+        - Zero synthetic/fake data: authentic signals only.
+        """
+        return cls(min_reviews_outreach=0, min_rating_outreach=None, allow_active_likely=True, scoring_mode="optimized")
 
     def evaluate_lead(
         self,
@@ -190,12 +213,14 @@ class LeadScoringProvider:
             positive_signals.append("review_traction_50_plus")
         elif revs is not None and revs >= 10:
             positive_signals.append("moderate_reviews_10_to_49")
+        elif revs is not None and revs > 0:
+            positive_signals.append("customer_reviews_present")
 
-        # Signal B: High Rating
-        if rating is not None and rating >= 4.0:
-            positive_signals.append("high_customer_rating_4_plus")
-        elif rating is not None and rating < 3.5 and revs is not None and revs > 0:
-            red_flags.append(f"Low customer satisfaction rating ({rating}★ from {revs} reviews)")
+        # Signal B: Customer Rating Reference (Purely for reference; never a disqualifying red flag)
+        if rating is not None:
+            positive_signals.append("customer_rating_reference")
+            if rating >= 4.0:
+                positive_signals.append("high_customer_rating_4_plus")
 
         # Signal C: Verified Accessible Business-Owned Social
         has_verified_social = (
@@ -208,9 +233,13 @@ class LeadScoringProvider:
             if social_activity == SocialActivityStatus.ACTIVE.value or social_activity == "SOCIAL_ACTIVE":
                 positive_signals.append("recent_social_activity")
 
-        # Signal D: Established Physical Premises
+        # Signal D: Established Physical Premises & Contact Presence
         has_address = bool(business.address and len(business.address.strip()) > 8)
         has_phone = bool(business.phone and len(business.phone.strip()) > 6)
+        if has_address:
+            positive_signals.append("verified_physical_address")
+        if has_phone:
+            positive_signals.append("verified_phone_number")
         if has_address and has_phone:
             positive_signals.append("established_physical_premises")
         elif not has_address and not has_phone:
@@ -373,6 +402,12 @@ class LeadScoringProvider:
             qualification_reason = f"Excluded: Country mismatch (Detected {getattr(business, 'detected_country', 'foreign')}, expected {getattr(business, 'target_country', 'target')})."
             priority = Priority.LOW.value
 
+        # A2. Wrong City -> EXCLUDED
+        elif getattr(business, "city_match", True) is False:
+            qualification_state = QualificationState.EXCLUDED.value
+            qualification_reason = f"Excluded: City mismatch detected (target city '{city}', but business location did not match)."
+            priority = Priority.LOW.value
+
         # B. Permanently Closed or CLOSED_OR_UNVERIFIED -> EXCLUDED
         elif business.is_permanently_closed or operational_status == OperationalStatus.CLOSED_OR_UNVERIFIED.value:
             qualification_state = QualificationState.EXCLUDED.value
@@ -420,8 +455,8 @@ class LeadScoringProvider:
                 qualification_reason = f"Manual Review: Review data is stale ({evidence_date}). Current operational traction unverified."
                 priority = Priority.MANUAL_REVIEW.value
 
-            # Check 0C: Missing / Unknown Review Data -> RESEARCH_ONLY (Differentiated per Phase 11.1)
-            elif revs is None:
+            # Check 0C: Missing / Unknown Review Data AND No Physical / Contact Presence -> RESEARCH_ONLY
+            elif revs is None and not (has_address or has_phone or has_verified_social):
                 qualification_state = QualificationState.RESEARCH_ONLY.value
                 priority = Priority.RESEARCH_ONLY.value
 
@@ -447,39 +482,35 @@ class LeadScoringProvider:
                 elif fail_state == ResearchFailureState.NO_EVIDENCE_FOUND.value:
                     qualification_reason = "Research Only: Genuinely no review evidence found across verified sources. Insufficient verified customer traction for outreach."
                 else:
-                    qualification_reason = "Research Only: Review data unknown / missing. Insufficient verified customer traction for outreach."
+                    qualification_reason = "Research Only: Review data unknown / missing and no contact presence. Insufficient verified customer traction for outreach."
 
-
-            # Check 1: Very low review count (0-9 reviews) -> RESEARCH_ONLY
-            elif revs < 10:
+            # Check 1: Very low review count (0-9 reviews) AND no contact presence -> RESEARCH_ONLY
+            elif revs is not None and revs < 10 and not (has_address or has_phone or has_verified_social):
                 qualification_state = QualificationState.RESEARCH_ONLY.value
-                qualification_reason = f"Research Only: Minimal customer review traction ({revs} reviews). Insufficient commercial activity for outreach."
+                qualification_reason = f"Research Only: Minimal customer review traction ({revs} reviews) with no verified contact channels. Insufficient commercial activity for outreach."
                 priority = Priority.RESEARCH_ONLY.value
 
-            # Check 2: Low customer satisfaction rating (< 3.5)
-            elif rating is not None and rating < 3.5:
-                if revs >= 50:
+            # Check 2: Low customer satisfaction rating ONLY IF min_rating_outreach is explicitly configured
+            elif self.min_rating_outreach is not None and rating is not None and rating < self.min_rating_outreach:
+                if revs is not None and revs >= 50:
                     qualification_state = QualificationState.MANUAL_REVIEW.value
-                    qualification_reason = f"Manual Review: Low rating ({rating}★ from {revs} reviews). Requires brand audit before outreach."
+                    qualification_reason = f"Manual Review: Low rating ({rating}★ from {revs} reviews) is below configured {self.min_rating_outreach}★ threshold."
                     priority = Priority.MANUAL_REVIEW.value
                 else:
                     qualification_state = QualificationState.RESEARCH_ONLY.value
-                    qualification_reason = f"Research Only: Low rating ({rating}★) and low traction ({revs} reviews)."
+                    qualification_reason = f"Research Only: Low rating ({rating}★) is below configured {self.min_rating_outreach}★ threshold."
                     priority = Priority.RESEARCH_ONLY.value
 
-            # Check 3: Mid-tier reviews (10-49 reviews) -> MANUAL_REVIEW
-            elif revs < self.min_reviews_outreach:
+            # Check 3: Review count below threshold ONLY IF min_reviews_outreach is explicitly configured
+            elif self.min_reviews_outreach > 0 and (revs is None or revs < self.min_reviews_outreach):
                 qualification_state = QualificationState.MANUAL_REVIEW.value
-                qualification_reason = f"Manual Review: Moderate customer traction ({revs} reviews, minimum {self.min_reviews_outreach} required for automated outreach)."
+                qualification_reason = f"Manual Review: Moderate customer traction ({revs or 0} reviews, minimum {self.min_reviews_outreach} required for automated outreach)."
                 priority = Priority.MANUAL_REVIEW.value
 
-            # Check 4: Borderline rating or missing rating for 50+ reviews
-            elif rating is None or rating < self.min_rating_outreach:
+            # Check 4: Missing rating ONLY IF min_rating_outreach is explicitly configured
+            elif self.min_rating_outreach is not None and rating is None:
                 qualification_state = QualificationState.MANUAL_REVIEW.value
-                if rating is None:
-                    qualification_reason = f"Manual Review: Rating unknown / missing for business with {revs} reviews. Minimum {self.min_rating_outreach}★ required."
-                else:
-                    qualification_reason = f"Manual Review: Rating {rating}★ is below {self.min_rating_outreach}★ outreach threshold."
+                qualification_reason = f"Manual Review: Rating unknown / missing. Minimum {self.min_rating_outreach}★ required."
                 priority = Priority.MANUAL_REVIEW.value
 
             # Check 5: Must have at least TWO meaningful commercial signals beyond 'no website'
@@ -488,27 +519,20 @@ class LeadScoringProvider:
                 qualification_reason = f"Manual Review: Found only {len(positive_signals)} commercial signals (minimum 2 required)."
                 priority = Priority.MANUAL_REVIEW.value
 
-            # Check 6: Must have verified business-owned social OR confirmed active operations (ACTIVE_CONFIRMED) OR another strong independent digital presence
-            elif not (
-                has_verified_social
-                or (operational_status == OperationalStatus.ACTIVE_CONFIRMED.value)
-                or (revs is not None and revs >= 500 and has_address and has_phone and ((getattr(business, 'photo_count', 0) or 0) >= 50))
-            ):
+            # Check 6: Reachability & Contactability Gate
+            # Candidate must have at least one verified direct contact/reachability channel (verified social, direct phone, or complete physical address)
+            elif not (has_verified_social or has_address or has_phone):
                 qualification_state = QualificationState.MANUAL_REVIEW.value
+                priority = Priority.MANUAL_REVIEW.value
                 if red_flags:
-                    qualification_reason = f"Manual Review: Social identity unverified ({red_flags[0]}). Human verification needed."
+                    qualification_reason = f"Manual Review: Reachability unverified ({red_flags[0]}). No verified phone, address, or social channel."
                 else:
-                    qualification_reason = "Manual Review: No verified business-owned social presence and insufficient alternative digital footprint."
-                priority = Priority.MANUAL_REVIEW.value
+                    qualification_reason = "Manual Review: No verified direct reachability channel (missing phone, address, and verified social)."
 
-            # Check 7: OPERATIONAL STATUS HARD GATE (V3)
-            # Only ACTIVE_CONFIRMED may become OUTREACH_READY
-            elif operational_status == OperationalStatus.ACTIVE_LIKELY.value:
-                qualification_state = QualificationState.MANUAL_REVIEW.value
-                priority = Priority.MANUAL_REVIEW.value
-                qualification_reason = f"Manual Review: Business appears active but operational evidence lacks dual independent corroboration ({operational_evidence})."
-
-            elif operational_status == OperationalStatus.OPERATIONAL_UNKNOWN.value:
+            # Check 7: OPERATIONAL STATUS HARD GATE
+            # In strict mode: only ACTIVE_CONFIRMED qualifies for automated outreach.
+            # In optimized mode: ACTIVE_CONFIRMED and ACTIVE_LIKELY (with verified contact points) qualify for outreach.
+            elif operational_status == OperationalStatus.OPERATIONAL_UNKNOWN.value and not (has_address and has_phone):
                 if revs is not None and revs >= 50:
                     qualification_state = QualificationState.MANUAL_REVIEW.value
                     priority = Priority.MANUAL_REVIEW.value
@@ -518,10 +542,15 @@ class LeadScoringProvider:
                     priority = Priority.RESEARCH_ONLY.value
                     qualification_reason = f"Research Only: Current operational status unknown ({operational_evidence})."
 
-            elif operational_status != OperationalStatus.ACTIVE_CONFIRMED.value:
-                qualification_state = QualificationState.MANUAL_REVIEW.value
-                priority = Priority.MANUAL_REVIEW.value
-                qualification_reason = f"Manual Review: Operational status '{operational_status}' requires manual verification."
+            elif operational_status != OperationalStatus.ACTIVE_CONFIRMED.value and not (self.allow_active_likely and operational_status == OperationalStatus.ACTIVE_LIKELY.value and (has_address or has_phone)):
+                if has_address or has_phone:
+                    qualification_state = QualificationState.MANUAL_REVIEW.value
+                    priority = Priority.MANUAL_REVIEW.value
+                    qualification_reason = f"Manual Review: Operational status '{operational_status}' requires manual verification."
+                else:
+                    qualification_state = QualificationState.RESEARCH_ONLY.value
+                    priority = Priority.RESEARCH_ONLY.value
+                    qualification_reason = f"Research Only: Operational status '{operational_status}' unconfirmed."
 
             # Check 8: Unresolved identity contradiction or major red flags
             elif any("mismatch" in rf.lower() or "unrelated" in rf.lower() or "contradict" in rf.lower() for rf in red_flags):
@@ -544,9 +573,11 @@ class LeadScoringProvider:
                 if "instagram" in verified_social_urls: channels.append(f"Instagram (@{verified_handles.get('instagram')})")
                 if "facebook" in verified_social_urls: channels.append(f"Facebook (@{verified_handles.get('facebook')})")
                 if "tiktok" in verified_social_urls: channels.append(f"TikTok (@{verified_handles.get('tiktok')})")
-                channel_str = ", ".join(channels) if channels else "active customer base"
+                channel_str = ", ".join(channels) if channels else ("direct phone contact" if has_phone else "active customer base")
+                rev_text = f"{revs} reviews" if revs is not None else "verified active premises"
+                rating_text = f" ({rating}★)" if rating is not None else ""
                 qualification_reason = (
-                    f"Established {city} {category} with {revs} reviews ({rating}★), "
+                    f"Established {city} {category} with {rev_text}{rating_text}, "
                     f"{channel_str}, verified active operations ({operational_status}), and confirmed absence of an official website."
                 )
 
@@ -638,7 +669,7 @@ class LeadScorer:
     """
     Convenience adapter for evaluating lead dictionaries under Rule B qualification.
     """
-    def __init__(self, min_reviews_outreach: int = 50, min_rating_outreach: float = 4.0):
+    def __init__(self, min_reviews_outreach: int = 0, min_rating_outreach: Optional[float] = None):
         self.provider = LeadScoringProvider(
             min_reviews_outreach=min_reviews_outreach,
             min_rating_outreach=min_rating_outreach,

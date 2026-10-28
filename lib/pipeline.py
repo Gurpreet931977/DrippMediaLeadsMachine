@@ -71,7 +71,7 @@ def _qualification_reason_bucket(state: str, reason: str) -> str:
 import json
 import uuid
 import time
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional, Set
 from datetime import datetime
 
 from lib.types import (
@@ -134,7 +134,7 @@ class LeadGenerationPipeline:
         self.discovery = discovery_provider or HybridDiscoveryEngine()
         self.detector = detection_provider or NodeWebsiteDetectionProvider()
         self.verifier = verification_provider or NoWebsiteVerificationProvider(web_search_provider=getattr(self.discovery, "web_search", None))
-        self.scorer = scoring_provider or LeadScoringProvider()
+        self.scorer = scoring_provider or LeadScoringProvider.create_optimized()
         self.outreach = outreach_provider or OutreachAngleGenerator()
         self.storage = storage_provider or GoogleSheetsStorageProvider()
         self.country_validator = country_validator or CountryValidator()
@@ -210,6 +210,8 @@ class LeadGenerationPipeline:
                 f"  [Checkpoint Updated] Candidate '{biz.company_name}' recorded in checkpoint ({len(completed_candidate_ids)} IDs).",
                 checkpoint_payload,
             )
+            # Lively Google Sheets sync
+            sync_sheets_lively(force_all=False)
 
         start_time = time.time()
         max_valid_research = requested_qualified_leads * max_research_multiplier
@@ -266,6 +268,50 @@ class LeadGenerationPipeline:
         review_queue_leads: List[Lead] = []
         all_research_entries: List[ResearchLogEntry] = []
         candidate_pool: List[DiscoveredBusiness] = []
+
+        written_lead_ids: Set[str] = set()
+        written_review_ids: Set[str] = set()
+        written_research_ids: Set[str] = set()
+
+        def sync_sheets_lively(force_all: bool = False):
+            if self.shadow_mode:
+                return
+
+            # Lively append new outreach-ready leads to LEADS tab
+            new_leads = [ld for ld in outreach_ready_leads if ld.lead_id not in written_lead_ids]
+            if new_leads:
+                try:
+                    ins_l, upd_l = self.storage.save_qualified_leads(new_leads)
+                    for ld in new_leads:
+                        written_lead_ids.add(ld.lead_id)
+                    stats["saved_to_leads"] = len(written_lead_ids)
+                    emit_log(f"  [Google Sheets Lively] Appended {len(new_leads)} outreach-ready lead(s) to LEADS tab (Total live synced: {len(written_lead_ids)}).")
+                except Exception as ex:
+                    emit_log(f"  [Google Sheets Live Warning] Could not live-save to LEADS tab: {ex}")
+
+            # Lively append new manual review leads to REVIEW_QUEUE tab
+            new_reviews = [rv for rv in review_queue_leads if rv.lead_id not in written_review_ids]
+            if new_reviews:
+                try:
+                    ins_r, upd_r = self.storage.save_review_queue(new_reviews)
+                    for rv in new_reviews:
+                        written_review_ids.add(rv.lead_id)
+                    stats["saved_to_review_queue"] = len(written_review_ids)
+                    emit_log(f"  [Google Sheets Lively] Appended {len(new_reviews)} candidate(s) to REVIEW_QUEUE tab (Total live synced: {len(written_review_ids)}).")
+                except Exception as ex:
+                    emit_log(f"  [Google Sheets Live Warning] Could not live-save to REVIEW_QUEUE tab: {ex}")
+
+            # Lively append research entries to RESEARCH_LOG tab
+            new_researches = [rs for rs in all_research_entries if rs.research_id not in written_research_ids]
+            if new_researches and (force_all or len(new_researches) >= 5):
+                try:
+                    ins_s, upd_s = self.storage.save_research_log(new_researches)
+                    for rs in new_researches:
+                        written_research_ids.add(rs.research_id)
+                    stats["saved_to_research_log"] = len(written_research_ids)
+                    emit_log(f"  [Google Sheets Lively] Appended {len(new_researches)} entry(ies) to RESEARCH_LOG tab (Total live synced: {len(written_research_ids)}).")
+                except Exception as ex:
+                    emit_log(f"  [Google Sheets Live Warning] Could not live-save to RESEARCH_LOG tab: {ex}")
 
         # If test probe candidates (e.g. Manchester, NH / Manchester, MI) are injected for testing:
         if inject_test_candidates:
@@ -1256,28 +1302,14 @@ class LeadGenerationPipeline:
             emit_log(f"\n[Shadow Mode] Safe preflight evaluation active: Bypassing Google Sheets / CRM writes.")
             emit_log(f"  [Summary] {len(outreach_ready_leads)} OUTREACH_READY, {len(review_queue_leads)} MANUAL_REVIEW, {len(all_research_entries)} RESEARCH entries retained in memory.")
         else:
-            emit_log(f"\n[Google Sheets] Syncing results to 3 tabs (LEADS, REVIEW_QUEUE, & RESEARCH_LOG)...")
+            emit_log(f"\n[Google Sheets] Finalizing live sync to 3 tabs (LEADS, REVIEW_QUEUE, & RESEARCH_LOG)...")
             try:
-                if outreach_ready_leads:
-                    ins_leads, upd_leads = self.storage.save_qualified_leads(outreach_ready_leads)
-                    stats["saved_to_leads"] = ins_leads + upd_leads
-                    emit_log(f"  [LEADS Tab] {ins_leads} inserted, {upd_leads} updated ({len(outreach_ready_leads)} total OUTREACH_READY).")
-                else:
-                    emit_log(f"  [Notice] No OUTREACH_READY leads found for LEADS tab.")
-
-                if review_queue_leads:
-                    ins_rev, upd_rev = self.storage.save_review_queue(review_queue_leads)
-                    stats["saved_to_review_queue"] = ins_rev + upd_rev
-                    emit_log(f"  [REVIEW_QUEUE Tab] {ins_rev} inserted, {upd_rev} updated ({len(review_queue_leads)} total MANUAL_REVIEW).")
-                else:
-                    emit_log(f"  [Notice] No MANUAL_REVIEW candidates for REVIEW_QUEUE tab.")
-
-                if all_research_entries:
-                    ins_res, upd_res = self.storage.save_research_log(all_research_entries)
-                    stats["saved_to_research_log"] = ins_res + upd_res
-                    emit_log(f"  [RESEARCH_LOG Tab] {ins_res} inserted, {upd_rev} updated ({len(all_research_entries)} total research entries).")
+                sync_sheets_lively(force_all=True)
+                emit_log(f"  [LEADS Tab] Total live synced: {stats['saved_to_leads']} OUTREACH_READY leads.")
+                emit_log(f"  [REVIEW_QUEUE Tab] Total live synced: {stats['saved_to_review_queue']} MANUAL_REVIEW candidates.")
+                emit_log(f"  [RESEARCH_LOG Tab] Total live synced: {stats['saved_to_research_log']} research entries.")
             except Exception as sync_err:
-                emit_log(f"  [Error] Google Sheets sync failed: {sync_err}")
+                emit_log(f"  [Error] Google Sheets final sync failed: {sync_err}")
 
         elapsed = round(time.time() - start_time, 2)
         emit_log(f"\n=======================================================")

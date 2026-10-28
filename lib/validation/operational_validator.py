@@ -80,6 +80,8 @@ class OperationalValidator:
          - CLOSED_OR_UNVERIFIED: Permanently closed, contradictory identity, or unverified closure.
     """
 
+    REQUIRE_RATING_GATE: bool = True
+
     CLOSURE_KEYWORDS = [
         "permanently closed",
         "closed permanently",
@@ -537,8 +539,8 @@ class OperationalValidator:
         ]
 
         rule_b_eligible = (
-            revs is not None and revs >= 50
-            and rating is not None and rating >= 4.0
+            revs is not None and revs >= (50 if cls.REQUIRE_RATING_GATE else 10)
+            and (not cls.REQUIRE_RATING_GATE or (rating is not None and rating >= 4.0))
             and is_accepted_review_source
             and is_review_recent
             and len(independent_ops_signals) >= 1
@@ -570,8 +572,9 @@ class OperationalValidator:
         elif rule_b_eligible:
             operational_status = OperationalStatus.ACTIVE_CONFIRMED.value
             operational_confidence = OperationalConfidence.HIGH.value
+            rating_snippet = f" ({rating}★)" if rating is not None else ""
             operational_evidence = (
-                f"Confirmed active via multi-signal verification: {revs} reviews ({rating}★) via {review_sf.value} "
+                f"Confirmed active via multi-signal verification: {revs} reviews{rating_snippet} via {review_sf.value} "
                 f"({review_freshness}) corroborated by independent {', '.join(independent_ops_signals[:2])}."
             )
             multi_signal_rule_applied = True

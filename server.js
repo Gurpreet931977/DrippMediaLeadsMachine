@@ -365,6 +365,9 @@ app.get('/api/review-queue', (req, res) => {
         throw new Error('No JSON object found in output');
       }
       const data = JSON.parse(stdout.slice(jsonStart, jsonEnd + 1));
+      if (!data.queue && data.review_queue) {
+        data.queue = data.review_queue;
+      }
       reviewQueueCache = data;
       lastReviewQueueFetchTime = Date.now();
       res.json(data);
@@ -402,6 +405,144 @@ app.get('/api/research-log', (req, res) => {
       console.error('[NodeServer] JSON parse error in /api/research-log:', e.message, stdout.substring(0, 300));
       res.status(500).json({ status: 'error', message: 'Failed to parse research log data.' });
     }
+  });
+});
+
+// GET /api/leads/outreach-aspects - Granular outcome taxonomy and aspects
+app.get('/api/leads/outreach-aspects', (req, res) => {
+  const pyScript = `
+import json
+from lib.outreach.outreach_status_service import OutreachStatusService
+print(json.dumps({"status": "ok", "taxonomy": OutreachStatusService.get_taxonomy()}))
+`;
+  execFile(VENV_PYTHON, ['-c', pyScript], { cwd: __dirname }, (err, stdout, stderr) => {
+    if (err) return res.status(500).json({ status: 'error', message: stderr || err.message });
+    try {
+      res.json(JSON.parse(stdout.trim()));
+    } catch (e) {
+      res.status(500).json({ status: 'error', message: stdout });
+    }
+  });
+});
+
+// POST /api/leads/outreach-status - Update reached state and outcome, live synced to Google Sheets
+app.post('/api/leads/outreach-status', (req, res) => {
+  const { lead_id, is_reached, outcome_category, outcome_reason, notes, channel } = req.body;
+  if (!lead_id) {
+    return res.status(400).json({ status: 'error', message: 'Missing lead_id' });
+  }
+
+  const pyScript = `
+import json
+from lib.outreach.outreach_status_service import OutreachStatusService
+res = OutreachStatusService.update_outreach_status(
+    lead_id=${JSON.stringify(lead_id)},
+    is_reached=${is_reached ? 'True' : 'False'},
+    outcome_category=${JSON.stringify(outcome_category || '')},
+    outcome_reason=${JSON.stringify(outcome_reason || '')},
+    notes=${JSON.stringify(notes || '')},
+    channel=${JSON.stringify(channel || 'PHONE')},
+    sync_sheets=True
+)
+print(json.dumps({"status": "ok", **res}))
+`;
+
+  execFile(VENV_PYTHON, ['-c', pyScript], { cwd: __dirname }, (err, stdout, stderr) => {
+    if (err) {
+      console.error('[NodeServer] Error updating outreach status:', stderr || err.message);
+      return res.status(500).json({ status: 'error', message: stderr || err.message });
+    }
+    try {
+      // Invalidate leads cache so subsequent fetches receive fresh CRM data
+      leadsCache = null;
+      reviewQueueCache = null;
+      lastLeadsFetchTime = 0;
+      lastReviewQueueFetchTime = 0;
+      const parsed = JSON.parse(stdout.trim());
+      res.json(parsed);
+    } catch (parseErr) {
+      res.status(500).json({ status: 'error', message: stdout });
+    }
+  });
+});
+
+// GET /api/runs/latest - Latest discovery run record
+app.get('/api/runs/latest', (req, res) => {
+  const pyScript = `
+import json
+from lib.system.pipeline_run_manager import run_manager
+run = run_manager.get_latest_completed_run() or run_manager.get_latest_run()
+if run and "candidates" not in run and run.get("run_id"):
+    run["candidates"] = run_manager.get_run_candidates(run["run_id"])
+print(json.dumps(run or {"status": "empty"}))
+`;
+  execFile(VENV_PYTHON, ['-c', pyScript], { cwd: __dirname }, (err, stdout, stderr) => {
+    if (err) return res.status(500).json({ status: 'error', message: stderr || err.message });
+    try {
+      res.json(JSON.parse(stdout.trim()));
+    } catch (e) {
+      res.status(500).json({ status: 'error', message: stdout });
+    }
+  });
+});
+
+// GET /api/runs/latest/candidates - Candidate records evaluated in latest discovery run
+app.get('/api/runs/latest/candidates', (req, res) => {
+  const pyScript = `
+import json
+from lib.system.pipeline_run_manager import run_manager
+run = run_manager.get_latest_completed_run() or run_manager.get_latest_run()
+run_id = run.get("run_id") if run else None
+candidates = (run.get("candidates") or (run_manager.get_run_candidates(run_id) if run_id else [])) if run else []
+prov = (run_manager.get_run_candidate_provenance(run_id) if run_id else None) or (run.get("candidate_provenance") if run else None) or {
+    "status": "RECONSTRUCTED_FROM_PIPELINE_LOGS",
+    "provenance_notes": "Reconstructed from execution progress logs.",
+    "is_authoritative_original_pipeline_output": False
+}
+print(json.dumps({
+    "status": "ok",
+    "run_id": run_id,
+    "pipeline_run_id": (run.get("current_stats", {}).get("pipeline_run_id") or run.get("pipeline_run_id")) if run else None,
+    "candidates": candidates,
+    "count": len(candidates),
+    "candidate_provenance": prov
+}))
+`;
+  execFile(VENV_PYTHON, ['-c', pyScript], { cwd: __dirname }, (err, stdout, stderr) => {
+    if (err) return res.status(500).json({ status: 'error', message: stderr || err.message });
+    try {
+      res.json(JSON.parse(stdout.trim()));
+    } catch (e) {
+      res.status(500).json({ status: 'error', message: stdout });
+    }
+  });
+});
+
+// GET /api/runs - List search and discovery runs
+app.get('/api/runs', (req, res) => {
+  const pyScript = `
+import json
+from lib.system.pipeline_run_manager import run_manager
+runs = run_manager.list_runs(limit=50)
+print(json.dumps({"runs": runs, "count": len(runs)}))
+`;
+  execFile(VENV_PYTHON, ['-c', pyScript], { cwd: __dirname }, (err, stdout, stderr) => {
+    if (err) return res.status(500).json({ status: 'error', message: stderr || err.message });
+    try {
+      res.json(JSON.parse(stdout.trim()));
+    } catch (e) {
+      res.status(500).json({ status: 'error', message: stdout });
+    }
+  });
+});
+
+// GET /api/system/health - Canonical health status
+app.get('/api/system/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    canonical_health_status: 'OPERATIONAL',
+    service: 'dripp-media-leads-machine',
+    timestamp: new Date().toISOString()
   });
 });
 

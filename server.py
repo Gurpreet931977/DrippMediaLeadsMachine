@@ -210,6 +210,7 @@ PUBLIC_API_ROUTES = {
     "/api/system/health",
     "/api/operator/login",
     "/api/operator/logout",
+    "/api/operator/auto-login",
     "/api/email/unsubscribe",
     "/api/email/inbound/reply-webhook",
     "/api/webhook/inbound-reply"
@@ -457,7 +458,7 @@ def run_pipeline_task(
         active_run_state["is_running"] = False
 
 @app.get("/api/discovery/status")
-async def get_discovery_status():
+def get_discovery_status():
     """Returns connectivity and configuration status of all discovery providers."""
     engine = HybridDiscoveryEngine()
     return engine.health_check()
@@ -807,6 +808,55 @@ async def operator_login_endpoint(req: OperatorLoginRequest, request: Request):
     )
     return response
 
+@app.post("/api/operator/auto-login")
+@app.get("/api/operator/auto-login")
+async def operator_auto_login_endpoint(request: Request):
+    """
+    Automated operator authentication for local development and loopback environments.
+    Exchanges the server-side configured OPERATOR_KEY from .env for an active session token,
+    allowing immediate automated local access while preserving manual override options.
+    Disabled in hosted production cloud runtimes.
+    """
+    client_ip = get_client_ip(request)
+    is_local = client_ip in ("127.0.0.1", "::1", "localhost", "testclient")
+    
+    # In hosted cloud environments (e.g. Cloud Run), auto-unlock is blocked for security
+    if _is_hosted_runtime() and not is_local:
+        raise HTTPException(
+            status_code=403,
+            detail="Auto-unlock is disabled in hosted cloud environments. Use manual key authentication."
+        )
+
+    expected = _configured_operator_key()
+    if not expected and _is_hosted_runtime():
+        raise HTTPException(
+            status_code=503,
+            detail="Operator authentication is not configured for hosted runtime",
+        )
+
+    session_info = create_operator_session()
+    response = JSONResponse({
+        "status": "ok",
+        "authenticated": True,
+        "auto_unlocked": True,
+        "mode": "local_auto",
+        **session_info
+    })
+
+    is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    samesite_policy = "none" if is_https else "lax"
+
+    response.set_cookie(
+        key="dripp_session",
+        value=session_info["session_token"],
+        httponly=True,
+        secure=is_https,
+        samesite=samesite_policy,
+        max_age=OPERATOR_SESSION_TTL_SECONDS,
+        path="/"
+    )
+    return response
+
 @app.get("/api/operator/session")
 async def operator_session_status_endpoint(request: Request):
     """
@@ -931,7 +981,7 @@ def get_crm_status_endpoint():
         }, status_code=503)
 
 @app.get("/api/leads")
-async def get_leads(request: Request = None):
+def get_leads(request: Request = None):
     """Fetches all qualified leads directly from the LEADS Google Sheet tab."""
     try:
         storage = GoogleSheetsStorageProvider()
@@ -956,7 +1006,7 @@ async def get_leads(request: Request = None):
         }, status_code=500)
 
 @app.get("/api/review-queue")
-async def get_review_queue(request: Request = None):
+def get_review_queue(request: Request = None):
     """Fetches manual review candidates directly from the REVIEW_QUEUE Google Sheet tab."""
     try:
         storage = GoogleSheetsStorageProvider()
@@ -981,7 +1031,7 @@ async def get_review_queue(request: Request = None):
         }, status_code=500)
 
 @app.get("/api/research-log")
-async def get_research_log(request: Request = None):
+def get_research_log(request: Request = None):
     """Fetches all entries directly from the RESEARCH_LOG Google Sheet tab."""
     try:
         storage = GoogleSheetsStorageProvider()
@@ -1004,6 +1054,46 @@ async def get_research_log(request: Request = None):
             "entries": [],
             "count": 0
         }, status_code=500)
+
+
+class UpdateOutreachStatusRequest(BaseModel):
+    lead_id: str
+    is_reached: bool
+    outcome_category: Optional[str] = None
+    outcome_reason: Optional[str] = None
+    notes: Optional[str] = ""
+    channel: Optional[str] = "PHONE"
+
+@app.get("/api/leads/outreach-aspects")
+async def get_outreach_aspects(request: Request = None):
+    """Returns the granular taxonomy of outreach outcomes, reasons, and status mappings."""
+    from lib.outreach.outreach_status_service import OutreachStatusService
+    return {
+        "status": "ok",
+        "taxonomy": OutreachStatusService.get_taxonomy()
+    }
+
+@app.post("/api/leads/outreach-status")
+async def update_outreach_status_endpoint(req: UpdateOutreachStatusRequest, request: Request = None):
+    """
+    Checks or unchecks reached status for a lead, records outcome aspects/reasons,
+    and live-synchronizes updates to Google Sheets CRM.
+    """
+    try:
+        from lib.outreach.outreach_status_service import OutreachStatusService
+        res = OutreachStatusService.update_outreach_status(
+            lead_id=req.lead_id,
+            is_reached=req.is_reached,
+            outcome_category=req.outcome_category,
+            outcome_reason=req.outcome_reason,
+            notes=req.notes or "",
+            channel=req.channel or "PHONE",
+            sync_sheets=True
+        )
+        return {"status": "ok", **res}
+    except Exception as e:
+        logger.error("Failed to update outreach status: %s", e)
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
 # ==============================================================================
@@ -2777,7 +2867,7 @@ async def trigger_system_backup_endpoint():
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/email/sender-health")
-async def get_email_sender_health_endpoint():
+def get_email_sender_health_endpoint():
     """
     Returns domain authentication health for sending domain (SPF, DKIM, DMARC, MX).
     """

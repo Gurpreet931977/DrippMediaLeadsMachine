@@ -179,7 +179,7 @@
         inset 0 -1px 0 rgba(0, 0, 0, 0.55),
         0 0 35px -5px rgba(255, 229, 0, 0.03);
       border-radius: 9999px;
-      padding: 0.38rem 0.55rem 0.38rem 0.85rem;
+      padding: 0.38rem 0.85rem 0.38rem 0.85rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -420,20 +420,21 @@
 
     /* Precision Mechanical Keycap Trigger */
     .cmd-trigger-btn {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 7px;
-      padding: 0.25rem 0.5rem;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.025) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+      padding: 0.26rem 0.6rem;
       color: var(--text-muted);
       font-size: 0.68rem;
       font-family: var(--font-mono);
       font-weight: 600;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.28rem;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
       transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      flex-shrink: 0;
     }
     .cmd-trigger-btn:hover {
       color: #FFFFFF;
@@ -786,6 +787,9 @@
       opacity: 0;
       pointer-events: none;
       transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
     .system-toast.visible {
       transform: translateY(0);
@@ -799,7 +803,7 @@
       z-index: 1;
       max-width: 1260px;
       margin: 0 auto;
-      padding: 1rem 1.5rem 6rem 1.5rem;
+      padding: 1rem 1.5rem 3rem 1.5rem;
     }
 
     /* Views & Dynamic Switching Animation */
@@ -1380,62 +1384,345 @@
     }
 
     /* ==========================================================================
-       LEADS VIEW: SPLIT WORKSPACE EXPERIENCE (LINEAR / APPLE STYLE)
+       LEADS VIEW: SPLIT WORKSPACE EXPERIENCE & EXECUTIVE CARDS
        ========================================================================== */
     .lead-workspace-split {
       display: grid;
-      grid-template-columns: 460px 1fr;
-      gap: 1.75rem;
-      align-items: start;
+      grid-template-columns: minmax(360px, 450px) 1fr;
+      gap: 1.25rem;
+      align-items: stretch;
+      min-width: 0;
+      transition: all var(--transition-normal);
     }
+    .lead-workspace-split.grid-view {
+      display: block;
+    }
+    .lead-workspace-split.grid-view .lead-stream-pane {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 1.15rem;
+      height: calc(100vh - 280px);
+      min-height: 480px;
+      max-height: calc(100vh - 280px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 1rem;
+      padding-bottom: 5rem;
+    }
+    .lead-workspace-split.grid-view .lead-inspector-pane {
+      display: none;
+    }
+
+    /* Left Stream Section - Dedicated Framed Scrollable Panel */
     .lead-stream-pane {
       display: flex;
       flex-direction: column;
-      gap: 0.95rem;
+      gap: 0.85rem;
+      height: calc(100vh - 280px);
+      min-height: 480px;
+      max-height: calc(100vh - 280px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: rgba(14, 14, 18, 0.5);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 0.85rem;
+      padding-bottom: 5rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 32px rgba(0, 0, 0, 0.35);
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 229, 0, 0.28) rgba(255, 255, 255, 0.02);
+      min-width: 0;
     }
+    .lead-stream-pane::-webkit-scrollbar {
+      width: 6px;
+    }
+    .lead-stream-pane::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-pill);
+    }
+    .lead-stream-pane::-webkit-scrollbar-thumb {
+      background: rgba(255, 229, 0, 0.25);
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255, 229, 0, 0.1);
+    }
+    .lead-stream-pane::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 229, 0, 0.55);
+    }
+
+    /* Executive Lead Cards */
     .lead-stream-item {
-      background: var(--glass-primary);
-      backdrop-filter: var(--glass-blur-sm);
-      border: var(--glass-border);
-      border-radius: var(--radius-sm);
-      padding: 1.25rem 1.4rem;
+      background: linear-gradient(135deg, rgba(22, 22, 27, 0.75), rgba(12, 12, 15, 0.9));
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem;
       cursor: pointer;
-      transition: all var(--transition-fast);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex;
       flex-direction: column;
-      gap: 0.65rem;
+      gap: 0.6rem;
+      position: relative;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      min-width: 0;
     }
     .lead-stream-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.16);
+      background: linear-gradient(135deg, rgba(30, 30, 38, 0.82), rgba(16, 16, 20, 0.95));
+      border-color: rgba(255, 229, 0, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.6), 0 0 16px -2px rgba(255, 229, 0, 0.1);
     }
     .lead-stream-item.selected {
-      border-color: var(--accent-yellow);
-      background: rgba(255, 229, 0, 0.04);
-      box-shadow: inset 3px 0 0 0 var(--accent-yellow);
+      border-color: rgba(255, 229, 0, 0.65);
+      background: linear-gradient(135deg, rgba(255, 229, 0, 0.06), rgba(20, 20, 26, 0.92));
+      box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.65), 0 0 24px -2px rgba(255, 229, 0, 0.2), inset 3px 0 0 0 var(--accent-yellow);
     }
-    .lead-stream-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-main);
+
+    .lead-card-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
+      gap: 0.75rem;
     }
-    .lead-stream-sub {
-      font-size: 0.76rem;
+    .lead-biz-name {
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .lead-rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      color: #FFD700;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-pill);
+      flex-shrink: 0;
+    }
+    .lead-rating-badge.unrated {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
       color: var(--text-dim);
+      font-size: 0.68rem;
+    }
+
+    .lead-meta-row {
       display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+    .lead-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--text-muted);
+    }
+    .lead-meta-sep {
+      color: rgba(255, 255, 255, 0.18);
+      font-size: 0.6rem;
+    }
+    .lead-id-badge {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      padding: 0.08rem 0.4rem;
+    }
+
+    /* Tags Cluster */
+    .lead-tags-cluster {
+      display: flex;
+      align-items: center;
+      gap: 0.38rem;
+      flex-wrap: wrap;
+      margin-top: 0.1rem;
+    }
+    .lead-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.67rem;
+      font-weight: 600;
+      padding: 0.18rem 0.55rem;
+      border-radius: var(--radius-pill);
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .lead-chip.chip-gold, .lead-chip.chip-ready {
+      color: var(--accent-yellow);
+      background: rgba(255, 229, 0, 0.1);
+      border: 1px solid rgba(255, 229, 0, 0.32);
+      font-weight: 700;
+    }
+    .lead-chip.chip-opportunity {
+      color: #FFB800;
+      background: rgba(255, 184, 0, 0.1);
+      border: 1px solid rgba(255, 184, 0, 0.3);
+      font-weight: 700;
+    }
+    .lead-chip.chip-active {
+      color: #00F0FF;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.28);
+    }
+    .lead-chip.chip-neutral {
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .lead-chip.chip-amber {
+      color: #FFA500;
+      background: rgba(255, 165, 0, 0.12);
+      border: 1px solid rgba(255, 165, 0, 0.3);
+    }
+    .lead-chip.chip-cyan {
+      color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+    }
+    .chip-pulse-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #00F0FF;
+      display: inline-block;
+      box-shadow: 0 0 6px #00F0FF;
+    }
+
+    /* Custom Cyber Checkbox Primitive */
+    .custom-cyber-checkbox-label {
+      display: inline-flex;
       align-items: center;
       gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.74rem;
+      position: relative;
     }
-    .lead-stream-badges {
+    .cyber-checkbox-native {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+      margin: 0;
+    }
+    .cyber-checkbox-indicator {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(255, 255, 255, 0.24);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
+    }
+    .custom-cyber-checkbox-label:hover .cyber-checkbox-indicator {
+      border-color: rgba(255, 229, 0, 0.6);
+      background: rgba(255, 229, 0, 0.08);
+      box-shadow: 0 0 8px rgba(255, 229, 0, 0.25);
+    }
+    .cyber-checkbox-native:checked + .cyber-checkbox-indicator {
+      background: var(--accent-yellow);
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 12px rgba(255, 229, 0, 0.45);
+    }
+    .cyber-checkbox-indicator svg {
+      width: 10px;
+      height: 8px;
+      stroke: #000000;
+      stroke-width: 2.2;
+      opacity: 0;
+      transform: scale(0.6);
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cyber-checkbox-native:checked + .cyber-checkbox-indicator svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .cyber-checkbox-text {
+      color: var(--text-muted);
+      font-weight: 500;
+      transition: color var(--transition-fast);
+    }
+    .cyber-checkbox-text.active {
+      color: var(--accent-yellow);
+      font-weight: 700;
+    }
+
+    /* Card Footer Action Row */
+    .lead-card-footer, .lead-stream-outreach-row {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      flex-wrap: wrap;
-      margin-top: 0.2rem;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-top: 0.35rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
+    .lead-footer-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .lead-status-pill {
+      font-size: 0.67rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+    }
+    .status-pulse-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .lead-quick-inspect-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-pill);
+      color: var(--text-dim);
+      padding: 0.2rem 0.5rem;
+      font-size: 0.68rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .lead-quick-inspect-btn:hover {
+      background: rgba(255, 229, 0, 0.12);
+      border-color: rgba(255, 229, 0, 0.4);
+      color: var(--accent-yellow);
+      transform: translateY(-1px);
+    }
+
+    /* Legacy compatibility mini tag */
     .lead-mini-tag {
       font-size: 0.68rem;
       font-weight: 600;
@@ -1451,16 +1738,126 @@
       background: var(--accent-yellow-subtle);
     }
 
-    /* Right Inspector Pane */
+    /* Workspace View Controls & Fullscreen Layout Switcher */
+    .workspace-action-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .layout-toggle-pill-group {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-pill);
+      padding: 2px;
+      gap: 2px;
+    }
+    .layout-toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.3rem 0.65rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all var(--transition-fast);
+    }
+    .layout-toggle-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .layout-toggle-btn.active {
+      color: #000000;
+      background: var(--accent-yellow);
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(255, 229, 0, 0.3);
+    }
+    .btn-workspace-fs {
+      font-size: 0.72rem;
+      padding: 0.35rem 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    /* FULLSCREEN ADAPTIVE ENGINE */
+    body.app-fullscreen .app-viewport,
+    :fullscreen .app-viewport,
+    :-webkit-full-screen .app-viewport {
+      max-width: 100% !important;
+      width: 100% !important;
+      padding-left: 2.25rem !important;
+      padding-right: 2.25rem !important;
+      padding-top: 1rem !important;
+    }
+    body.app-fullscreen .lead-stream-pane,
+    :fullscreen .lead-stream-pane,
+    :-webkit-full-screen .lead-stream-pane {
+      height: calc(100vh - 215px) !important;
+      max-height: calc(100vh - 215px) !important;
+      overflow-y: auto !important;
+    }
+    body.app-fullscreen .lead-inspector-pane,
+    :fullscreen .lead-inspector-pane,
+    :-webkit-full-screen .lead-inspector-pane {
+      height: calc(100vh - 215px) !important;
+      max-height: calc(100vh - 215px) !important;
+      overflow-y: auto !important;
+    }
+    body.app-fullscreen .nav-header,
+    :fullscreen .nav-header,
+    :-webkit-full-screen .nav-header {
+      max-width: calc(100% - 4.5rem) !important;
+      width: calc(100% - 4.5rem) !important;
+    }
+    body.app-fullscreen .nav-floating-pill,
+    :fullscreen .nav-floating-pill,
+    :-webkit-full-screen .nav-floating-pill {
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+    body.app-fullscreen #navFullscreenBtn .fs-text {
+      display: none;
+    }
+    body.app-fullscreen #navFullscreenBtn {
+      padding: 0.3rem 0.55rem;
+    }
+
+    /* Right Inspector Section - Dedicated Framed Scrollable Panel */
     .lead-inspector-pane {
-      position: sticky;
-      top: 80px;
+      height: calc(100vh - 280px);
+      min-height: 480px;
+      max-height: calc(100vh - 280px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
       background: var(--glass-primary);
       backdrop-filter: var(--glass-blur-lg);
+      -webkit-backdrop-filter: var(--glass-blur-lg);
       border: var(--glass-border);
-      border-radius: var(--radius-md);
-      padding: 1.75rem;
+      border-radius: 16px;
+      padding: 1.5rem;
       box-shadow: var(--glass-highlight);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+      min-width: 0;
+    }
+    .lead-inspector-pane::-webkit-scrollbar {
+      width: 5px;
+    }
+    .lead-inspector-pane::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .lead-inspector-pane::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-pill);
+    }
+    .lead-inspector-pane::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
     }
     .inspector-header-wrap {
       display: flex;
@@ -1514,6 +1911,127 @@
     .evidence-table-row:first-child { border-top-left-radius: var(--radius-sm); border-top-right-radius: var(--radius-sm); }
     .evidence-table-row:last-child { border-bottom-left-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); border-bottom: none; }
 
+    /* Directing Evidence & Contact Links */
+    .directing-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+      font-weight: 600;
+      color: var(--text-main);
+      padding: 0.18rem 0.45rem;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+      cursor: pointer;
+    }
+    .directing-link:hover {
+      text-decoration: none;
+      transform: translateY(-1px);
+    }
+    .directing-link:active {
+      transform: translateY(0);
+    }
+    .directing-phone {
+      color: #4ade80 !important;
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+    }
+    .directing-phone:hover {
+      color: #22c55e !important;
+      background: rgba(74, 222, 128, 0.16);
+      border-color: rgba(74, 222, 128, 0.45);
+      box-shadow: 0 0 12px rgba(74, 222, 128, 0.25);
+    }
+    .directing-call-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.4rem;
+      border-radius: 9999px;
+      background: rgba(74, 222, 128, 0.2);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+      margin-left: 0.25rem;
+    }
+    .directing-social {
+      color: var(--accent-cyan) !important;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+    }
+    .directing-social:hover {
+      color: #00ffff !important;
+      background: rgba(0, 240, 255, 0.16);
+      border-color: rgba(0, 240, 255, 0.5);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+    .directing-reviews {
+      color: var(--text-main);
+      padding: 0.15rem 0.4rem;
+      border-radius: var(--radius-sm);
+    }
+    .directing-reviews:hover {
+      color: var(--accent-yellow);
+      background: rgba(255, 215, 0, 0.08);
+    }
+    .directing-verify {
+      color: var(--accent-yellow) !important;
+      padding: 0.15rem 0.4rem;
+      border-radius: var(--radius-sm);
+    }
+    .directing-verify:hover {
+      background: rgba(255, 215, 0, 0.1);
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+    }
+    .directing-website {
+      color: #FFA500 !important;
+      padding: 0.15rem 0.4rem;
+      border-radius: var(--radius-sm);
+    }
+    .directing-website:hover {
+      background: rgba(255, 165, 0, 0.12);
+    }
+    .directing-email {
+      color: var(--accent-cyan) !important;
+      background: rgba(0, 240, 255, 0.06);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+    .directing-email:hover {
+      background: rgba(0, 240, 255, 0.15);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+    }
+    .directing-addr {
+      color: var(--text-secondary);
+      font-size: 0.74rem;
+    }
+    .directing-addr:hover {
+      color: var(--accent-cyan);
+      text-decoration: underline;
+    }
+    .directing-vlogger {
+      color: #F0ABFC !important;
+      background: rgba(217, 70, 239, 0.12);
+      border: 1px solid rgba(217, 70, 239, 0.35);
+    }
+    .directing-vlogger:hover {
+      color: #FFFFFF !important;
+      background: rgba(217, 70, 239, 0.22);
+      border-color: rgba(217, 70, 239, 0.6);
+      box-shadow: 0 0 12px rgba(217, 70, 239, 0.35);
+    }
+    .direct-external-icon {
+      opacity: 0.7;
+      transition: transform var(--transition-fast), opacity var(--transition-fast);
+      margin-left: 2px;
+      flex-shrink: 0;
+    }
+    .directing-link:hover .direct-external-icon {
+      opacity: 1;
+      transform: translate(1px, -1px);
+    }
+
     /* Filter Bar */
     .filter-pills-scroll {
       display: flex;
@@ -1521,13 +2039,21 @@
       gap: 0.45rem;
       overflow-x: auto;
       padding-bottom: 0.4rem;
+      padding-right: 1.5rem;
       margin-bottom: 1rem;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .filter-pills-scroll::-webkit-scrollbar {
+      display: none;
     }
     .quick-filter-btn {
       background: rgba(255, 255, 255, 0.03);
       border: var(--glass-border);
       border-radius: var(--radius-pill);
-      padding: 0.35rem 0.8rem;
+      padding: 0.38rem 0.85rem;
       font-size: 0.74rem;
       font-weight: 600;
       color: var(--text-muted);
@@ -1538,12 +2064,178 @@
     .quick-filter-btn:hover {
       color: var(--text-main);
       background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
     }
     .quick-filter-btn.active {
       color: #000000;
       background: var(--accent-yellow);
       border-color: var(--accent-yellow);
       font-weight: 700;
+      box-shadow: 0 0 12px rgba(255, 229, 0, 0.3);
+    }
+
+    /* Outreach Toolbar & Filter Bar */
+    .outreach-filter-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 1.15rem;
+      flex-wrap: wrap;
+    }
+    .outreach-filter-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .outreach-hide-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-pill);
+      padding: 0.32rem 0.75rem;
+      user-select: none;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .outreach-hide-toggle:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-main);
+    }
+    .outreach-hide-toggle.is-active {
+      background: rgba(255, 229, 0, 0.12);
+      border-color: rgba(255, 229, 0, 0.45);
+      color: var(--accent-yellow);
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(255, 229, 0, 0.18);
+    }
+    .outreach-subpills-scroll {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      overflow-x: auto;
+      max-width: 100%;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      padding: 0.1rem 1.5rem 0.1rem 0;
+    }
+    .outreach-subpills-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    .outreach-subpill {
+      background: rgba(255, 255, 255, 0.03);
+      border: var(--glass-border);
+      border-radius: var(--radius-pill);
+      padding: 0.28rem 0.7rem;
+      font-size: 0.70rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .outreach-subpill:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .outreach-subpill.active {
+      color: var(--accent-yellow);
+      background: rgba(255, 229, 0, 0.15);
+      border-color: rgba(255, 229, 0, 0.45);
+      box-shadow: 0 0 10px rgba(255, 229, 0, 0.2);
+      font-weight: 700;
+    }
+    .outreach-badge-capsule {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+    .insp-field-label {
+      font-size: 0.70rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+    .insp-select-input, .insp-text-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 0.6rem;
+      font-size: 0.76rem;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color var(--transition-fast);
+    }
+    .insp-select-input:focus, .insp-text-input:focus {
+      border-color: var(--accent-yellow);
+    }
+    .insp-select-input option {
+      background: #111111;
+      color: #FFFFFF;
+    }
+    .lead-stream-outreach-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.45rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.72rem;
+    }
+    .lead-stream-chk-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .lead-stream-chk-label:hover {
+      color: var(--text-main);
+    }
+    .lead-stream-chk-label input {
+      accent-color: var(--accent-yellow);
+      cursor: pointer;
+      width: 13px;
+      height: 13px;
+    }
+    .lead-stream-outcome-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+    .lead-stream-outcome-tag.pending {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
     }
 
     /* Search Box */
@@ -1749,29 +2441,74 @@
     }
     .glass-modal-scrim.active { display: flex; }
 
-    /* Responsive */
-    @media (max-width: 1100px) {
+    /* Responsive Navigation & Workspace Grid */
+    @media (max-width: 1380px) {
       .nav-floating-pill {
-        gap: 0.45rem;
-        padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+        gap: 0.35rem;
+        padding: 0.32rem 0.85rem 0.32rem 0.75rem;
+        width: 100%;
       }
-      .nav-link {
-        padding: 0.34rem 0.65rem;
-        font-size: 0.74rem;
+      .nav-meta-tools {
         gap: 0.35rem;
       }
-      .status-capsule {
-        padding: 0.3rem 0.55rem;
-        font-size: 0.65rem;
+      #travelModeTrigger span,
+      #navFullscreenBtn .fs-text {
+        display: none;
       }
-      .brand-link {
-        padding-right: 0.55rem;
+      #travelModeTrigger,
+      #navFullscreenBtn {
+        padding: 0.3rem 0.55rem;
       }
     }
-    @media (max-width: 1024px) {
-      .lead-workspace-split { grid-template-columns: 1fr; }
-      .lead-inspector-pane { display: none; }
-      .pipeline-stage-nodes-row { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 1200px) {
+      .nav-link {
+        padding: 0.3rem 0.55rem;
+        font-size: 0.72rem;
+        gap: 0.3rem;
+      }
+      .status-capsule {
+        padding: 0.28rem 0.55rem;
+        font-size: 0.65rem;
+      }
+      #sheetLink span,
+      #guideTriggerBtn span {
+        display: none;
+      }
+      #sheetLink,
+      #guideTriggerBtn {
+        padding: 0.3rem 0.55rem;
+      }
+    }
+    @media (max-width: 1100px) {
+      .nav-floating-pill {
+        gap: 0.25rem;
+        padding: 0.28rem 0.85rem 0.28rem 0.65rem;
+        width: 100%;
+      }
+      .nav-meta-tools {
+        gap: 0.25rem;
+      }
+      #backendStatusText {
+        display: none;
+      }
+      .lead-workspace-split:not(.grid-view) {
+        grid-template-columns: minmax(320px, 400px) 1fr;
+        gap: 1.25rem;
+      }
+    }
+    @media (max-width: 980px) {
+      #backendStatusText {
+        display: none;
+      }
+      .lead-workspace-split:not(.grid-view) {
+        grid-template-columns: minmax(290px, 360px) 1fr;
+        gap: 0.85rem;
+      }
+      .lead-stream-pane,
+      .lead-inspector-pane {
+        height: calc(100vh - 290px);
+        max-height: calc(100vh - 290px);
+      }
     }
     @media (max-width: 768px) {
       .nav-header { display: none; }
@@ -1779,6 +2516,13 @@
       .pipeline-stage-nodes-row { grid-template-columns: 1fr; }
       .home-header-banner { flex-direction: column; align-items: flex-start; }
       .home-hero-huge-num { font-size: 3rem; }
+      .lead-workspace-split { grid-template-columns: 1fr !important; }
+      .lead-inspector-pane { display: none !important; }
+      .lead-stream-pane {
+        height: calc(100vh - 260px);
+        max-height: calc(100vh - 260px);
+        padding-bottom: 6rem;
+      }
     }
     /* ==========================================================================
        MODERN & CREATIVE DISCOVERY ENGINE DESIGN SYSTEM
@@ -2731,7 +3475,7 @@
         </button>
 
         <!-- Live Backend API Connection Status Indicator -->
-        <button id="backendConnectionIndicator" class="status-capsule" onclick="navigateTo('system')" title="Live Backend API Connection (Click to configure in Settings)" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+        <button id="backendConnectionIndicator" class="status-capsule" onclick="handleBackendIndicatorClick()" title="Live Backend API Connection (Click to configure or auto-unlock)" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
           <span class="blip-beacon" id="backendStatusBeacon" style="width:6px; height:6px; background:var(--accent-yellow); border-radius:50%; display:inline-block;"></span>
           <span id="backendStatusText" style="font-size:0.7rem; font-family:var(--font-mono); font-weight:700;">API: CONNECTING</span>
         </button>
@@ -2741,9 +3485,16 @@
           <span>Sheets</span>
         </a>
 
+        <!-- Global Fullscreen Toggle Button -->
+        <button id="navFullscreenBtn" class="status-capsule nav-fs-trigger" onclick="toggleFullscreenMode()" title="Toggle Fullscreen Mode (F / F11)" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+          <svg class="fs-icon-enter" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          <svg class="fs-icon-exit" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+          <span class="fs-text">Fullscreen</span>
+        </button>
+
         <button class="cmd-trigger-btn" onclick="openCmdPalette()" title="Press Cmd+K or Ctrl+K to open Quick Command Search">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></svg>
-          <span>&#8984;K</span>
+          <span>K</span>
         </button>
       </div>
     </div>
@@ -3313,14 +4064,14 @@
                 <option value="false" selected>Disabled (Credits Exhausted &bull; Zero External Calls)</option>
               </select>
             </div>
-            <div style="grid-column: span 2; display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:rgba(255,255,255,0.025); border:1px solid rgba(255,229,0,0.25); border-radius:var(--radius-sm); margin-top:0.25rem;">
+            <div style="grid-column: span 2; display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; background:rgba(0,255,136,0.04); border:1px solid rgba(0,255,136,0.3); border-radius:var(--radius-sm); margin-top:0.25rem;">
               <div>
-                <strong style="color:var(--text-main); font-size:0.8rem; display:block;">Safe Dry-Run / Preflight Evaluation</strong>
-                <span style="color:var(--text-muted); font-size:0.7rem;">Runs real discovery &amp; verification without mutating Google Sheets CRM</span>
+                <strong style="color:var(--text-main); font-size:0.8rem; display:block;">Live Google Sheets CRM Sync</strong>
+                <span style="color:var(--text-muted); font-size:0.7rem;">Saves lively to Google Sheets (LEADS, REVIEW_QUEUE, &amp; RESEARCH_LOG tabs). Check only for simulation.</span>
               </div>
               <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                <input type="checkbox" id="pageDiscDryRunInput" checked style="accent-color:var(--accent-yellow); width:16px; height:16px; cursor:pointer;">
-                <span style="font-size:0.72rem; font-family:var(--font-mono); color:var(--accent-yellow); font-weight:700;">DRY-RUN</span>
+                <input type="checkbox" id="pageDiscDryRunInput" style="accent-color:var(--accent-yellow); width:16px; height:16px; cursor:pointer;">
+                <span style="font-size:0.72rem; font-family:var(--font-mono); color:var(--text-dim); font-weight:700;">DRY-RUN ONLY</span>
               </label>
             </div>
           </div>
@@ -3610,7 +4361,26 @@
           <h2 style="font-size:1.6rem; font-weight:800; color:var(--text-main); letter-spacing:-0.02em;">Lead Workspace</h2>
           <p style="font-size:0.84rem; color:var(--text-muted);">Manchester hospitality &amp; commercial enterprises qualified under Frozen Rule B.</p>
         </div>
-        <div style="display:flex; gap:0.5rem; align-items:center;">
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+          <!-- View Switcher (Split vs Cards Grid) -->
+          <div class="layout-toggle-pill-group">
+            <button id="btnViewSplit" class="layout-toggle-btn active" onclick="setLeadsLayoutMode('split')" title="Split View: Stream on left, Live Dossier on right">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+              <span>Split</span>
+            </button>
+            <button id="btnViewGrid" class="layout-toggle-btn" onclick="setLeadsLayoutMode('grid')" title="Cards Grid View: Multi-column responsive cards">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+              <span>Grid</span>
+            </button>
+          </div>
+
+          <!-- Fullscreen Option -->
+          <button id="workspaceFsBtn" class="btn-pill btn-pill-secondary btn-workspace-fs" onclick="toggleFullscreenMode()" title="Toggle Fullscreen Mode (F / F11)">
+            <svg class="fs-icon-enter" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <svg class="fs-icon-exit" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+            <span class="fs-text">Full Screen</span>
+          </button>
+
           <span class="status-capsule" style="font-size:0.68rem;">Staging Protected</span>
         </div>
       </div>
@@ -3622,14 +4392,39 @@
       </div>
 
       <div class="filter-pills-scroll">
-        <button class="quick-filter-btn active" data-filter="ALL" onclick="setLeadFilter('ALL')">All (<span id="pillCountAll">--</span>)</button>
-        <button class="quick-filter-btn" data-filter="OUTREACH_READY" onclick="setLeadFilter('OUTREACH_READY')">Ready (<span id="pillCountReady">--</span>)</button>
+        <button class="quick-filter-btn active" data-filter="OUTREACH_READY" onclick="setLeadFilter('OUTREACH_READY')">Outreach Ready (<span id="pillCountReady">--</span>)</button>
+        <button class="quick-filter-btn" data-filter="NEEDS_REVIEW" onclick="setLeadFilter('NEEDS_REVIEW')">Manual Review (<span id="pillCountReview">--</span>)</button>
+        <button class="quick-filter-btn" data-filter="RAW_BUSINESSES" onclick="setLeadFilter('RAW_BUSINESSES')">Raw Businesses (<span id="pillCountRaw">--</span>)</button>
+        <button class="quick-filter-btn" data-filter="VERIFIED_BUSINESSES" onclick="setLeadFilter('VERIFIED_BUSINESSES')">Verified Businesses (<span id="pillCountVerified">--</span>)</button>
+        <button class="quick-filter-btn" data-filter="WITH_WEBSITES" onclick="setLeadFilter('WITH_WEBSITES')">With Websites (<span id="pillCountWithWebsites">--</span>)</button>
+        <button class="quick-filter-btn" data-filter="ALL_RESEARCHED" onclick="setLeadFilter('ALL_RESEARCHED')">All Researched (<span id="pillCountAllResearched">--</span>)</button>
         <button class="quick-filter-btn" data-filter="LATEST_RUN" onclick="setLeadFilter('LATEST_RUN')">Latest Run (<span id="pillCountLatestRun">--</span>)</button>
-        <button class="quick-filter-btn" data-filter="QUALIFIED" onclick="setLeadFilter('QUALIFIED')">Qualified</button>
-        <button class="quick-filter-btn" data-filter="NEEDS_REVIEW" onclick="setLeadFilter('NEEDS_REVIEW')">Needs Review (<span id="pillCountReview">--</span>)</button>
-        <button class="quick-filter-btn" data-filter="RESEARCHING" onclick="setLeadFilter('RESEARCHING')">Researching</button>
-        <button class="quick-filter-btn" data-filter="FRESHNESS_DUE" onclick="setLeadFilter('FRESHNESS_DUE')">Freshness Due (<span id="pillCountFreshness">0</span>)</button>
-        <button class="quick-filter-btn" data-filter="CONTACTABLE" onclick="setLeadFilter('CONTACTABLE')">Contactable</button>
+        <button class="quick-filter-btn" data-filter="ALL" onclick="setLeadFilter('ALL')">All CRM (<span id="pillCountAll">--</span>)</button>
+        <span style="display:none;" id="pillCountFreshness">0</span>
+      </div>
+
+      <!-- Outreach Status & Outcome Filter Bar -->
+      <div class="outreach-filter-toolbar">
+        <div class="outreach-filter-left">
+          <label class="outreach-hide-toggle" id="lblHideReached" title="When checked, reached brands are removed from the active list">
+            <input type="checkbox" id="toggleHideReached" class="cyber-checkbox-native" onchange="handleToggleHideReached(this.checked)">
+            <span class="cyber-checkbox-indicator">
+              <svg viewBox="0 0 10 8"><polyline points="1 4 3.5 6.5 9 1"/></svg>
+            </span>
+            <span>Hide Reached Brands</span>
+          </label>
+          <div class="outreach-subpills-scroll">
+            <button class="outreach-subpill active" data-outreach="ALL" onclick="setOutreachFilter('ALL')">All Outreach (<span id="subCountAll">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="PENDING" onclick="setOutreachFilter('PENDING')">Pending (<span id="subCountPending">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="REACHED" onclick="setOutreachFilter('REACHED')">Reached (<span id="subCountReached">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="CLOSED_WON" onclick="setOutreachFilter('CLOSED_WON')">Closed Client (<span id="subCountWon">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="POSITIVE" onclick="setOutreachFilter('POSITIVE')">Meeting / Interested (<span id="subCountPositive">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="NO_ANSWER" onclick="setOutreachFilter('NO_ANSWER')">Didn't Pick Up (<span id="subCountNoAnswer">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="NO_REPLY" onclick="setOutreachFilter('NO_REPLY')">Didn't Reply (<span id="subCountNoReply">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="NOT_INTERESTED" onclick="setOutreachFilter('NOT_INTERESTED')">Not Interested (<span id="subCountDeclined">--</span>)</button>
+            <button class="outreach-subpill" data-outreach="INVALID_LEAD" onclick="setOutreachFilter('INVALID_LEAD')">Invalid Lead (<span id="subCountInvalid">--</span>)</button>
+          </div>
+        </div>
       </div>
 
       <!-- Split Layout: Left Stream, Right Inspector -->
@@ -3650,7 +4445,14 @@
             <div class="inspector-header-wrap">
               <div>
                 <div class="inspector-biz-name" id="inspName">--</div>
-                <div class="inspector-biz-id" id="inspId">--</div>
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-top:2px;">
+                  <span class="inspector-biz-id" id="inspId">--</span>
+                  <a id="inspAddressLink" href="#" target="_blank" rel="noopener noreferrer" class="directing-link directing-addr" title="Open location in Google Maps" style="display:none;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; color:var(--accent-cyan);"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span id="inspAddressText">--</span>
+                    <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </a>
+                </div>
               </div>
               <button class="btn-pill btn-pill-secondary" style="font-size:0.75rem; padding:0.35rem 0.75rem;" onclick="openSelectedLeadDrawer()">
                 <span>Open Drawer</span>
@@ -3687,9 +4489,17 @@
                   <span style="color:var(--text-muted);">Social Verification</span>
                   <strong id="inspSocial">--</strong>
                 </div>
+                <div class="evidence-table-row" id="inspVloggerRow">
+                  <span style="color:var(--text-muted);">Vlogger Reference (Unofficial)</span>
+                  <strong id="inspVlogger">--</strong>
+                </div>
                 <div class="evidence-table-row">
                   <span style="color:var(--text-muted);">Contact Phone</span>
                   <strong id="inspPhone">--</strong>
+                </div>
+                <div class="evidence-table-row" id="inspEmailRow" style="display:none;">
+                  <span style="color:var(--text-muted);">Contact Email</span>
+                  <strong id="inspEmail">--</strong>
                 </div>
               </div>
             </div>
@@ -3703,6 +4513,79 @@
                 <div class="evidence-table-row"><span>3. Minimum Reviews Satisfied (&ge; 50)</span><strong id="inspCheckReviews" style="color:var(--accent-yellow);">PASS</strong></div>
                 <div class="evidence-table-row"><span>4. Review Recency &le; 180 Days</span><strong id="inspCheckRecency" style="color:var(--accent-yellow);">PASS</strong></div>
                 <div class="evidence-table-row"><span>5. Manchester Polygon Locked</span><strong id="inspCheckPolygon" style="color:var(--accent-yellow);">PASS</strong></div>
+              </div>
+            </div>
+
+            <!-- Live Outreach Outcome & Google Sheets CRM Tracking Deck -->
+            <div class="inspector-section-block" style="background:rgba(255,255,255,0.02); border:var(--glass-border); border-radius:var(--radius-sm); padding:1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                <div class="inspector-section-title" style="margin-bottom:0;">Outreach &amp; Client Tracking</div>
+                <span id="inspOutreachStatusBadge" class="outreach-badge-capsule" style="background:rgba(255,255,255,0.08); color:var(--text-dim);">PENDING</span>
+              </div>
+
+              <!-- Reached Checkbox -->
+              <div style="margin-bottom:0.75rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); padding:0.6rem 0.8rem;">
+                <label style="display:flex; align-items:center; gap:0.55rem; cursor:pointer; font-size:0.8rem; font-weight:700; color:var(--text-main);">
+                  <input type="checkbox" id="inspReachedCheck" onchange="handleInspReachedCheck(this.checked)" style="accent-color:var(--accent-yellow); width:15px; height:15px; cursor:pointer;">
+                  <span>Reached This Brand (Mark as Contacted)</span>
+                </label>
+                <div style="font-size:0.71rem; color:var(--text-muted); margin-top:0.25rem; margin-left:1.5rem;">
+                  Check or uncheck whether outreach was performed. Updates live to Google Sheets CRM.
+                </div>
+              </div>
+
+              <!-- Form Details -->
+              <div id="inspOutcomeFormDeck" style="display:flex; flex-direction:column; gap:0.6rem;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
+                  <div>
+                    <label class="insp-field-label">How did it go? (Outcome)</label>
+                    <select id="inspOutcomeCategorySelect" class="insp-select-input" onchange="handleOutcomeCategorySelect(this.value)">
+                      <option value="CLOSED_WON">Closed Client (Deal Won)</option>
+                      <option value="MEETING_BOOKED">Meeting Booked / Scheduled</option>
+                      <option value="INTERESTED">Interested (Wants Details)</option>
+                      <option value="NO_ANSWER">Didn't Pick Up Call (No Answer)</option>
+                      <option value="NO_REPLY">Didn't Reply / Ghosted</option>
+                      <option value="NOT_INTERESTED">Not Interested / Declined</option>
+                      <option value="INVALID_LEAD">Invalid Lead (Wrong # / Closed)</option>
+                      <option value="DO_NOT_CONTACT">Do Not Contact / Opt Out</option>
+                      <option value="CONTACTED">Reached (General Contact)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="insp-field-label">Aspect / Specific Reason</label>
+                    <select id="inspOutcomeReasonSelect" class="insp-select-input">
+                      <!-- Populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 2fr; gap:0.6rem;">
+                  <div>
+                    <label class="insp-field-label">Channel Used</label>
+                    <select id="inspChannelSelect" class="insp-select-input">
+                      <option value="PHONE">Phone Call</option>
+                      <option value="INSTAGRAM">Instagram DM</option>
+                      <option value="FACEBOOK">Facebook Message</option>
+                      <option value="EMAIL">Email</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="insp-field-label">Conversation Notes / Feedback</label>
+                    <input type="text" id="inspOutcomeNotesInput" class="insp-text-input" placeholder="e.g. Owner Dave answered, booked meeting for Thursday...">
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:0.5rem; margin-top:0.25rem;">
+                  <button class="btn-pill btn-pill-primary" style="flex:1; justify-content:center; font-size:0.75rem; padding:0.45rem 0.75rem;" onclick="saveOutreachFromInspector()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Save to Google Sheets CRM</span>
+                  </button>
+                  <button class="btn-pill btn-pill-secondary" id="inspUncheckBtn" style="font-size:0.75rem; padding:0.45rem 0.65rem;" onclick="uncheckLeadFromInspector()">
+                    <span>Uncheck / Reset</span>
+                  </button>
+                </div>
+                <div id="inspOutreachSaveStatus" style="display:none; font-size:0.72rem; text-align:center; padding:0.25rem; border-radius:var(--radius-sm);"></div>
               </div>
             </div>
 
@@ -3726,7 +4609,7 @@
         <span>&bull;</span>
         <span><kbd class="kbd-chip">Esc</kbd> Close Sheet</span>
         <span>&bull;</span>
-        <span><kbd class="kbd-chip">⌘K</kbd> Command Search</span>
+        <span><kbd class="kbd-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>K</kbd> Command Search</span>
         <span>&bull;</span>
         <span><kbd class="kbd-chip">1-4</kbd> Quick Switch Spaces</span>
       </div>
@@ -4198,20 +5081,38 @@
               </div>
             </div>
 
-            <div class="settings-action-row" style="flex-direction:column; align-items:flex-start; gap:0.4rem; margin-top:0.75rem;">
+            <div class="settings-action-row" style="flex-direction:column; align-items:flex-start; gap:0.55rem; margin-top:0.75rem; background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); border-radius:10px; padding:0.85rem;">
               <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-                <strong style="font-size:0.82rem; color:var(--text-main);">Operator Session &amp; Security</strong>
-                <span id="operatorSessionBadge" class="status-pill-mini pass" style="font-size:0.68rem;">UNAUTHENTICATED</span>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <strong style="font-size:0.82rem; color:var(--text-main);">Operator Session &amp; Security</strong>
+                  <span id="operatorAuthModePill" class="status-pill-mini pass" style="font-size:0.65rem; background:rgba(255,230,0,0.12); color:var(--accent-yellow); border:1px solid rgba(255,230,0,0.3); display:none;">LOCAL AUTO</span>
+                </div>
+                <span id="operatorSessionBadge" class="status-pill-mini fail" style="font-size:0.68rem;">UNAUTHENTICATED</span>
               </div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Enter Operator Key to issue a short-lived 2-hour session. Master secrets are never stored in localStorage.</div>
-              <div style="display:flex; gap:0.5rem; width:100%; margin-top:4px;">
-                <input id="inputOperatorKey" type="password" placeholder="Enter Operator Key" class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
-                <button id="btnUnlockOperator" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.35rem 0.75rem;" onclick="loginOperatorSession()">
-                  <span>Unlock</span>
+              <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">Automated authentication verifies with the local server securely. Manual key override remains available at any time.</div>
+
+              <!-- Action Bar -->
+              <div style="display:flex; flex-wrap:wrap; gap:0.5rem; width:100%; align-items:center;">
+                <button id="btnLockOperator" class="btn-pill btn-pill-secondary" style="display:none; font-size:0.72rem; padding:0.35rem 0.8rem; color:#FF4D4D; border-color:rgba(255,77,77,0.3);" onclick="logoutOperatorSession()">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>Lock Session</span>
                 </button>
-                <button id="btnLockOperator" class="btn-pill btn-pill-secondary" style="display:none; font-size:0.72rem; padding:0.35rem 0.75rem; color:#FF4D4D;" onclick="logoutOperatorSession()">
-                  <span>Lock</span>
+
+                <button id="btnToggleManualEntry" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.35rem 0.75rem; margin-left:auto;" onclick="toggleManualKeyBox()">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  <span id="toggleManualEntryLabel">Manual Key Option</span>
                 </button>
+              </div>
+
+              <!-- Manual Key Input Option Drawer -->
+              <div id="manualKeyEntryContainer" style="display:none; width:100%; margin-top:0.25rem; padding-top:0.5rem; border-top:1px dashed var(--glass-border);">
+                <div style="font-size:0.72rem; color:var(--text-dim); margin-bottom:0.35rem;">Manual Key Override: Enter custom Operator Key directly:</div>
+                <div style="display:flex; gap:0.5rem; width:100%;">
+                  <input id="inputOperatorKey" type="password" placeholder="Enter custom Operator Key" class="setting-select-field" style="flex:1; width:auto; text-align:left; font-family:var(--font-mono); font-size:0.78rem;">
+                  <button id="btnUnlockOperator" class="btn-pill btn-pill-secondary" style="font-size:0.72rem; padding:0.35rem 0.75rem;" onclick="loginOperatorSession()">
+                    <span>Apply Key</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -4900,7 +5801,7 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:rgba(255,229,0,0.04); border:1px solid rgba(255,229,0,0.25); border-radius:var(--radius-sm);">
           <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Execution Mode</span>
-          <strong id="confirmSummaryMode" style="font-size:0.88rem; color:var(--accent-yellow);">Safe Dry-Run (Preflight Evaluation)</strong>
+          <strong id="confirmSummaryMode" style="font-size:0.88rem; color:var(--accent-yellow);">Approved Technical Processing (Live CRM Sync)</strong>
         </div>
 
         <div style="padding:0.75rem 1rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius-sm); font-size:0.72rem; color:var(--text-muted); line-height:1.45;">
@@ -4975,6 +5876,18 @@
             <option value="APIFY" disabled style="color:var(--text-dim); background:#111;">Apify Actors (Disabled &bull; Credits Exhausted)</option>
           </select>
         </div>
+      </div>
+
+      <!-- Live Google Sheets CRM Sync Toggle (Unchecked by default) -->
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:0.65rem 0.85rem; background:rgba(0,255,136,0.04); border:1px solid rgba(0,255,136,0.3); border-radius:var(--radius-sm); margin-bottom:1.25rem;">
+        <div>
+          <strong style="color:var(--text-main); font-size:0.78rem; display:block;">Live Google Sheets CRM Sync</strong>
+          <span style="color:var(--text-muted); font-size:0.68rem;">Saves lively to Google Sheets. Check only for simulated dry-run.</span>
+        </div>
+        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+          <input type="checkbox" id="discDryRunInput" style="accent-color:var(--accent-yellow); width:15px; height:15px; cursor:pointer;">
+          <span style="font-size:0.7rem; font-family:var(--font-mono); color:var(--text-dim); font-weight:700;">DRY-RUN ONLY</span>
+        </label>
       </div>
 
       <!-- Live Terminal / Execution Progress Area (Hidden by default) -->
@@ -5111,13 +6024,18 @@
     let allLeads = [];
     let reviewQueueLeads = [];
     let latestRunCandidates = [];
+    let allResearchLog = [];
     let latestRunData = null;
     let isLeadsLoaded = false;
     let selectedLead = undefined;
-    let currentFilter = 'ALL';
+    let currentFilter = 'OUTREACH_READY';
     let currentSearchTerm = '';
     let currentPipelineStageIdx = 4; // Ready stage
     let readinessData = null;
+    let currentOutreachFilter = 'ALL';
+    let hideReachedBrands = false;
+    let outreachTaxonomy = null;
+    let currentLeadsLayoutMode = (typeof localStorage !== 'undefined' && localStorage.getItem('dripp_leads_layout_mode')) || 'split';
 
     // ========================================================================
     // PHASE 12.2 UNIFIED SECURE API CLIENT & GATEWAY CONFIGURATION
@@ -5235,20 +6153,33 @@
         if (res.ok) {
           updateBackendConnectionStatus(true);
         } else if (res.status === 401) {
-          updateBackendConnectionStatus(false, 'Unauthorized: Operator session expired or key required');
+          const isLocal = ['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname);
+          if (isLocal && !options._isRetry && !options._isInternalAuth && cleanEndpoint !== '/api/operator/auto-login' && cleanEndpoint !== '/api/operator/logout' && cleanEndpoint !== '/api/operator/login') {
+            console.log(`[API Gateway] 401 received for ${cleanEndpoint}. Auto-renewing session and retrying...`);
+            const renewed = await autoUnlockOperatorSession(true);
+            if (renewed) {
+              return await apiFetch(endpoint, { ...options, _isRetry: true });
+            }
+          }
+          if (!DrippConfig.getSessionToken()) {
+            updateBackendConnectionStatus(false, 'Unauthorized: Operator session expired or key required');
+          }
         } else {
           updateBackendConnectionStatus(false, `HTTP ${res.status}`);
         }
         return res;
       } catch (err) {
         let errDesc = err.message || 'Request failed';
+        const isNetworkFatal = err.name === 'TypeError' && String(err.message).toLowerCase().includes('fetch');
         if (err.name === 'AbortError') {
           errDesc = `Timeout: Backend failed to respond within ${timeoutMs/1000}s`;
-        } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        } else if (isNetworkFatal) {
           errDesc = `Network / CORS Error: Cannot reach ${url}. Check backend hosting and CORS configuration.`;
         }
         console.error(`[API Gateway Error] Request failed to ${url}:`, errDesc);
-        updateBackendConnectionStatus(false, errDesc);
+        if (isNetworkFatal) {
+          updateBackendConnectionStatus(false, errDesc);
+        }
         throw new Error(errDesc);
       }
     }
@@ -5260,6 +6191,21 @@
       const cardProbe = document.getElementById('gatewayProbeResult');
 
       if (connected) {
+        const hasSession = Boolean(DrippConfig.getSessionToken());
+        if (!hasSession) {
+          if (beacon) beacon.style.background = '#FFA500';
+          if (text) {
+            text.innerText = 'API: LOCKED';
+            text.style.color = '#FFA500';
+            text.title = 'Operator Authentication Required — click to auto-unlock or enter key';
+          }
+          if (cardBadge) {
+            cardBadge.innerText = 'LOCKED (KEY REQUIRED)';
+            cardBadge.className = 'status-pill-mini fail';
+            cardBadge.style.color = '#FFA500';
+          }
+          return;
+        }
         if (beacon) beacon.style.background = 'var(--accent-yellow)';
         if (text) {
           text.innerText = 'API: LIVE';
@@ -5278,6 +6224,10 @@
           message.includes('key required')
         ));
         if (isAuthNotice) {
+          // If the operator has an active session and this isn't an intentional lock action, ignore stale 401s
+          if (DrippConfig.getSessionToken() && message !== 'Operator session locked') {
+            return;
+          }
           if (beacon) beacon.style.background = '#FFA500';
           if (text) {
             text.innerText = 'API: LOCKED';
@@ -5418,6 +6368,86 @@
       }
     }
 
+    let autoUnlockPromise = null;
+
+    async function autoUnlockOperatorSession(silent = false) {
+      if (autoUnlockPromise) {
+        return autoUnlockPromise;
+      }
+      autoUnlockPromise = (async () => {
+        try {
+          const res = await apiFetch('/api/operator/auto-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            _isInternalAuth: true
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            DrippConfig.setSessionToken(data.session_token, data.expires_at);
+            updateOperatorSessionUI(true, data.expires_at, true);
+            updateBackendConnectionStatus(true);
+            if (!silent) {
+              showToast('Operator session authenticated automatically');
+              loadAllData().catch(e => console.warn('[Data Sync Notice]', e));
+            }
+            return true;
+          } else {
+            const err = await res.json().catch(() => ({}));
+            const errMsg = err.detail || err.message || 'Auto-unlock requires local loopback server';
+            if (!silent) {
+              showToast(`Authentication notice: ${errMsg}`);
+              // Reveal manual input drawer so operator can type key
+              const container = document.getElementById('manualKeyEntryContainer');
+              if (container) container.style.display = 'block';
+              const label = document.getElementById('toggleManualEntryLabel');
+              if (label) label.innerText = 'Hide Manual Option';
+              const keyInput = document.getElementById('inputOperatorKey');
+              if (keyInput) keyInput.focus();
+            }
+            return false;
+          }
+        } catch (e) {
+          if (!silent) {
+            showToast(`Authentication notice: ${e.message}`);
+          }
+          return false;
+        } finally {
+          autoUnlockPromise = null;
+        }
+      })();
+      return autoUnlockPromise;
+    }
+
+    function toggleManualKeyBox() {
+      const container = document.getElementById('manualKeyEntryContainer');
+      const label = document.getElementById('toggleManualEntryLabel');
+      if (!container) return;
+      const isHidden = container.style.display === 'none';
+      container.style.display = isHidden ? 'block' : 'none';
+      if (label) {
+        label.innerText = isHidden ? 'Hide Manual Option' : 'Manual Key Option';
+      }
+      if (isHidden) {
+        const keyInput = document.getElementById('inputOperatorKey');
+        if (keyInput) keyInput.focus();
+      }
+    }
+
+    async function handleBackendIndicatorClick() {
+      const text = document.getElementById('backendStatusText');
+      const isLocked = text && text.innerText.includes('LOCKED');
+      const isLocal = ['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname);
+      if (isLocked && isLocal) {
+        await autoUnlockOperatorSession(false);
+      } else {
+        navigateTo('system');
+        if (typeof switchSystemTab === 'function') {
+          switchSystemTab('settings');
+        }
+      }
+    }
+
     async function loginOperatorSession() {
       const keyInput = document.getElementById('inputOperatorKey');
       const key = keyInput ? keyInput.value.trim() : '';
@@ -5430,15 +6460,18 @@
         const res = await apiFetch('/api/operator/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ operator_key: key })
+          body: JSON.stringify({ operator_key: key }),
+          _isInternalAuth: true
         });
         
         if (res.ok) {
           const data = await res.json();
           DrippConfig.setSessionToken(data.session_token, data.expires_at);
           if (keyInput) keyInput.value = '';
-          updateOperatorSessionUI(true, data.expires_at);
-          showToast('Operator session unlocked (short-lived 2h token)');
+          updateOperatorSessionUI(true, data.expires_at, false);
+          updateBackendConnectionStatus(true);
+          showToast('Operator session unlocked (manual key mode)');
+          loadAllData().catch(e => console.warn('[Data Sync Notice]', e));
         } else {
           const err = await res.json().catch(() => ({}));
           showToast(`Authentication failed: ${err.message || 'Invalid key'}`);
@@ -5450,12 +6483,14 @@
     }
 
     async function logoutOperatorSession() {
+      DrippConfig.setSessionToken(null);
+      updateOperatorSessionUI(false);
+      updateBackendConnectionStatus(false, 'Operator session locked');
+      showToast('Operator session locked & terminated');
       try {
-        await apiFetch('/api/operator/logout', { method: 'POST' }).catch(() => {});
-      } finally {
-        DrippConfig.setSessionToken(null);
-        updateOperatorSessionUI(false);
-        showToast('Operator session locked & terminated');
+        await apiFetch('/api/operator/logout', { method: 'POST' });
+      } catch (e) {
+        console.warn('Backend logout cleanup notice:', e);
       }
     }
 
@@ -5500,7 +6535,25 @@
         const now = Date.now();
         const diffSec = Math.max(0, Math.floor((expMs - now) / 1000));
 
+        // When session has 15 seconds remaining or has elapsed on local server, seamlessly auto-renew for another 2 hours
+        const isLocal = ['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname);
+        if (diffSec <= 15 && isLocal && DrippConfig.getSessionToken() && !window._isAutoRenewingSession) {
+          window._isAutoRenewingSession = true;
+          console.log('[Operator Security] Session expiring. Seamlessly auto-renewing for another 2 hours...');
+          autoUnlockOperatorSession(true).catch(e => {
+            console.warn('[Auto-Renewal Notice]', e);
+          }).finally(() => {
+            setTimeout(() => { window._isAutoRenewingSession = false; }, 3000);
+          });
+          return;
+        }
+
         if (diffSec <= 0) {
+          if (isLocal && DrippConfig.getSessionToken()) {
+            console.log('[Operator Security] Session elapsed on local server. Auto-renewing for another 2 hours...');
+            autoUnlockOperatorSession(true).catch(e => console.warn('[Auto-Renewal Notice]', e));
+            return;
+          }
           clearInterval(operatorSessionTimer);
           operatorSessionTimer = null;
           badge.innerText = 'SESSION EXPIRED';
@@ -5521,13 +6574,20 @@
       operatorSessionTimer = setInterval(tick, 1000);
     }
 
-    function updateOperatorSessionUI(active, expiresAt = '') {
+    function updateOperatorSessionUI(active, expiresAt = '', isAuto = false) {
       const badge = document.getElementById('operatorSessionBadge');
+      const modePill = document.getElementById('operatorAuthModePill');
       const unlockBtn = document.getElementById('btnUnlockOperator');
       const lockBtn = document.getElementById('btnLockOperator');
       if (active) {
-        if (unlockBtn) unlockBtn.style.display = 'none';
+        if (unlockBtn) unlockBtn.innerText = 'Apply Key';
         if (lockBtn) lockBtn.style.display = 'inline-flex';
+        if (modePill) {
+          modePill.style.display = 'inline-block';
+          modePill.innerText = isAuto ? 'LOCAL AUTO' : 'MANUAL KEY';
+          modePill.style.color = isAuto ? 'var(--accent-yellow)' : '#5bc0de';
+          modePill.style.borderColor = isAuto ? 'rgba(255, 230, 0, 0.3)' : 'rgba(91, 192, 222, 0.3)';
+        }
         startOperatorSessionCountdown(expiresAt);
       } else {
         if (operatorSessionTimer) {
@@ -5540,7 +6600,8 @@
           badge.style.color = 'var(--text-dim)';
           badge.style.borderColor = 'var(--glass-border)';
         }
-        if (unlockBtn) unlockBtn.style.display = 'inline-flex';
+        if (modePill) modePill.style.display = 'none';
+        if (unlockBtn) unlockBtn.innerText = 'Apply Key';
         if (lockBtn) lockBtn.style.display = 'none';
       }
     }
@@ -5548,7 +6609,7 @@
     async function saveBackendConfiguration() {
       const urlInput = document.getElementById('inputBackendUrl');
       if (urlInput) DrippConfig.setBackendUrl(urlInput.value.trim());
-      initBackendConfigInputs();
+      await initBackendConfigInputs();
       showToast('Backend gateway configuration saved. Re-synchronizing CRM...');
       const probeResult = document.getElementById('gatewayProbeResult');
       if (probeResult) {
@@ -5562,25 +6623,25 @@
           showToast(`CRM synchronization complete: ${allLeads.length} leads loaded.`);
           if (probeResult) {
             probeResult.style.color = 'var(--accent-yellow)';
-            probeResult.innerText = `✓ CRM synchronization complete: ${allLeads.length} Qualified CRM leads and ${reviewQueueLeads.length} review candidates loaded.`;
+            probeResult.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg><span>CRM synchronization complete: ${allLeads.length} Qualified CRM leads and ${reviewQueueLeads.length} review candidates loaded.</span></span>`;
           }
         } else {
           showToast('Backend connected. Operator session required to view private CRM.');
           if (probeResult) {
             probeResult.style.color = '#FFA500';
-            probeResult.innerText = '⚠ Gateway connected, but operator authorization is required. Unlock with your Operator Key.';
+            probeResult.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFA500" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Gateway connected, but operator authorization is required. Unlock with your Operator Key or click Auto-Unlock.</span></span>`;
           }
         }
       } catch (e) {
         showToast(`CRM synchronization failed: ${e.message}`);
         if (probeResult) {
           probeResult.style.color = '#FF4D4D';
-          probeResult.innerHTML = `✕ CRM synchronization failed: ${escapeHtml(e.message)} <button class="btn-pill btn-pill-secondary" style="font-size:0.68rem; padding:0.2rem 0.5rem; margin-left:8px;" onclick="saveBackendConfiguration()">Retry</button>`;
+          probeResult.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF4D4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>CRM synchronization failed: ${escapeHtml(e.message)}</span></span> <button class="btn-pill btn-pill-secondary" style="font-size:0.68rem; padding:0.2rem 0.5rem; margin-left:8px;" onclick="saveBackendConfiguration()">Retry</button>`;
         }
       }
     }
 
-    function initBackendConfigInputs() {
+    async function initBackendConfigInputs() {
       const urlInput = document.getElementById('inputBackendUrl');
       const envInd = document.getElementById('backendEnvIndicator');
       const custom = localStorage.getItem('dripp_backend_api_url');
@@ -5606,7 +6667,7 @@
       const storedExp = DrippConfig.getSessionExpiresAt();
       updateOperatorSessionUI(hasSession, storedExp);
 
-      // Silently refresh session state from backend if configured
+      // Silently refresh session state from backend if active
       if (hasSession && DrippConfig.getBackendUrl() !== null) {
         apiFetch('/api/operator/session').then(async res => {
           if (res.ok) {
@@ -5617,6 +6678,14 @@
             }
           }
         }).catch(() => {});
+      } else if (!hasSession) {
+        const isLocal = ['localhost', '127.0.0.1', '::1', ''].includes(window.location.hostname);
+        if (isLocal) {
+          await autoUnlockOperatorSession(true);
+        } else {
+          const manualContainer = document.getElementById('manualKeyEntryContainer');
+          if (manualContainer) manualContainer.style.display = 'block';
+        }
       }
     }
 
@@ -5694,6 +6763,12 @@
       if (dest === 'discovery') {
         updateDiscoveryPageHUD();
       }
+      if (dest === 'system') {
+        const activePane = document.querySelector('.system-section-pane.active');
+        if (!activePane) {
+          switchSystemTab('settings');
+        }
+      }
 
       if (window.location.hash !== `#${dest}`) {
         if (history.replaceState) {
@@ -5720,6 +6795,7 @@
     // Load All Real Data from Backend
     async function loadAllData() {
       await Promise.all([
+        loadOutreachTaxonomy(),
         loadLeadsData(),
         loadReadinessData(),
         loadHealthData(),
@@ -5958,6 +7034,10 @@
         'pillCountReady',
         'pillCountLatestRun',
         'pillCountReview',
+        'pillCountRaw',
+        'pillCountVerified',
+        'pillCountWithWebsites',
+        'pillCountAllResearched',
         'pillCountFreshness',
         'pipeTabVal-0',
         'pipeTabVal-1',
@@ -5968,7 +7048,16 @@
         'plResearchedVal',
         'plQualifiedVal',
         'plContactableVal',
-        'plReadyVal'
+        'plReadyVal',
+        'subCountAll',
+        'subCountPending',
+        'subCountReached',
+        'subCountWon',
+        'subCountPositive',
+        'subCountNoAnswer',
+        'subCountNoReply',
+        'subCountDeclined',
+        'subCountInvalid'
       ];
       elIds.forEach(id => {
         const el = document.getElementById(id);
@@ -6035,10 +7124,11 @@
 
     async function loadLeadsData() {
       try {
-        const [leadsRes, rqRes, runsRes] = await Promise.allSettled([
+        const [leadsRes, rqRes, runsRes, resLogRes] = await Promise.allSettled([
           apiFetch('/api/leads'),
           apiFetch('/api/review-queue'),
-          apiFetch('/api/runs/latest')
+          apiFetch('/api/runs/latest'),
+          apiFetch('/api/research-log')
         ]);
 
         if (leadsRes.status === 'fulfilled') {
@@ -6068,9 +7158,18 @@
         if (rqRes.status === 'fulfilled' && rqRes.value.ok) {
           try {
             const rqData = await rqRes.value.json();
-            reviewQueueLeads = rqData.queue || rqData.items || rqData.leads || [];
+            reviewQueueLeads = rqData.queue || rqData.review_queue || rqData.items || rqData.leads || [];
           } catch (e) {
             console.warn('Error parsing review queue:', e);
+          }
+        }
+
+        if (resLogRes && resLogRes.status === 'fulfilled' && resLogRes.value.ok) {
+          try {
+            const rlData = await resLogRes.value.json();
+            allResearchLog = rlData.entries || rlData.research_log || [];
+          } catch (e) {
+            console.warn('Error parsing research log:', e);
           }
         }
 
@@ -6097,6 +7196,11 @@
         const count = allLeads.length;
         const readyLeads = allLeads.filter(l => (l.qualification_state || 'OUTREACH_READY') === 'OUTREACH_READY').length;
         const reviewCount = reviewQueueLeads.length;
+        const rawCount = latestRunCandidates.length > 0 ? latestRunCandidates.length : allResearchLog.length;
+        const verifiedCount = [...allLeads, ...reviewQueueLeads].filter(l => Boolean((l.address && l.address.length > 8) || (l.phone && l.phone.length > 6))).length;
+        const withWebsitesCount = allResearchLog.filter(r => Boolean(r.website || r.website_status === 'WEBSITE_EXISTS' || r.verification_status === 'WEBSITE_EXISTS')).length;
+        const allResearchedCount = allResearchLog.length;
+        const latestRunCount = latestRunCandidates.length;
 
         // Populate Home Banner Numbers dynamically
         const homeReadyNum = document.getElementById('homeHeroReadyNum');
@@ -6116,37 +7220,46 @@
 
         // Update Workspace Filter Pills dynamically
         const pillAll = document.getElementById('pillCountAll');
-        if (pillAll) pillAll.innerText = count;
+        if (pillAll) pillAll.innerText = count + reviewCount;
         const pillReady = document.getElementById('pillCountReady');
         if (pillReady) pillReady.innerText = readyLeads;
         const pillLatestRun = document.getElementById('pillCountLatestRun');
-        if (pillLatestRun) pillLatestRun.innerText = latestRunCandidates.length;
+        if (pillLatestRun) pillLatestRun.innerText = latestRunCount;
         const pillReview = document.getElementById('pillCountReview');
         if (pillReview) pillReview.innerText = reviewCount;
+        const pillRaw = document.getElementById('pillCountRaw');
+        if (pillRaw) pillRaw.innerText = rawCount;
+        const pillVerified = document.getElementById('pillCountVerified');
+        if (pillVerified) pillVerified.innerText = verifiedCount;
+        const pillWithWebsites = document.getElementById('pillCountWithWebsites');
+        if (pillWithWebsites) pillWithWebsites.innerText = withWebsitesCount;
+        const pillAllResearched = document.getElementById('pillCountAllResearched');
+        if (pillAllResearched) pillAllResearched.innerText = allResearchedCount;
         const pillFresh = document.getElementById('pillCountFreshness');
         if (pillFresh) pillFresh.innerText = '0';
 
-        // Dynamic Pipeline Counts derived from active run or persistent CRM
-        let runDiscovered = 40;
-        let runResearched = 2;
-        let runQualified = 1;
+        // Dynamic Pipeline Counts derived strictly from active run or persistent CRM
+        let runDiscovered = 0;
+        let runResearched = 0;
+        let runQualified = 0;
         if (latestRunData && (latestRunData.results || latestRunData.current_stats)) {
           const r = latestRunData.results || {};
           const cs = latestRunData.current_stats || {};
-          runDiscovered = r.candidates_discovered ?? (cs.raw_discovered || 40);
-          runResearched = r.candidates_researched ?? (cs.businesses_researched || 2);
-          runQualified = r.qualified_leads ?? (cs.qualified_leads || 1);
+          runDiscovered = r.candidates_discovered ?? (cs.raw_discovered ?? (latestRunCandidates.length || 0));
+          runResearched = r.candidates_researched ?? (cs.businesses_researched ?? (latestRunCandidates.length || 0));
+          runQualified = r.qualified_leads ?? (cs.qualified_leads ?? (latestRunCandidates.filter(c => (c.qualification_state || c.qualification_status) === 'OUTREACH_READY').length || 0));
 
           const banner = document.getElementById('homeLatestRunBanner');
           const bannerText = document.getElementById('homeLatestRunText');
           if (banner && bannerText) {
             banner.style.display = 'inline-flex';
-            const runIdDisplay = latestRunData.run_id || 'RUN-20261025_071312-C9AB1F';
+            const runIdDisplay = latestRunData.run_id || '--';
             const pipeIdDisplay = (cs.pipeline_run_id) ? ` (${cs.pipeline_run_id})` : '';
             const runTimestamp = latestRunData.started_at || latestRunData.created_at || '';
-            const timeFormatted = runTimestamp ? new Date(runTimestamp).toISOString().replace('T', ' ').substring(0, 16) + ' UTC' : '2026-10-25 07:13 UTC';
+            const timeFormatted = runTimestamp ? new Date(runTimestamp).toISOString().replace('T', ' ').substring(0, 16) + ' UTC' : '--';
             const runMode = latestRunData.dry_run ? 'SHADOW_MODE (Dry Run)' : 'LIVE_PRODUCTION';
-            bannerText.innerHTML = `${runIdDisplay}${pipeIdDisplay} &bull; ${timeFormatted} &bull; ${runMode} &bull; ${runDiscovered} Discovered &bull; ${runResearched} Researched &bull; ${runQualified} Qualified (0 Written &bull; Shadow Mode)`;
+            const writtenMsg = latestRunData.dry_run ? '0 Written &bull; Shadow Mode' : 'Live Synced to CRM';
+            bannerText.innerHTML = `${runIdDisplay}${pipeIdDisplay} &bull; ${timeFormatted} &bull; ${runMode} &bull; ${runDiscovered} Discovered &bull; ${runResearched} Researched &bull; ${runQualified} Qualified (${writtenMsg})`;
           }
         }
 
@@ -6180,6 +7293,9 @@
         if (pt3) pt3.innerText = runContactable;
         const pt4 = document.getElementById('pipeTabVal-4');
         if (pt4) pt4.innerText = readyLeads;
+
+        // Dynamic Outreach Sub-Counts for Toolbar
+        recalculateOutreachCounts();
 
         // Render sections
         renderHomeReadyLeads();
@@ -6221,7 +7337,10 @@
 
       container.innerHTML = readyList.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
-        const rating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
+        const hasRating = lead.rating !== null && lead.rating !== undefined && lead.rating !== '' && Number(lead.rating) > 0;
+        const ratingHtml = hasRating 
+          ? `<span style="display:inline-flex; align-items:center; gap:2px;"><span>${Number(lead.rating).toFixed(1)}</span><svg width="10" height="10" viewBox="0 0 24 24" fill="#FFD700" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>` 
+          : 'Unrated';
         const revCount = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'No reviews';
         const id = lead.lead_id || lead.id || '--';
         const address = lead.address || lead.postcode || 'Manchester, UK';
@@ -6231,7 +7350,7 @@
             <div>
               <div style="font-size:1.05rem; font-weight:700; color:var(--text-main);">${escapeHtml(name)}</div>
               <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
-                <span>${rating} &bull; ${revCount}</span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">${ratingHtml} &bull; ${revCount}</span>
                 <span>&bull;</span>
                 <span>${escapeHtml(address)}</span>
               </div>
@@ -6253,12 +7372,24 @@
       if (!streamContainer) return;
 
       let sourceList;
-      if (currentFilter === 'NEEDS_REVIEW') {
+      if (currentFilter === 'OUTREACH_READY') {
+        sourceList = allLeads;
+      } else if (currentFilter === 'NEEDS_REVIEW') {
         sourceList = reviewQueueLeads;
+      } else if (currentFilter === 'RAW_BUSINESSES') {
+        sourceList = latestRunCandidates.length > 0 ? latestRunCandidates : allResearchLog;
+      } else if (currentFilter === 'VERIFIED_BUSINESSES') {
+        sourceList = [...allLeads, ...reviewQueueLeads].filter(l => Boolean((l.address && l.address.length > 8) || (l.phone && l.phone.length > 6)));
+      } else if (currentFilter === 'WITH_WEBSITES') {
+        sourceList = allResearchLog.filter(r => Boolean(r.website || r.website_status === 'WEBSITE_EXISTS' || r.verification_status === 'WEBSITE_EXISTS'));
+      } else if (currentFilter === 'ALL_RESEARCHED') {
+        sourceList = allResearchLog;
       } else if (currentFilter === 'LATEST_RUN') {
         sourceList = latestRunCandidates;
+      } else if (currentFilter === 'ALL') {
+        sourceList = [...allLeads, ...reviewQueueLeads];
       } else if (currentSearchTerm) {
-        sourceList = [...allLeads, ...latestRunCandidates];
+        sourceList = [...allLeads, ...reviewQueueLeads, ...latestRunCandidates, ...allResearchLog];
       } else {
         sourceList = allLeads;
       }
@@ -6266,19 +7397,36 @@
       let filtered = sourceList.filter(lead => {
         const name = (lead.company_name || lead.business_name || lead.name || '').toLowerCase();
         const address = (lead.address || lead.postcode || '').toLowerCase();
-        const matches = !currentSearchTerm || name.includes(currentSearchTerm) || address.includes(currentSearchTerm);
-        if (!matches) return false;
-
-        if (currentFilter === 'ALL') return true;
-        if (currentFilter === 'OUTREACH_READY') return (lead.qualification_state || 'OUTREACH_READY') === 'OUTREACH_READY';
-        if (currentFilter === 'LATEST_RUN') return true;
-        if (currentFilter === 'QUALIFIED') return true;
-        if (currentFilter === 'NEEDS_REVIEW') return true;
-        if (currentFilter === 'RESEARCHING') return true;
-        if (currentFilter === 'FRESHNESS_DUE') return false;
-        if (currentFilter === 'CONTACTABLE') return Boolean(lead.phone || lead.instagram_url || lead.facebook_url || lead.email || lead.contact_email);
-        return true;
+        const city = (lead.city || '').toLowerCase();
+        const industry = (lead.industry || lead.category || '').toLowerCase();
+        const matches = !currentSearchTerm || name.includes(currentSearchTerm) || address.includes(currentSearchTerm) || city.includes(currentSearchTerm) || industry.includes(currentSearchTerm);
+        return matches;
       });
+
+      // Recalculate outreach aspect counts based on current category / search scope
+      recalculateOutreachCounts(filtered);
+
+      // Hide Reached Brands (if operator toggle is checked)
+      if (hideReachedBrands) {
+        filtered = filtered.filter(lead => !isLeadReached(lead));
+      }
+
+      // Filter by Outreach Aspect / Reason Sub-Filter Pill
+      if (currentOutreachFilter !== 'ALL') {
+        filtered = filtered.filter(lead => {
+          const reached = isLeadReached(lead);
+          const cat = getLeadOutreachCategory(lead);
+          if (currentOutreachFilter === 'PENDING') return !reached;
+          if (currentOutreachFilter === 'REACHED') return reached;
+          if (currentOutreachFilter === 'CLOSED_WON') return cat === 'CLOSED_WON';
+          if (currentOutreachFilter === 'POSITIVE') return cat === 'CLOSED_WON' || cat === 'MEETING_BOOKED' || cat === 'INTERESTED';
+          if (currentOutreachFilter === 'NO_ANSWER') return cat === 'NO_ANSWER';
+          if (currentOutreachFilter === 'NO_REPLY') return cat === 'NO_REPLY';
+          if (currentOutreachFilter === 'NOT_INTERESTED') return cat === 'NOT_INTERESTED';
+          if (currentOutreachFilter === 'INVALID_LEAD') return cat === 'INVALID_LEAD';
+          return true;
+        });
+      }
 
       if (filtered.length === 0) {
         streamContainer.innerHTML = `
@@ -6290,43 +7438,102 @@
         return;
       }
 
-      // Default select first lead on initial load if none set yet
+      // Default select first lead on initial load if none set yet, or if current selection is filtered out
       if (selectedLead === undefined && filtered.length > 0) {
         selectedLead = filtered[0];
-      } else if (selectedLead && !filtered.some(l => (l.lead_id && l.lead_id === selectedLead.lead_id) || (l.id && l.id === selectedLead.id))) {
-        selectedLead = filtered[0];
+      } else if (selectedLead && !filtered.some(l => (l.lead_id && l.lead_id === selectedLead.lead_id) || (l.id && l.id === selectedLead.id) || (l.research_id && l.research_id === selectedLead.research_id))) {
+        selectedLead = filtered.length > 0 ? filtered[0] : null;
       }
 
       streamContainer.innerHTML = filtered.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
-        const rating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
-        const revCount = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'No reviews';
-        const id = lead.lead_id || lead.id || '--';
-        const isSelected = selectedLead && (selectedLead.lead_id === id || selectedLead.id === id);
+        const hasRating = lead.rating !== null && lead.rating !== undefined && lead.rating !== '' && Number(lead.rating) > 0;
+        const ratingBadge = hasRating 
+          ? `<span class="lead-rating-badge"><span>${Number(lead.rating).toFixed(1)}</span><svg width="10" height="10" viewBox="0 0 24 24" fill="#FFD700" stroke="none" style="margin-left:2px; vertical-align:middle;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>` 
+          : `<span class="lead-rating-badge unrated">Audited</span>`;
+        const revCount = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'Reviews Audited';
+        const id = lead.lead_id || lead.id || lead.research_id || '--';
+        const isSelected = selectedLead && ((selectedLead.lead_id && selectedLead.lead_id === id) || (selectedLead.id && selectedLead.id === id) || (selectedLead.research_id && selectedLead.research_id === id));
         const isReviewQueue = currentFilter === 'NEEDS_REVIEW' || (id && id.startsWith('REV-'));
+        const isResearchLog = currentFilter === 'ALL_RESEARCHED' || currentFilter === 'WITH_WEBSITES' || (id && id.startsWith('RES-'));
         const isDryRun = lead.is_shadow_mode || lead.is_dry_run || (id && id.startsWith('CAND-'));
+        const hasWeb = Boolean(lead.website || lead.website_status === 'WEBSITE_EXISTS' || lead.verification_status === 'WEBSITE_EXISTS');
+        const isReached = isLeadReached(lead);
+        const badgeInfo = getOutreachBadgeInfo(lead);
+
+        // Human-friendly formatted chips (eliminating raw db enums like NO_WEBSITE_CONFIRMED)
+        const webChip = hasWeb
+          ? `<span class="lead-chip chip-neutral">Website Exists</span>`
+          : `<span class="lead-chip chip-opportunity">No Website</span>`;
+
+        const opStatusRaw = lead.operational_status || 'Active';
+        const opFormatted = (opStatusRaw === 'ACTIVE_CONFIRMED' || opStatusRaw === 'ACTIVE') 
+          ? 'Active Biz' 
+          : opStatusRaw.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        const opChip = `<span class="lead-chip chip-active"><span class="chip-pulse-dot"></span>${escapeHtml(opFormatted)}</span>`;
+
+        let stageChip = '';
+        if (isDryRun) {
+          if (lead.qualification_state === 'OUTREACH_READY') {
+            stageChip = '<span class="lead-chip chip-gold">Outreach Ready</span><span class="lead-chip chip-cyan" style="margin-left:4px;">Shadow Mode</span>';
+          } else {
+            stageChip = '<span class="lead-chip chip-neutral">Research Only</span><span class="lead-chip chip-cyan" style="margin-left:4px;">Shadow Mode</span>';
+          }
+        } else if (isReviewQueue) {
+          stageChip = '<span class="lead-chip chip-amber">Manual Review</span>';
+        } else if (!hasWeb) {
+          stageChip = '<span class="lead-chip chip-gold">Outreach Ready</span>';
+        } else {
+          stageChip = '<span class="lead-chip chip-neutral">Verified</span>';
+        }
+
+        const vloggerRef = getLeadVloggerEvidence(lead);
+        const vloggerChip = (vloggerRef && vloggerRef.url) ? `
+          <span class="lead-chip" style="background:rgba(217,70,239,0.12); color:#F0ABFC; border:1px solid rgba(217,70,239,0.3); font-size:0.67rem; padding:0.18rem 0.45rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem;" title="Public vlogger review: ${escapeHtml(vloggerRef.creator_name || vloggerRef.creator_handle)}">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            <span>Vlogger: ${escapeHtml(vloggerRef.creator_handle || vloggerRef.creator_name || vloggerRef.platform || 'Video')}</span>
+          </span>
+        ` : '';
 
         return `
           <div class="lead-stream-item ${isSelected ? 'selected' : ''}" onclick="selectLead('${id}')">
-            <div class="lead-stream-title">
-              <span>${escapeHtml(name)}</span>
-              <span style="font-size:0.75rem; color:var(--accent-yellow); font-weight:700;">${rating}</span>
+            <div class="lead-card-header">
+              <span class="lead-biz-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+              ${ratingBadge}
             </div>
-            <div class="lead-stream-sub">
-              <span>${escapeHtml(lead.postcode || lead.address || 'Manchester, UK')}</span>
-              <span>&bull;</span>
-              <span>${revCount}</span>
-              <span>&bull;</span>
-              <span style="font-family:var(--font-mono); font-size:0.68rem;">${id}</span>
+            <div class="lead-meta-row">
+              <span class="lead-meta-item">${escapeHtml(lead.postcode || lead.address || lead.city || 'Manchester, UK')}</span>
+              <span class="lead-meta-sep">&bull;</span>
+              <span class="lead-meta-item">${revCount}</span>
+              <span class="lead-meta-sep">&bull;</span>
+              <span class="lead-id-badge">${id}</span>
             </div>
-            <div class="lead-stream-badges">
-              <span class="lead-mini-tag yellow">${escapeHtml(lead.website_status || 'No Website')}</span>
-              <span class="lead-mini-tag">Active</span>
-              ${isDryRun 
-                ? '<span class="lead-mini-tag" style="background:rgba(0,240,255,0.12); color:var(--accent-cyan); border-color:rgba(0,240,255,0.3); font-weight:700;">Shadow Mode</span>'
-                : (isReviewQueue 
-                    ? '<span class="lead-mini-tag" style="background:rgba(255,165,0,0.15); color:#FFA500; border-color:rgba(255,165,0,0.3); font-weight:700;">Needs Review</span>'
-                    : '<span class="lead-mini-tag yellow">Ready</span>')}
+            <div class="lead-tags-cluster">
+              ${webChip}
+              ${opChip}
+              ${stageChip}
+              ${vloggerChip}
+            </div>
+            <div class="lead-stream-outreach-row" onclick="event.stopPropagation()">
+              <label class="custom-cyber-checkbox-label" title="${isReached ? 'Mark as Pending' : 'Mark as Reached'}">
+                <input type="checkbox" class="cyber-checkbox-native" ${isReached ? 'checked' : ''} onchange="toggleLeadReached('${id}', this.checked, event)">
+                <span class="cyber-checkbox-indicator">
+                  <svg viewBox="0 0 10 8" fill="none"><polyline points="1 4 3.5 6.5 9 1" stroke="#000000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="cyber-checkbox-text ${isReached ? 'active' : ''}">${isReached ? 'Reached' : 'Mark Reached'}</span>
+              </label>
+              <div class="lead-footer-right">
+                <span class="lead-status-pill" style="background:${badgeInfo.bg}; color:${badgeInfo.color}; border-color:${badgeInfo.border};">
+                  <span class="status-pulse-dot" style="background:${badgeInfo.color};"></span>
+                  <span>${badgeInfo.label}</span>
+                </span>
+                ${currentLeadsLayoutMode === 'grid' ? `
+                  <button class="lead-quick-inspect-btn" onclick="event.stopPropagation(); selectLead('${id}'); openSelectedLeadDrawer();" title="Inspect Lead Dossier">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span>Dossier</span>
+                  </button>
+                ` : ''}
+              </div>
             </div>
           </div>
         `;
@@ -6355,9 +7562,10 @@
     }
 
     function selectLead(id) {
-      const lead = allLeads.find(l => (l.lead_id === id || l.id === id)) ||
-                   reviewQueueLeads.find(l => (l.lead_id === id || l.id === id)) ||
-                   latestRunCandidates.find(l => (l.lead_id === id || l.id === id));
+      const lead = allLeads.find(l => (l.lead_id === id || l.id === id || l.research_id === id)) ||
+                   reviewQueueLeads.find(l => (l.lead_id === id || l.id === id || l.research_id === id)) ||
+                   latestRunCandidates.find(l => (l.lead_id === id || l.id === id || l.research_id === id)) ||
+                   allResearchLog.find(l => (l.lead_id === id || l.id === id || l.research_id === id));
       if (!lead) {
         selectedLead = null;
         renderInspector(null);
@@ -6366,6 +7574,169 @@
       }
       selectedLead = lead;
       renderLeadsWorkspace();
+      if (currentLeadsLayoutMode === 'grid') {
+        openSelectedLeadDrawer();
+      }
+    }
+
+    function isSyntheticFixture(url) {
+      if (!url || typeof url !== 'string') return true;
+      const low = url.toLowerCase();
+      return (
+        low.includes('c7m9k0malasecret') ||
+        low.includes('c6p4q1maryds') ||
+        low.includes('7389102456') ||
+        low.includes('c9a1b2seoulkimchi') ||
+        low.includes('skmcr12345') ||
+        low.includes('c8x9y12hongthai') ||
+        low.includes('7345129841') ||
+        low.includes('c99reasonsmcr') ||
+        low.includes('mock_creator') ||
+        low.includes('test_fixture')
+      );
+    }
+
+    function getLeadVloggerEvidence(lead) {
+      if (!lead) return null;
+
+      // Brand's own accounts cannot be considered third-party creator evidence
+      const brandProfiles = [
+        lead.instagram_url,
+        lead.facebook_url,
+        lead.website
+      ].filter(u => u && typeof u === 'string').map(u => u.trim().toLowerCase().replace(/\/$/, ''));
+
+      function isBrandAccount(url) {
+        if (!url || typeof url !== 'string') return true;
+        const norm = url.trim().toLowerCase().replace(/\/$/, '');
+        return brandProfiles.some(b => b && (norm === b || norm.startsWith(b) || b.startsWith(norm)));
+      }
+
+      function detectPlatformFromUrl(u) {
+        if (!u) return 'Public Video';
+        const low = u.toLowerCase();
+        if (low.includes('tiktok.com')) return 'TikTok Video';
+        if (low.includes('instagram.com/reel') || low.includes('/reel/')) return 'Instagram Reel';
+        if (low.includes('instagram.com/p/')) return 'Instagram Post';
+        if (low.includes('youtube.com/shorts/')) return 'YouTube Shorts';
+        if (low.includes('youtube.com') || low.includes('youtu.be')) return 'YouTube Video';
+        if (low.includes('facebook.com/watch') || low.includes('facebook.com/reel')) return 'Facebook Reel';
+        return 'Public Video';
+      }
+
+      function extractHandleFromUrl(u) {
+        if (!u) return '';
+        const mTikTok = u.match(/tiktok\.com\/@([a-zA-Z0-9_.-]+)/i);
+        if (mTikTok && mTikTok[1]) return `@${mTikTok[1]}`;
+        return '';
+      }
+
+      // 1. Structured creator_evidence object from discovery / search pipeline
+      if (lead.creator_evidence && typeof lead.creator_evidence === 'object') {
+        const ce = lead.creator_evidence;
+        if (ce.items && Array.isArray(ce.items) && ce.items.length > 0) {
+          for (const it of ce.items) {
+            const rawUrl = it.content_url || it.source_url;
+            if (rawUrl && typeof rawUrl === 'string' && rawUrl.startsWith('http') && !isBrandAccount(rawUrl) && !isSyntheticFixture(rawUrl)) {
+              if (it.creator_evidence_status !== 'REJECTED') {
+                return {
+                  creator_handle: it.creator_handle || extractHandleFromUrl(rawUrl),
+                  creator_name: it.creator_name || '',
+                  platform: it.platform || detectPlatformFromUrl(rawUrl),
+                  url: rawUrl,
+                  published: it.published_at || ce.creator_latest_date || '',
+                  caption: it.caption_excerpt || ce.creator_evidence_summary || '',
+                  location_tag: it.location_tag || it.location_reference || ''
+                };
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Direct lead creator/vlogger attributes found during search
+      if (lead.vlogger_url || lead.creator_url) {
+        const directUrl = lead.vlogger_url || lead.creator_url;
+        if (directUrl && typeof directUrl === 'string' && directUrl.startsWith('http') && !isBrandAccount(directUrl) && !isSyntheticFixture(directUrl)) {
+          return {
+            creator_handle: lead.creator_handle || lead.vlogger_handle || extractHandleFromUrl(directUrl),
+            creator_name: lead.creator_name || lead.vlogger_name || '',
+            platform: lead.creator_platform || lead.vlogger_platform || detectPlatformFromUrl(directUrl),
+            url: directUrl,
+            published: lead.creator_latest_date || '',
+            caption: lead.creator_evidence_summary || '',
+            location_tag: ''
+          };
+        }
+      }
+
+      // 3. creator_evidence_urls array/JSON from search results
+      if (lead.creator_evidence_status !== 'REJECTED' && lead.creator_evidence_status !== 'NOT_FOUND') {
+        let cUrls = [];
+        if (Array.isArray(lead.creator_evidence_urls)) {
+          cUrls = lead.creator_evidence_urls;
+        } else if (typeof lead.creator_evidence_urls === 'string' && lead.creator_evidence_urls.trim()) {
+          try {
+            cUrls = lead.creator_evidence_urls.startsWith('[') ? JSON.parse(lead.creator_evidence_urls) : [lead.creator_evidence_urls];
+          } catch(e) {
+            cUrls = [lead.creator_evidence_urls];
+          }
+        }
+
+        const validUrls = cUrls.filter(u => u && typeof u === 'string' && u.startsWith('http') && !isBrandAccount(u) && !isSyntheticFixture(u));
+        if (validUrls.length > 0) {
+          const u = validUrls[0];
+          return {
+            creator_handle: lead.creator_handle || extractHandleFromUrl(u),
+            creator_name: lead.creator_name || '',
+            platform: detectPlatformFromUrl(u),
+            url: u,
+            published: lead.creator_latest_date || '',
+            caption: lead.creator_evidence_summary || '',
+            location_tag: ''
+          };
+        }
+      }
+
+      return null;
+    }
+
+    function extractSocialInfo(url, defaultPlatform = 'Instagram') {
+      if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) return null;
+      const raw = url.trim();
+      let handle = '';
+      let platform = defaultPlatform;
+      try {
+        const u = new URL(raw);
+        const host = u.hostname.toLowerCase();
+        if (host.includes('instagram.com')) platform = 'Instagram';
+        else if (host.includes('facebook.com') || host.includes('fb.com')) platform = 'Facebook';
+        else if (host.includes('tiktok.com')) platform = 'TikTok';
+        else if (host.includes('twitter.com') || host.includes('x.com')) platform = 'X (Twitter)';
+        else if (host.includes('linkedin.com')) platform = 'LinkedIn';
+
+        const parts = u.pathname.split('/').filter(p => p && p !== 'p' && p !== 'reel' && p !== 'tv' && p !== 'stories');
+        if (parts.length > 0) {
+          handle = parts[0].replace(/^@/, '');
+        }
+      } catch (e) {
+        const clean = raw.split('?')[0].split('#')[0];
+        const parts = clean.split('/').filter(Boolean);
+        handle = parts[parts.length - 1] || 'profile';
+      }
+      handle = handle.split('?')[0].split('#')[0].replace(/^@/, '');
+      const cleanProfileUrl = (platform === 'Instagram' && handle && handle !== 'profile')
+        ? `https://www.instagram.com/${handle}/`
+        : (platform === 'Facebook' && handle && handle !== 'profile'
+            ? `https://www.facebook.com/${handle}/`
+            : raw.split('?')[0]);
+      return {
+        rawUrl: raw,
+        profileUrl: cleanProfileUrl,
+        platform: platform,
+        handle: handle ? `@${handle}` : '',
+        label: handle ? `${platform} Verified (@${handle})` : `${platform} Verified`
+      };
     }
 
     function renderInspector(lead) {
@@ -6383,7 +7754,21 @@
       const inspName = document.getElementById('inspName');
       if (inspName) inspName.innerText = name;
       const inspId = document.getElementById('inspId');
-      if (inspId) inspId.innerText = lead.lead_id || lead.id || 'LEAD-000000';
+      if (inspId) inspId.innerText = lead.lead_id || lead.id || lead.research_id || 'LEAD-000000';
+
+      const inspAddrLink = document.getElementById('inspAddressLink');
+      const inspAddrText = document.getElementById('inspAddressText');
+      if (inspAddrLink && inspAddrText) {
+        const addr = lead.address || [lead.postcode, lead.city, lead.country].filter(Boolean).join(', ');
+        if (addr && addr.trim()) {
+          inspAddrText.innerText = addr.trim();
+          const mapQuery = encodeURIComponent(`${name} ${addr}`);
+          inspAddrLink.href = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+          inspAddrLink.style.display = 'inline-flex';
+        } else {
+          inspAddrLink.style.display = 'none';
+        }
+      }
 
       const inspProvWrap = document.getElementById('inspProvenanceWrap');
       const inspProvBadge = document.getElementById('inspProvenanceBadge');
@@ -6395,13 +7780,19 @@
           inspProvWrap.style.border = '1px solid rgba(0, 240, 255, 0.25)';
           inspProvBadge.style.color = 'var(--accent-cyan)';
           inspProvBadge.innerText = 'LOG-RECONSTRUCTED (SHADOW MODE)';
-          inspProvText.innerText = 'Reconstructed from dry-run execution logs (PIPE-MAN-20261025-C112). Core qualification metrics (4.3★, 88 reviews, no website) are authentic log outputs; candidate ID is a synthetic inspection key. Not saved to CRM.';
+          inspProvText.innerText = 'Reconstructed from dry-run execution logs (PIPE-MAN-20261025-C112). Core qualification metrics (4.3 stars, 88 reviews, no website) are authentic log outputs; candidate ID is a synthetic inspection key. Not saved to CRM.';
         } else if (lead.lead_id && lead.lead_id.startsWith('REV-')) {
           inspProvWrap.style.background = 'rgba(255, 165, 0, 0.08)';
           inspProvWrap.style.border = '1px solid rgba(255, 165, 0, 0.25)';
           inspProvBadge.style.color = '#FFA500';
           inspProvBadge.innerText = 'REVIEW QUEUE RECORD';
           inspProvText.innerText = 'Persistent review queue item stored in REVIEW_QUEUE tab awaiting human verification.';
+        } else if (lead.research_id && !lead.lead_id) {
+          inspProvWrap.style.background = 'rgba(0, 240, 255, 0.08)';
+          inspProvWrap.style.border = '1px solid rgba(0, 240, 255, 0.25)';
+          inspProvBadge.style.color = 'var(--accent-cyan)';
+          inspProvBadge.innerText = 'RESEARCH LOG RECORD';
+          inspProvText.innerText = 'Researched business entry stored in RESEARCH_LOG tab on Google Sheets.';
         } else {
           inspProvWrap.style.background = 'rgba(255, 215, 0, 0.08)';
           inspProvWrap.style.border = '1px solid rgba(255, 215, 0, 0.25)';
@@ -6411,30 +7802,182 @@
         }
       }
 
+      // 1. Directing Customer Reviews -> Google Maps & Reviews
       const inspReviews = document.getElementById('inspReviews');
-      if (inspReviews) inspReviews.innerText = `${lead.rating ? lead.rating + ' Stars' : 'Audited'} / ${lead.review_count || 0} reviews`;
+      if (inspReviews) {
+        const mapQuery = encodeURIComponent(`${name} ${lead.address || lead.city || 'Manchester'}`);
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
+        const reviewText = `${lead.rating ? lead.rating + ' Stars' : 'Audited'} / ${lead.review_count || 0} reviews`;
+        inspReviews.innerHTML = `
+          <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="directing-link directing-reviews" title="View live Google Reviews & location on Google Maps">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; color:var(--accent-yellow);"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span>${escapeHtml(reviewText)}</span>
+            <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        `;
+      }
+
+      // 2. Directing Phone -> tel: Click-to-Call
       const inspPhone = document.getElementById('inspPhone');
       if (inspPhone) {
         if (lead.phone && lead.phone !== 'N/A' && lead.phone !== 'Available in Places record') {
-          inspPhone.innerText = lead.phone;
+          const rawPhone = String(lead.phone).trim();
+          const cleanTel = rawPhone.replace(/[^\d+]/g, '');
+          inspPhone.innerHTML = `
+            <a href="tel:${cleanTel}" class="directing-link directing-phone" title="Click to call ${escapeHtml(rawPhone)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              <span>${escapeHtml(rawPhone)}</span>
+              <span class="directing-call-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call</span>
+            </a>
+          `;
         } else if (lead.is_shadow_mode || lead.is_dry_run) {
-          inspPhone.innerText = 'Not captured in dry run (N/A)';
+          inspPhone.innerHTML = `<span style="color:var(--text-muted); font-size:0.78rem;">Not captured in dry run (N/A)</span>`;
         } else {
-          inspPhone.innerText = 'Premises / Corporate Directory';
+          inspPhone.innerHTML = `<span style="color:var(--text-muted); font-size:0.78rem;">Premises / Corporate Directory</span>`;
         }
       }
-      const inspSocial = document.getElementById('inspSocial');
-      if (inspSocial) inspSocial.innerText = lead.instagram_url ? 'Instagram Verified (@' + (lead.instagram_url.split('/')[3] || 'profile') + ')' : (lead.instagram ? 'Instagram Verified' : 'Physical Premises Verified');
-      const inspWhy = document.getElementById('inspWhy');
-      if (inspWhy) inspWhy.innerText = lead.qualification_reason || 'Absence of official website verified. Strong review history & active physical premises confirmed.';
 
-      // Dynamic Website Status
+      // 3. Directing Social Link -> Clean Brand Profile (Instagram, Facebook, etc.) + Vlogger Reference
+      const vlogger = getLeadVloggerEvidence(lead);
+      const inspSocial = document.getElementById('inspSocial');
+      if (inspSocial) {
+        const socials = [];
+        if (lead.instagram_url) {
+          const s = extractSocialInfo(lead.instagram_url, 'Instagram');
+          if (s) socials.push(s);
+        }
+        if (lead.facebook_url) {
+          const s = extractSocialInfo(lead.facebook_url, 'Facebook');
+          if (s) socials.push(s);
+        }
+        if (lead.tiktok_url) {
+          const s = extractSocialInfo(lead.tiktok_url, 'TikTok');
+          if (s) socials.push(s);
+        }
+        if (socials.length === 0 && lead.verified_social_urls) {
+          try {
+            const urls = typeof lead.verified_social_urls === 'string' && lead.verified_social_urls.startsWith('[')
+              ? JSON.parse(lead.verified_social_urls)
+              : [lead.verified_social_urls];
+            urls.forEach(u => {
+              const s = extractSocialInfo(u);
+              if (s && !socials.some(existing => existing.profileUrl === s.profileUrl)) socials.push(s);
+            });
+          } catch(e) {}
+        }
+
+        let brandSocialsHtml = socials.map(s => {
+          let iconSvg = '';
+          if (s.platform === 'Instagram') {
+            iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>`;
+          } else if (s.platform === 'Facebook') {
+            iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`;
+          } else {
+            iconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+          }
+          return `
+            <a href="${escapeHtml(s.profileUrl)}" target="_blank" rel="noopener noreferrer" class="directing-link directing-social" title="Direct to ${escapeHtml(s.platform)} brand page (${escapeHtml(s.handle || 'profile')})">
+              ${iconSvg}
+              <span>${s.platform} Verified (${escapeHtml(s.handle || 'profile')})</span>
+              <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          `;
+        }).join(' ');
+
+        if (brandSocialsHtml) {
+          inspSocial.innerHTML = brandSocialsHtml;
+        } else if (lead.instagram_url || lead.instagram) {
+          const igUrl = lead.instagram_url || lead.instagram;
+          const s = extractSocialInfo(igUrl, 'Instagram');
+          inspSocial.innerHTML = s ? `
+            <a href="${escapeHtml(s.profileUrl)}" target="_blank" rel="noopener noreferrer" class="directing-link directing-social" title="Direct to Instagram brand page">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              <span>Instagram Verified (${escapeHtml(s.handle || 'profile')})</span>
+              <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          ` : `<span style="color:var(--accent-cyan); font-size:0.8rem;">Instagram Verified</span>`;
+        } else {
+          inspSocial.innerHTML = `<span style="color:var(--text-muted); font-size:0.8rem;">Physical Premises Verified</span>`;
+        }
+      }
+
+      // 3b. Dedicated Vlogger / Creator Reference Row in Evidence Matrix (Space Always Kept)
+      const inspVloggerRow = document.getElementById('inspVloggerRow');
+      const inspVlogger = document.getElementById('inspVlogger');
+      if (inspVloggerRow && inspVlogger) {
+        inspVloggerRow.style.display = 'flex';
+        if (vlogger && vlogger.url) {
+          let vloggerIcon = '';
+          if (vlogger.platform.toLowerCase().includes('tiktok')) {
+            vloggerIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.49 6.34 6.34 0 0 0 1.86-4.49V8.52a8.27 8.27 0 0 0 4.84 1.55v-3.38z"/></svg>`;
+          } else if (vlogger.platform.toLowerCase().includes('youtube')) {
+            vloggerIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+          } else {
+            vloggerIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`;
+          }
+          const nameOrHandle = [vlogger.creator_name, vlogger.creator_handle].filter(Boolean).join(' ');
+          const vloggerLabel = nameOrHandle ? `${escapeHtml(vlogger.platform || 'Public Video')} • ${escapeHtml(nameOrHandle)}` : escapeHtml(vlogger.platform || 'Vlogger Reference');
+          const excerptTooltip = vlogger.caption ? `Vlogger Review: &ldquo;${escapeHtml(vlogger.caption)}&rdquo;` : `View third-party vlogger review on ${escapeHtml(vlogger.platform)}`;
+
+          inspVlogger.innerHTML = `
+            <a href="${escapeHtml(vlogger.url)}" target="_blank" rel="noopener noreferrer" class="directing-link directing-vlogger" style="font-weight:600;" title="${excerptTooltip}">
+              ${vloggerIcon}
+              <span>${vloggerLabel}</span>
+              <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          `;
+        } else {
+          // Space is kept in Evidence Matrix with clear indicator
+          inspVlogger.innerHTML = `<span style="color:var(--text-muted); font-size:0.8rem; font-weight:normal;">None Discovered</span>`;
+        }
+      }
+
+      // 4. Directing Email -> mailto:
+      const inspEmailRow = document.getElementById('inspEmailRow');
+      const inspEmail = document.getElementById('inspEmail');
+      const emailVal = lead.email || lead.contact_email || lead.primary_email;
+      if (inspEmailRow && inspEmail) {
+        if (emailVal && emailVal.trim()) {
+          inspEmailRow.style.display = 'flex';
+          inspEmail.innerHTML = `
+            <a href="mailto:${escapeHtml(emailVal.trim())}" class="directing-link directing-email" title="Send email to ${escapeHtml(emailVal.trim())}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <span>${escapeHtml(emailVal.trim())}</span>
+              <span class="directing-call-badge" style="background:rgba(0,240,255,0.15); color:var(--accent-cyan); border-color:rgba(0,240,255,0.3);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Mail</span>
+            </a>
+          `;
+        } else {
+          inspEmailRow.style.display = 'none';
+        }
+      }
+
+      const inspWhy = document.getElementById('inspWhy');
+      if (inspWhy) inspWhy.innerText = formatCleanText(lead.qualification_reason || 'Absence of official website verified. Strong review history & active physical premises confirmed.');
+
+      // 5. Directing Website -> Official Website (if present) or Search Verification (if absent)
       const inspWebsite = document.getElementById('inspWebsite');
       if (inspWebsite) {
-        const ws = lead.website_status || (lead.website ? 'Website Found' : 'No Website Confirmed');
-        inspWebsite.innerText = ws;
+        const ws = lead.website_status || (lead.website ? 'Website Found' : 'NO_WEBSITE_CONFIRMED');
         const isAbsent = !lead.website || ws.toLowerCase().includes('no') || ws.toLowerCase().includes('absent');
-        inspWebsite.style.color = isAbsent ? 'var(--accent-yellow)' : '#FFA500';
+        if (!isAbsent && lead.website) {
+          const webUrl = lead.website.startsWith('http') ? lead.website : `https://${lead.website}`;
+          inspWebsite.innerHTML = `
+            <a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener noreferrer" class="directing-link directing-website" title="Open official website in new tab" style="color:#FFA500;">
+              <span>${escapeHtml(ws)}</span>
+              <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          `;
+        } else {
+          const verifySearchUrl = `https://www.google.com/search?q=${encodeURIComponent(name + ' official website ' + (lead.city || 'Manchester'))}`;
+          inspWebsite.innerHTML = `
+            <a href="${verifySearchUrl}" target="_blank" rel="noopener noreferrer" class="directing-link directing-verify" title="Verify zero official website presence on Google Search" style="color:var(--accent-yellow);">
+              <span>${escapeHtml(ws)}</span>
+              <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          `;
+        }
       }
 
       // Dynamic Rule B Checklist in Inspector
@@ -6468,6 +8011,54 @@
         inspCheckPolygon.innerText = 'PASS';
         inspCheckPolygon.style.color = 'var(--accent-yellow)';
       }
+
+      // Populate Live Outreach Deck in Inspector
+      const inspReachedCheck = document.getElementById('inspReachedCheck');
+      const inspBadge = document.getElementById('inspOutreachStatusBadge');
+      const inspCategory = document.getElementById('inspOutcomeCategorySelect');
+      const inspNotes = document.getElementById('inspOutcomeNotesInput');
+      const inspChannel = document.getElementById('inspChannelSelect');
+
+      const isReached = isLeadReached(lead);
+      if (inspReachedCheck) inspReachedCheck.checked = isReached;
+
+      const badgeInfo = getOutreachBadgeInfo(lead);
+      if (inspBadge) {
+        inspBadge.innerText = badgeInfo.label.toUpperCase();
+        inspBadge.style.color = badgeInfo.color;
+        inspBadge.style.background = badgeInfo.bg;
+        inspBadge.style.borderColor = badgeInfo.border;
+      }
+
+      const cat = getLeadOutreachCategory(lead);
+      if (inspCategory) {
+        inspCategory.value = (cat === 'PENDING') ? 'CLOSED_WON' : cat;
+      }
+
+      let savedReason = '';
+      if (lead.manual_outreach_notes) {
+        const m = lead.manual_outreach_notes.match(/Reason:\s*([^.]+)\./);
+        if (m) savedReason = m[1].trim();
+      }
+      populateReasonOptions(inspCategory ? inspCategory.value : 'CLOSED_WON', savedReason);
+
+      if (inspNotes) {
+        let cleanNotes = '';
+        if (lead.manual_outreach_notes) {
+          const m = lead.manual_outreach_notes.match(/Notes:\s*([^.]+)\./);
+          if (m) cleanNotes = m[1].trim();
+          else if (!lead.manual_outreach_notes.startsWith('[')) cleanNotes = lead.manual_outreach_notes;
+        }
+        inspNotes.value = cleanNotes;
+      }
+
+      if (inspChannel) {
+        const ch = (lead.outreach_channel || '').toUpperCase();
+        if (ch.includes('INSTAGRAM')) inspChannel.value = 'INSTAGRAM';
+        else if (ch.includes('FACEBOOK')) inspChannel.value = 'FACEBOOK';
+        else if (ch.includes('EMAIL')) inspChannel.value = 'EMAIL';
+        else inspChannel.value = 'PHONE';
+      }
     }
 
     function setLeadFilter(flt) {
@@ -6481,6 +8072,575 @@
     function handleLeadsSearch(val) {
       currentSearchTerm = val.toLowerCase().trim();
       renderLeadsWorkspace();
+    }
+
+    // ========================================================================
+    // OUTREACH CHECK / UNCHECK & ASPECT FILTERING CONTROLLER
+    // ========================================================================
+    function isLeadReached(lead) {
+      if (!lead) return false;
+      if (lead.is_reached === true || lead.is_reached === 'true' || lead.is_reached === 1) return true;
+      if (lead.is_reached === false || lead.is_reached === 'false' || lead.is_reached === 0) return false;
+      
+      const status = (lead.outreach_status || '').toUpperCase().trim();
+      const salesStage = (lead.sales_stage || '').toUpperCase().trim();
+      const callStatus = (lead.call_status || '').toUpperCase().trim();
+      const leadStatus = (lead.lead_status || '').toUpperCase().trim();
+      
+      if (['CLOSED_WON', 'MEETING_BOOKED', 'INTERESTED', 'NO_ANSWER', 'NO_REPLY', 'NOT_INTERESTED', 'INVALID_LEAD', 'DO_NOT_CONTACT', 'CONTACTED', 'REACHED', 'SENT', 'IN_PROGRESS', 'CALL_COMPLETED'].includes(status)) {
+        return true;
+      }
+      if (['WON', 'MEETING_BOOKED', 'QUALIFIED_CONVERSATION', 'CONTACTED', 'LOST', 'DO_NOT_CONTACT'].includes(salesStage)) {
+        return true;
+      }
+      if (['CALLED', 'NO_ANSWER', 'LEFT_VOICEMAIL', 'BUSY'].includes(callStatus)) {
+        return true;
+      }
+      if (['CLOSED_WON', 'CONTACTED', 'NO_ANSWER', 'LOST', 'INVALID', 'DO_NOT_CONTACT'].includes(leadStatus)) {
+        return true;
+      }
+      if (lead.last_contact_at && typeof lead.last_contact_at === 'string' && lead.last_contact_at.trim() !== '') {
+        return true;
+      }
+      return false;
+    }
+
+    function getLeadOutreachCategory(lead) {
+      if (!lead) return 'PENDING';
+      const status = (lead.outreach_status || '').toUpperCase().trim();
+      const leadStatus = (lead.lead_status || '').toUpperCase().trim();
+      const salesStage = (lead.sales_stage || '').toUpperCase().trim();
+      const callOutcome = (lead.call_outcome || '').toUpperCase().trim();
+      const callStatus = (lead.call_status || '').toUpperCase().trim();
+      const notes = (lead.manual_outreach_notes || '').toUpperCase();
+
+      if (status === 'CLOSED_WON' || leadStatus === 'CLOSED_WON' || salesStage === 'WON') return 'CLOSED_WON';
+      if (status === 'MEETING_BOOKED' || salesStage === 'MEETING_BOOKED') return 'MEETING_BOOKED';
+      if (status === 'INTERESTED' || salesStage === 'QUALIFIED_CONVERSATION') return 'INTERESTED';
+      if (status === 'NO_ANSWER' || callStatus === 'NO_ANSWER' || callOutcome === 'NO_ANSWER' || notes.includes("DIDN'T PICK UP") || notes.includes('NO ANSWER')) return 'NO_ANSWER';
+      if (status === 'NO_REPLY' || notes.includes("DIDN'T REPLY") || notes.includes('GHOSTED') || (lead.response_status || '').toUpperCase() === 'NO_RESPONSE') return 'NO_REPLY';
+      if (status === 'NOT_INTERESTED' || leadStatus === 'LOST' || salesStage === 'LOST' || notes.includes('NOT INTERESTED')) return 'NOT_INTERESTED';
+      if (status === 'INVALID_LEAD' || leadStatus === 'INVALID' || callOutcome === 'WRONG_NUMBER' || notes.includes('INVALID LEAD')) return 'INVALID_LEAD';
+      if (status === 'DO_NOT_CONTACT' || leadStatus === 'DO_NOT_CONTACT' || salesStage === 'DO_NOT_CONTACT') return 'DO_NOT_CONTACT';
+      if (status === 'CONTACTED' || status === 'SENT' || isLeadReached(lead)) return 'CONTACTED';
+      return 'PENDING';
+    }
+
+    function getOutreachBadgeInfo(lead) {
+      const cat = getLeadOutreachCategory(lead);
+      switch (cat) {
+        case 'CLOSED_WON':
+          return { label: 'Closed Client (Won)', color: 'var(--accent-yellow)', bg: 'rgba(255, 215, 0, 0.15)', border: 'rgba(255, 215, 0, 0.4)' };
+        case 'MEETING_BOOKED':
+          return { label: 'Meeting Booked', color: 'var(--accent-cyan)', bg: 'rgba(0, 240, 255, 0.15)', border: 'rgba(0, 240, 255, 0.4)' };
+        case 'INTERESTED':
+          return { label: 'Interested', color: '#4ADE80', bg: 'rgba(74, 222, 128, 0.15)', border: 'rgba(74, 222, 128, 0.4)' };
+        case 'NO_ANSWER':
+          return { label: "Didn't Pick Up", color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)' };
+        case 'NO_REPLY':
+          return { label: "Didn't Reply", color: '#C084FC', bg: 'rgba(192, 132, 252, 0.15)', border: 'rgba(192, 132, 252, 0.4)' };
+        case 'NOT_INTERESTED':
+          return { label: 'Not Interested', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.15)', border: 'rgba(148, 163, 184, 0.4)' };
+        case 'INVALID_LEAD':
+          return { label: 'Invalid Lead', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)' };
+        case 'DO_NOT_CONTACT':
+          return { label: 'Do Not Contact', color: '#DC2626', bg: 'rgba(220, 38, 38, 0.15)', border: 'rgba(220, 38, 38, 0.4)' };
+        case 'CONTACTED':
+          return { label: 'Reached', color: '#38BDF8', bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.4)' };
+        default:
+          return { label: 'Pending Outreach', color: 'var(--text-dim)', bg: 'rgba(255, 255, 255, 0.06)', border: 'rgba(255, 255, 255, 0.12)' };
+      }
+    }
+
+    async function loadOutreachTaxonomy() {
+      if (outreachTaxonomy) return outreachTaxonomy;
+      try {
+        const res = await apiFetch('/api/leads/outreach-aspects');
+        if (res.ok) {
+          const data = await res.json();
+          outreachTaxonomy = data.taxonomy;
+          return outreachTaxonomy;
+        }
+      } catch (e) {
+        console.warn('Failed to load outreach taxonomy:', e);
+      }
+      return null;
+    }
+
+    function populateReasonOptions(categoryKey, selectedReason = '') {
+      const reasonSelect = document.getElementById('inspOutcomeReasonSelect');
+      if (!reasonSelect) return;
+      reasonSelect.innerHTML = '';
+      
+      if (outreachTaxonomy && outreachTaxonomy[categoryKey] && outreachTaxonomy[categoryKey].reasons) {
+        outreachTaxonomy[categoryKey].reasons.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.label;
+          opt.innerText = r.label;
+          if (selectedReason && (selectedReason === r.id || selectedReason === r.label || selectedReason.includes(r.label))) {
+            opt.selected = true;
+          }
+          reasonSelect.appendChild(opt);
+        });
+      } else {
+        const defaults = {
+          'CLOSED_WON': ['Accepted Website Proposal', 'Paid Initial Deposit', 'Signed Monthly SEO / Retainer', 'Full Website & Branding Package Closed'],
+          'MEETING_BOOKED': ['Call Scheduled with Owner / Decision Maker', 'In-Person Demo / Visit Booked', 'Zoom / Virtual Demo Booked', 'Owner Requested Callback'],
+          'INTERESTED': ['Requested Pricing & Packages', 'Asked for Example Website Mockup', 'Considering Website - Discussing Internally', 'Owner Was Enthusiastic & Open'],
+          'NO_ANSWER': ['Phone Rang Out (No Answer)', 'Line Busy', 'Left Detailed Voicemail', 'Call Went Straight to Voicemail', 'Staff Answered - Manager Unavailable'],
+          'NO_REPLY': ['DM Delivered - No Reply (48h+)', 'Email Opened / Delivered - No Reply', 'Read / Seen on Social - No Reply', 'Ghosted After Initial Discussion'],
+          'NOT_INTERESTED': ['Budget Constraints / Too Expensive', 'Satisfied with Social Media Only', 'Too Busy / Bad Timing Right Now', 'Simply Not Interested'],
+          'INVALID_LEAD': ['Wrong Number / Disconnected Line', 'Business Permanently Closed', 'Already Has An Agency / Web Team', 'Personal Number - Not A Business', 'Not A Commercial Fit'],
+          'DO_NOT_CONTACT': ['Explicitly Requested Do Not Contact', 'Hostile / Aggressive Response'],
+          'CONTACTED': ['Message / DM Sent', 'Call Completed', 'Contact Initiated']
+        };
+        const list = defaults[categoryKey] || defaults['CONTACTED'];
+        list.forEach(label => {
+          const opt = document.createElement('option');
+          opt.value = label;
+          opt.innerText = label;
+          if (selectedReason && selectedReason.includes(label)) opt.selected = true;
+          reasonSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function setOutreachFilter(flt) {
+      currentOutreachFilter = flt;
+      document.querySelectorAll('.outreach-subpill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-outreach') === flt);
+      });
+      renderLeadsWorkspace();
+    }
+
+    function handleToggleHideReached(checked) {
+      hideReachedBrands = Boolean(checked);
+      const lbl = document.getElementById('lblHideReached');
+      if (lbl) lbl.classList.toggle('active', hideReachedBrands);
+      renderLeadsWorkspace();
+    }
+
+    // ========================================================================
+    // LEADS WORKSPACE LAYOUT & FULLSCREEN CONTROLLERS
+    // ========================================================================
+    function initLeadsLayoutMode() {
+      const savedMode = (typeof localStorage !== 'undefined' && localStorage.getItem('dripp_leads_layout_mode')) || 'split';
+      setLeadsLayoutMode(savedMode, false);
+    }
+
+    function setLeadsLayoutMode(mode, shouldRerender = true) {
+      currentLeadsLayoutMode = mode === 'grid' ? 'grid' : 'split';
+      try {
+        localStorage.setItem('dripp_leads_layout_mode', currentLeadsLayoutMode);
+      } catch (e) {}
+
+      const splitWrap = document.querySelector('.lead-workspace-split');
+      if (splitWrap) {
+        splitWrap.classList.toggle('grid-view', currentLeadsLayoutMode === 'grid');
+      }
+
+      const btnSplit = document.getElementById('btnViewSplit');
+      const btnGrid = document.getElementById('btnViewGrid');
+      if (btnSplit) btnSplit.classList.toggle('active', currentLeadsLayoutMode === 'split');
+      if (btnGrid) btnGrid.classList.toggle('active', currentLeadsLayoutMode === 'grid');
+
+      if (shouldRerender) {
+        renderLeadsWorkspace();
+      }
+    }
+
+    function isAppFullscreen() {
+      return Boolean(
+        document.fullscreenElement || 
+        document.webkitFullscreenElement || 
+        document.mozFullScreenElement || 
+        document.msFullscreenElement ||
+        document.body.classList.contains('app-fullscreen')
+      );
+    }
+
+    function updateFullscreenUI(isFullscreen) {
+      document.body.classList.toggle('app-fullscreen', isFullscreen);
+
+      // Top navbar button
+      const navBtn = document.getElementById('navFullscreenBtn');
+      if (navBtn) {
+        const enterIcon = navBtn.querySelector('.fs-icon-enter');
+        const exitIcon = navBtn.querySelector('.fs-icon-exit');
+        const txt = navBtn.querySelector('.fs-text');
+        if (enterIcon) enterIcon.style.display = isFullscreen ? 'none' : 'inline-block';
+        if (exitIcon) exitIcon.style.display = isFullscreen ? 'inline-block' : 'none';
+        if (txt) txt.innerText = isFullscreen ? 'Exit Full' : 'Fullscreen';
+        navBtn.classList.toggle('active', isFullscreen);
+        navBtn.setAttribute('title', isFullscreen ? 'Exit Fullscreen (F / F11 / Esc)' : 'Toggle Fullscreen Mode (F / F11)');
+      }
+
+      // Workspace header button
+      const wsBtn = document.getElementById('workspaceFsBtn');
+      if (wsBtn) {
+        const enterIcon = wsBtn.querySelector('.fs-icon-enter');
+        const exitIcon = wsBtn.querySelector('.fs-icon-exit');
+        const txt = wsBtn.querySelector('.fs-text');
+        if (enterIcon) enterIcon.style.display = isFullscreen ? 'none' : 'inline-block';
+        if (exitIcon) exitIcon.style.display = isFullscreen ? 'inline-block' : 'none';
+        if (txt) txt.innerText = isFullscreen ? 'Exit Full' : 'Full Screen';
+        wsBtn.classList.toggle('active', isFullscreen);
+        wsBtn.setAttribute('title', isFullscreen ? 'Exit Fullscreen (F / F11 / Esc)' : 'Toggle Fullscreen Mode (F / F11)');
+      }
+    }
+
+    function toggleFullscreenMode() {
+      const active = isAppFullscreen();
+      if (!active) {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen()
+            .then(() => updateFullscreenUI(true))
+            .catch(() => updateFullscreenUI(true));
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen();
+          updateFullscreenUI(true);
+        } else if (docEl.mozRequestFullScreen) {
+          docEl.mozRequestFullScreen();
+          updateFullscreenUI(true);
+        } else if (docEl.msRequestFullscreen) {
+          docEl.msRequestFullscreen();
+          updateFullscreenUI(true);
+        } else {
+          updateFullscreenUI(true);
+        }
+      } else {
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen()
+              .then(() => updateFullscreenUI(false))
+              .catch(() => updateFullscreenUI(false));
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+            updateFullscreenUI(false);
+          } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+            updateFullscreenUI(false);
+          } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+            updateFullscreenUI(false);
+          }
+        } else {
+          updateFullscreenUI(false);
+        }
+      }
+    }
+
+    // Document fullscreen change events
+    document.addEventListener('fullscreenchange', () => {
+      updateFullscreenUI(Boolean(document.fullscreenElement));
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+      updateFullscreenUI(Boolean(document.webkitFullscreenElement));
+    });
+    document.addEventListener('mozfullscreenchange', () => {
+      updateFullscreenUI(Boolean(document.mozFullScreenElement));
+    });
+    document.addEventListener('MSFullscreenChange', () => {
+      updateFullscreenUI(Boolean(document.msFullscreenElement));
+    });
+
+    function handleInspReachedCheck(checked) {
+      if (!selectedLead) return;
+      const leadId = selectedLead.lead_id || selectedLead.id;
+      if (!leadId) return;
+      if (!checked) {
+        uncheckLeadFromInspector();
+      } else {
+        showToast('Brand marked as reached. Choose outcome & reason then click Save.');
+        const badge = document.getElementById('inspOutreachStatusBadge');
+        if (badge) {
+          badge.innerText = 'CONTACTED (UNSAVED)';
+          badge.style.color = 'var(--accent-yellow)';
+        }
+      }
+    }
+
+    function handleOutcomeCategorySelect(cat) {
+      populateReasonOptions(cat);
+    }
+
+    async function saveOutreachFromInspector() {
+      if (!selectedLead) {
+        showToast('Please select a lead first.');
+        return;
+      }
+      const leadId = selectedLead.lead_id || selectedLead.id;
+      if (!leadId) {
+        showToast('Lead ID is missing.');
+        return;
+      }
+
+      const reachedCheck = document.getElementById('inspReachedCheck');
+      const isReached = reachedCheck ? reachedCheck.checked : true;
+      const category = document.getElementById('inspOutcomeCategorySelect')?.value || 'CONTACTED';
+      const reason = document.getElementById('inspOutcomeReasonSelect')?.value || '';
+      const channel = document.getElementById('inspChannelSelect')?.value || 'PHONE';
+      const notes = document.getElementById('inspOutcomeNotesInput')?.value || '';
+
+      const saveStatus = document.getElementById('inspOutreachSaveStatus');
+      if (saveStatus) {
+        saveStatus.style.display = 'block';
+        saveStatus.style.background = 'rgba(0, 240, 255, 0.1)';
+        saveStatus.style.color = 'var(--accent-cyan)';
+        saveStatus.innerText = 'Saving to Google Sheets CRM...';
+      }
+
+      try {
+        const res = await apiFetch('/api/leads/outreach-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: leadId,
+            is_reached: isReached,
+            outcome_category: category,
+            outcome_reason: reason,
+            notes: notes,
+            channel: channel
+          })
+        });
+
+        if (res.ok) {
+          if (saveStatus) {
+            saveStatus.style.background = 'rgba(74, 222, 128, 0.15)';
+            saveStatus.style.color = '#4ADE80';
+            saveStatus.innerHTML = '<span style="display:inline-flex; align-items:center; gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Persisted to Google Sheets CRM!</span></span>';
+            setTimeout(() => { if (saveStatus) saveStatus.style.display = 'none'; }, 3000);
+          }
+          showToast(`Outreach updated: ${category} saved to Google Sheets CRM!`);
+
+          updateLocalLeadOutreach(leadId, {
+            is_reached: isReached,
+            outreach_status: category,
+            lead_status: category === 'CLOSED_WON' ? 'CLOSED_WON' : 'CONTACTED',
+            sales_stage: category === 'CLOSED_WON' ? 'WON' : 'CONTACTED',
+            manual_outreach_notes: `[${category}] Reason: ${reason}. Notes: ${notes}.`,
+            last_contact_at: new Date().toISOString()
+          });
+
+          renderLeadsWorkspace();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          if (saveStatus) {
+            saveStatus.style.background = 'rgba(239, 68, 68, 0.15)';
+            saveStatus.style.color = '#EF4444';
+            saveStatus.innerText = 'Failed to save: ' + (err.message || res.statusText);
+          }
+          showToast('Error saving outreach: ' + (err.message || res.statusText));
+        }
+      } catch (err) {
+        console.error('Error saving outreach status:', err);
+        if (saveStatus) {
+          saveStatus.style.background = 'rgba(239, 68, 68, 0.15)';
+          saveStatus.style.color = '#EF4444';
+          saveStatus.innerText = 'Network error saving to Google Sheets.';
+        }
+        showToast('Network error updating outreach');
+      }
+    }
+
+    async function uncheckLeadFromInspector() {
+      if (!selectedLead) return;
+      const leadId = selectedLead.lead_id || selectedLead.id;
+      if (!leadId) return;
+
+      const saveStatus = document.getElementById('inspOutreachSaveStatus');
+      if (saveStatus) {
+        saveStatus.style.display = 'block';
+        saveStatus.style.background = 'rgba(0, 240, 255, 0.1)';
+        saveStatus.style.color = 'var(--accent-cyan)';
+        saveStatus.innerText = 'Resetting status in Google Sheets CRM...';
+      }
+
+      try {
+        const res = await apiFetch('/api/leads/outreach-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: leadId,
+            is_reached: false
+          })
+        });
+
+        if (res.ok) {
+          if (saveStatus) {
+            saveStatus.style.background = 'rgba(74, 222, 128, 0.15)';
+            saveStatus.style.color = '#4ADE80';
+            saveStatus.innerHTML = '<span style="display:inline-flex; align-items:center; gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Lead reset to Pending Outreach in CRM!</span></span>';
+            setTimeout(() => { if (saveStatus) saveStatus.style.display = 'none'; }, 3000);
+          }
+          showToast('Lead unchecked and reset to Pending Outreach.');
+
+          updateLocalLeadOutreach(leadId, {
+            is_reached: false,
+            outreach_status: 'NOT_READY',
+            lead_status: 'NOT_CONTACTED',
+            sales_stage: 'NEW',
+            manual_outreach_notes: '[Reset to Pending Outreach]',
+            last_contact_at: ''
+          });
+
+          renderLeadsWorkspace();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast('Error resetting lead: ' + (err.message || res.statusText));
+        }
+      } catch (e) {
+        console.error('Error resetting lead:', e);
+        showToast('Network error resetting lead');
+      }
+    }
+
+    async function toggleLeadReached(leadId, isChecked, event) {
+      if (event) event.stopPropagation();
+      const lead = allLeads.find(l => (l.lead_id === leadId || l.id === leadId)) ||
+                   reviewQueueLeads.find(l => (l.lead_id === leadId || l.id === leadId));
+      if (!lead) return;
+
+      if (!isChecked) {
+        try {
+          const res = await apiFetch('/api/leads/outreach-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lead_id: leadId,
+              is_reached: false
+            })
+          });
+          if (res.ok) {
+            showToast(`Reset ${lead.company_name || leadId} to Pending Outreach`);
+            updateLocalLeadOutreach(leadId, {
+              is_reached: false,
+              outreach_status: 'NOT_READY',
+              lead_status: 'NOT_CONTACTED',
+              sales_stage: 'NEW',
+              manual_outreach_notes: '[Reset to Pending Outreach]',
+              last_contact_at: ''
+            });
+            renderLeadsWorkspace();
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Failed to reset lead outreach');
+        }
+      } else {
+        try {
+          const res = await apiFetch('/api/leads/outreach-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lead_id: leadId,
+              is_reached: true,
+              outcome_category: 'CONTACTED',
+              outcome_reason: 'Contact Initiated',
+              notes: 'Marked reached via quick toggle'
+            })
+          });
+          if (res.ok) {
+            showToast(`Marked ${lead.company_name || leadId} as Reached!`);
+            updateLocalLeadOutreach(leadId, {
+              is_reached: true,
+              outreach_status: 'CONTACTED',
+              lead_status: 'CONTACTED',
+              sales_stage: 'CONTACTED',
+              last_contact_at: new Date().toISOString()
+            });
+            selectLead(leadId);
+            renderLeadsWorkspace();
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Failed to mark lead as reached');
+        }
+      }
+    }
+
+    function updateLocalLeadOutreach(leadId, patch) {
+      [allLeads, reviewQueueLeads, latestRunCandidates].forEach(list => {
+        const item = list.find(l => (l.lead_id === leadId || l.id === leadId));
+        if (item) {
+          Object.assign(item, patch);
+        }
+      });
+      if (selectedLead && (selectedLead.lead_id === leadId || selectedLead.id === leadId)) {
+        Object.assign(selectedLead, patch);
+      }
+      renderLeadsWorkspace();
+    }
+
+    function getCurrentSourceList() {
+      if (currentFilter === 'OUTREACH_READY') {
+        return allLeads;
+      } else if (currentFilter === 'NEEDS_REVIEW') {
+        return reviewQueueLeads;
+      } else if (currentFilter === 'RAW_BUSINESSES') {
+        return latestRunCandidates.length > 0 ? latestRunCandidates : allResearchLog;
+      } else if (currentFilter === 'VERIFIED_BUSINESSES') {
+        return [...allLeads, ...reviewQueueLeads].filter(l => Boolean((l.address && l.address.length > 8) || (l.phone && l.phone.length > 6)));
+      } else if (currentFilter === 'WITH_WEBSITES') {
+        return allResearchLog.filter(r => Boolean(r.website || r.website_status === 'WEBSITE_EXISTS' || r.verification_status === 'WEBSITE_EXISTS'));
+      } else if (currentFilter === 'ALL_RESEARCHED') {
+        return allResearchLog;
+      } else if (currentFilter === 'LATEST_RUN') {
+        return latestRunCandidates;
+      } else if (currentFilter === 'ALL') {
+        return [...allLeads, ...reviewQueueLeads];
+      } else {
+        return allLeads;
+      }
+    }
+
+    function recalculateOutreachCounts() {
+      const targetList = arguments[0];
+      const allListForCounts = targetList || getCurrentSourceList();
+      let pendingCnt = 0;
+      let reachedCnt = 0;
+      let wonCnt = 0;
+      let positiveCnt = 0;
+      let noAnswerCnt = 0;
+      let noReplyCnt = 0;
+      let declinedCnt = 0;
+      let invalidCnt = 0;
+
+      allListForCounts.forEach(l => {
+        const isR = isLeadReached(l);
+        if (isR) {
+          reachedCnt++;
+          const cat = getLeadOutreachCategory(l);
+          if (cat === 'CLOSED_WON') wonCnt++;
+          if (cat === 'CLOSED_WON' || cat === 'MEETING_BOOKED' || cat === 'INTERESTED') positiveCnt++;
+          if (cat === 'NO_ANSWER') noAnswerCnt++;
+          if (cat === 'NO_REPLY') noReplyCnt++;
+          if (cat === 'NOT_INTERESTED') declinedCnt++;
+          if (cat === 'INVALID_LEAD') invalidCnt++;
+        } else {
+          pendingCnt++;
+        }
+      });
+
+      const subAll = document.getElementById('subCountAll');
+      if (subAll) subAll.innerText = allListForCounts.length;
+      const subPen = document.getElementById('subCountPending');
+      if (subPen) subPen.innerText = pendingCnt;
+      const subRch = document.getElementById('subCountReached');
+      if (subRch) subRch.innerText = reachedCnt;
+      const subWon = document.getElementById('subCountWon');
+      if (subWon) subWon.innerText = wonCnt;
+      const subPos = document.getElementById('subCountPositive');
+      if (subPos) subPos.innerText = positiveCnt;
+      const subNoAns = document.getElementById('subCountNoAnswer');
+      if (subNoAns) subNoAns.innerText = noAnswerCnt;
+      const subNoRep = document.getElementById('subCountNoReply');
+      if (subNoRep) subNoRep.innerText = noReplyCnt;
+      const subDec = document.getElementById('subCountDeclined');
+      if (subDec) subDec.innerText = declinedCnt;
+      const subInv = document.getElementById('subCountInvalid');
+      if (subInv) subInv.innerText = invalidCnt;
     }
 
     function selectAndOpenDrawer(id) {
@@ -6577,6 +8737,13 @@
         return;
       }
 
+      // Fullscreen shortcut (F or F11)
+      if ((e.key === 'f' || e.key === 'F' || e.key === 'F11') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        toggleFullscreenMode();
+        return;
+      }
+
       // Enter opens dossier drawer
       if (e.key === 'Enter') {
         if (viewId === 'view-leads' && selectedLead) {
@@ -6661,12 +8828,15 @@
       container.innerHTML = candidates.map(lead => {
         const name = lead.company_name || lead.business_name || lead.name || 'Enterprise';
         const id = lead.lead_id || lead.id || '--';
-        const ratingStr = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
+        const hasRating = lead.rating !== null && lead.rating !== undefined && lead.rating !== '' && Number(lead.rating) > 0;
+        const ratingHtml = hasRating 
+          ? `<span style="display:inline-flex; align-items:center; gap:2px;"><span>${Number(lead.rating).toFixed(1)}</span><svg width="10" height="10" viewBox="0 0 24 24" fill="#FFD700" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>` 
+          : 'Unrated';
         return `
           <div class="home-ready-lead-row" onclick="selectAndOpenDrawer('${id}')">
             <div>
               <div style="font-weight:700; color:var(--text-main); font-size:0.95rem;">${escapeHtml(name)}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(lead.address || lead.postcode || 'Manchester, UK')} &bull; ${ratingStr} &bull; <span style="font-family:var(--font-mono); font-size:0.7rem;">${id}</span></div>
+              <div style="font-size:0.75rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;">${escapeHtml(lead.address || lead.postcode || 'Manchester, UK')} &bull; ${ratingHtml} &bull; <span style="font-family:var(--font-mono); font-size:0.7rem;">${id}</span></div>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span class="lead-mini-tag yellow">${stageNames[currentPipelineStageIdx]}</span>
@@ -6704,7 +8874,7 @@
           provWrap.style.border = '1px solid rgba(0, 240, 255, 0.25)';
           provBadge.style.color = 'var(--accent-cyan)';
           provBadge.innerText = 'DATA PROVENANCE: LOG-RECONSTRUCTED (SHADOW MODE)';
-          provText.innerText = 'Reconstructed from execution progress logs of dry-run PIPE-MAN-20261025-C112. Because dry run shadow mode skips Google Sheets writes, candidate objects were not serialized to disk by the original pipeline. Qualification outcome, rating (4.3★), review count (88), and social handles are authentic log outputs; candidate ID is a synthetic inspection key.';
+          provText.innerText = 'Reconstructed from execution progress logs of dry-run PIPE-MAN-20261025-C112. Because dry run shadow mode skips Google Sheets writes, candidate objects were not serialized to disk by the original pipeline. Qualification outcome, rating (4.3 stars), review count (88), and social handles are authentic log outputs; candidate ID is a synthetic inspection key.';
         } else if (lead.lead_id && lead.lead_id.startsWith('REV-')) {
           provWrap.style.background = 'rgba(255, 165, 0, 0.08)';
           provWrap.style.border = '1px solid rgba(255, 165, 0, 0.25)';
@@ -6720,9 +8890,14 @@
         }
       }
 
+      const addr = escapeHtml(lead.address || 'Manchester, Greater Manchester, UK');
+      const addrMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + (lead.address || 'Manchester'))}`;
       document.getElementById('dossierWho').innerHTML = `
         <strong>${escapeHtml(name)}</strong> is an established enterprise located at 
-        <em>${escapeHtml(lead.address || 'Manchester, Greater Manchester, UK')}</em>. 
+        <a href="${addrMapsUrl}" target="_blank" rel="noopener noreferrer" class="directing-link directing-addr" title="Open location in Google Maps" style="display:inline-flex; align-items:center; gap:3px;">
+          <em>${addr}</em>
+          <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>. 
         ${lead.operational_evidence ? escapeHtml(lead.operational_evidence) : 'Confirmed active in-person operations.'}
       `;
 
@@ -6735,140 +8910,117 @@
         creatorUrls = [lead.creator_evidence_urls.trim()];
       }
 
-      if (lead.verified_social_urls && typeof lead.verified_social_urls === 'string' && lead.verified_social_urls.trim().startsWith('http')) {
-        if (!creatorUrls.includes(lead.verified_social_urls.trim())) {
-          creatorUrls.push(lead.verified_social_urls.trim());
-        }
-      }
-      if (lead.instagram_url && !creatorUrls.includes(lead.instagram_url)) {
-        creatorUrls.push(lead.instagram_url);
-      }
-      if (lead.facebook_url && !creatorUrls.includes(lead.facebook_url)) {
-        creatorUrls.push(lead.facebook_url);
-      }
-      if (lead.tiktok_url && !creatorUrls.includes(lead.tiktok_url)) {
-        creatorUrls.push(lead.tiktok_url);
-      }
+      // Filter out any URLs that are the venue's own profiles
+      const brandAccounts = [lead.instagram_url, lead.facebook_url, lead.website].filter(Boolean).map(u => u.trim().toLowerCase().replace(/\/$/, ''));
+      creatorUrls = creatorUrls.filter(u => u && typeof u === 'string' && u.startsWith('http') && !brandAccounts.some(b => u.toLowerCase().replace(/\/$/, '').includes(b)));
 
-      const creatorCorpusMeta = {
-        "Mary D's Beamish Bar": {
-          creator_handle: "@mcfc_matchday_live",
-          creator_name: "MCFC Matchday Live",
-          platform: "Instagram Reel",
-          url: "https://www.instagram.com/reel/C6p4Q1MaryDs/",
-          published: "2026-09-16",
-          caption: "Unreal atmosphere at Mary D's Beamish Bar in Beswick Manchester right before kick-off! Iconic pre-match pub on Grey Mare Lane #MaryDs #ManchesterCity",
-          location_tag: "Mary D's Beamish Bar, Manchester"
-        },
-        "Hong Thai": {
-          creator_handle: "@mcr_foodie_guide",
-          creator_name: "Manchester Foodie Guide",
-          platform: "Instagram Reel",
-          url: "https://www.instagram.com/reel/C8x9Y12HongThai/",
-          published: "2026-09-18",
-          caption: "Finally visited Hong Thai in Ancoats Manchester on Oldham Road! Incredible authentic Thai street food flavours.",
-          location_tag: "Hong Thai, Ancoats"
-        },
-        "Seoul Kimchi": {
-          creator_handle: "@eatmcr_student",
-          creator_name: "Eat MCR Student",
-          platform: "Instagram Reel",
-          url: "https://www.instagram.com/reel/C9a1B2SeoulKimchi/",
-          published: "2026-09-14",
-          caption: "Hidden gem Korean comfort food at Seoul Kimchi in Manchester on Upper Brook Street! Best kimchi jjigae and bibimbap in town",
-          location_tag: "Seoul Kimchi, Manchester"
-        },
-        "Mala": {
-          creator_handle: "@secretmanchester_tips",
-          creator_name: "Secret Manchester Tips",
-          platform: "Instagram Reel",
-          url: "https://www.instagram.com/reel/C7m9K0MalaSecret/",
-          published: "2026-09-08",
-          caption: "Secret garden paradise Mala tucked away in Northern Quarter Manchester! Amazing cocktails and vibes.",
-          location_tag: "Mala Manchester"
-        },
-        "Manchester Shawarma": {
-          creator_handle: "@curry_mile_explorer",
-          creator_name: "Curry Mile Explorer",
-          platform: "TikTok Video",
-          url: "https://www.tiktok.com/@curry_mile_explorer/video/7389102456",
-          published: "2026-08-27",
-          caption: "Late night eats at Manchester Shawarma on Wilmslow Road Rusholme! Freshly baked tandoori naan wrap loaded with lamb shawarma",
-          location_tag: "Manchester Shawarma, Rusholme"
-        },
-        "99 Reasons": {
-          creator_handle: "@mcr_coffee_spots",
-          creator_name: "Manchester Coffee Spots",
-          platform: "Instagram Post",
-          url: "https://www.instagram.com/p/C99ReasonsMcr/",
-          published: "2026-09-04",
-          caption: "Sunday morning coffee stop at 99 Reasons in Manchester! Great specialty brews and pastries",
-          location_tag: "99 Reasons Manchester"
-        },
-        "Dog and Partridge": {
-          creator_handle: "@dogandpartridgedidsbury",
-          creator_name: "Dog and Partridge Didsbury",
-          platform: "Instagram & Facebook",
-          url: "https://instagram.com/dogandpartridgedidsbury",
-          published: "2026-09-10",
-          caption: "Iconic traditional pub in Didsbury Manchester on Wilmslow Road. 88 reviews, 4.3★ rating, active customer premises.",
-          location_tag: "Dog and Partridge, 665-667 Wilmslow Road, Manchester"
-        }
-      };
-
-      const meta = creatorCorpusMeta[name] || null;
+      const meta = getLeadVloggerEvidence(lead);
       let creatorCardHtml = '';
-      if (meta) {
+      if (meta && meta.url) {
+        const creatorTitle = [meta.platform || 'Public Video', meta.creator_name, meta.creator_handle].filter(Boolean).join(' • ');
         creatorCardHtml = `
-          <div style="margin-top:12px; padding:12px 14px; background:rgba(0, 240, 255, 0.05); border:1px solid rgba(0, 240, 255, 0.22); border-radius:8px; font-size:0.84rem;">
+          <div style="margin-top:12px; padding:12px 14px; background:rgba(217, 70, 239, 0.05); border:1px solid rgba(217, 70, 239, 0.22); border-radius:8px; font-size:0.84rem;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-              <span style="font-weight:700; color:var(--accent-cyan); display:flex; align-items:center; gap:6px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                ${escapeHtml(meta.platform)} &bull; ${escapeHtml(meta.creator_name)} (${escapeHtml(meta.creator_handle)})
+              <span style="font-weight:700; color:#F0ABFC; display:flex; align-items:center; gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                ${escapeHtml(creatorTitle)}
               </span>
-              <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${escapeHtml(meta.published)}</span>
+              ${meta.published ? `<span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${escapeHtml(meta.published)}</span>` : ''}
             </div>
-            <div style="color:var(--text-secondary); font-style:italic; margin-bottom:8px; line-height:1.45;">
+            ${meta.caption ? `<div style="color:var(--text-secondary); font-style:italic; margin-bottom:8px; line-height:1.45;">
               &ldquo;${escapeHtml(meta.caption)}&rdquo;
-            </div>
+            </div>` : ''}
             <div style="display:flex; align-items:center; justify-content:space-between; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.08); font-size:0.78rem;">
-              <span style="color:var(--text-muted);"><strong style="color:var(--text-primary);">Tagged Location:</strong> ${escapeHtml(meta.location_tag)}</span>
-              <a href="${escapeHtml(meta.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:4px;">
-                View Public Creator Reel &#8599;
+              <span style="color:var(--text-muted);">${meta.location_tag ? `<strong style="color:var(--text-primary);">Tagged Location:</strong> ${escapeHtml(meta.location_tag)}` : ''}</span>
+              <a href="${escapeHtml(meta.url)}" target="_blank" rel="noopener noreferrer" style="color:#F0ABFC; font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:4px;">
+                <span>View Public Vlogger Video</span>
+                <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               </a>
             </div>
           </div>
         `;
-      } else if (creatorUrls.length > 0) {
+      } else {
         creatorCardHtml = `
-          <div style="margin-top:12px; padding:10px 14px; background:rgba(0, 240, 255, 0.05); border:1px solid rgba(0, 240, 255, 0.2); border-radius:8px; font-size:0.82rem;">
-            <div style="font-weight:600; color:var(--accent-cyan); margin-bottom:4px;">Public Creator / Social Evidence URLs:</div>
-            ${creatorUrls.map(u => `<div><a href="${escapeHtml(u)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan); text-decoration:underline;">${escapeHtml(u)} &#8599;</a></div>`).join('')}
+          <div style="margin-top:10px; padding:8px 12px; background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.08); border-radius:6px; font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:8px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            <span>Vlogger Reference (Unofficial): None Discovered in Search</span>
           </div>
         `;
       }
 
+      const summaryHtml = lead.creator_evidence_summary ? `<div style="margin-top:6px; color:var(--text-secondary);">${escapeHtml(lead.creator_evidence_summary)}</div>` : '';
       document.getElementById('dossierWhyFound').innerHTML = `
         <div>Discovered through OpenStreetMap boundary query in Manchester (OSM Relation 162378).</div>
-        <div style="margin-top:6px; color:var(--text-secondary);">${escapeHtml(lead.creator_evidence_summary || 'Third-party corroboration of customer-facing presence.')}</div>
+        ${summaryHtml}
         ${creatorCardHtml}
       `;
 
-      const displayRating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating}★` : 'Unrated';
+      const displayRating = (lead.rating !== null && lead.rating !== undefined && lead.rating !== '') ? `${lead.rating} stars` : 'Unrated';
       const displayReviews = (lead.review_count !== null && lead.review_count !== undefined && lead.review_count !== '') ? `${lead.review_count} reviews` : 'unrecorded reviews';
 
       document.getElementById('dossierWhyQualified').innerText = `
-        Confirmed 100% absence of an official business domain. Customer rating is ${displayRating} across ${displayReviews}. ${lead.qualification_reason || 'Frozen Rule B criteria strictly met.'}
+        Confirmed 100% absence of an official business domain. Customer rating is ${displayRating} across ${displayReviews}. ${formatCleanText(lead.qualification_reason) || 'Frozen Rule B criteria strictly met.'}
       `;
 
       document.getElementById('dossierEvidence').innerText = `
-        Tavily web search and Google Places cross-reference confirmed zero root website registrations. ${lead.verification_reason || 'No domain conflict detected.'}
+        Tavily web search and Google Places cross-reference confirmed zero root website registrations. ${formatCleanText(lead.verification_reason) || 'No domain conflict detected.'}
       `;
 
       const isDry = lead.is_shadow_mode || lead.is_dry_run;
       const phoneVal = (lead.phone && lead.phone !== 'N/A' && lead.phone !== 'Available in Places record') ? lead.phone : (isDry ? 'Not captured in dry run logs (N/A)' : 'Premises / Corporate Directory');
-      document.getElementById('dossierContact').innerText = `
-        Telephone: ${phoneVal}. ${lead.contactability_reason || 'Channels verified under UK PECR corporate subscriber rules.'}
+      
+      let phoneDirectHtml = escapeHtml(phoneVal);
+      if (lead.phone && lead.phone !== 'N/A' && lead.phone !== 'Available in Places record') {
+        const rawPhone = String(lead.phone).trim();
+        const cleanTel = rawPhone.replace(/[^\d+]/g, '');
+        phoneDirectHtml = `<a href="tel:${cleanTel}" class="directing-link directing-phone" title="Click to call ${escapeHtml(rawPhone)}" style="font-weight:700;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          ${escapeHtml(rawPhone)}
+          <span class="directing-call-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call</span>
+        </a>`;
+      }
+
+      let drawerSocialsHtml = '';
+      if (lead.instagram_url) {
+        const s = extractSocialInfo(lead.instagram_url, 'Instagram');
+        if (s) {
+          drawerSocialsHtml += `<a href="${escapeHtml(s.profileUrl)}" target="_blank" rel="noopener noreferrer" class="directing-link directing-social" style="font-weight:600;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            <span>Instagram (${escapeHtml(s.handle || 'profile')})</span>
+            <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>`;
+        }
+      }
+      if (lead.facebook_url) {
+        const s = extractSocialInfo(lead.facebook_url, 'Facebook');
+        if (s) {
+          drawerSocialsHtml += `<a href="${escapeHtml(s.profileUrl)}" target="_blank" rel="noopener noreferrer" class="directing-link directing-social" style="font-weight:600;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            <span>Facebook</span>
+            <svg class="direct-external-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>`;
+        }
+      }
+
+      let drawerEmailHtml = '';
+      const emailVal = lead.email || lead.contact_email || lead.primary_email;
+      if (emailVal && emailVal.trim()) {
+        drawerEmailHtml = `<a href="mailto:${escapeHtml(emailVal.trim())}" class="directing-link directing-email" style="font-weight:600;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          <span>${escapeHtml(emailVal.trim())}</span>
+          <span class="directing-call-badge" style="background:rgba(0,240,255,0.15); color:var(--accent-cyan); border-color:rgba(0,240,255,0.3); margin-left:4px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Mail</span>
+        </a>`;
+      }
+
+      document.getElementById('dossierContact').innerHTML = `
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <strong style="color:var(--text-main);">Telephone:</strong> ${phoneDirectHtml}
+          ${drawerSocialsHtml}
+          ${drawerEmailHtml}
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">
+          ${escapeHtml(lead.contactability_reason || 'Channels verified under UK PECR corporate subscriber rules.')}
+        </div>
       `;
 
       const isDryMode = lead.is_shadow_mode || lead.is_dry_run;
@@ -7154,9 +9306,18 @@
       // Simple filter for palette actions
     }
 
-    function escapeHtml(str) {
+    function formatCleanText(str) {
       if (!str) return '';
       return String(str)
+        .replace(/[★\u2605]/g, ' stars')
+        .replace(/[📞\uD83D\uDCDE]/g, '')
+        .replace(/[✉\u2709]/g, '')
+        .replace(/[↗\u2197]/g, '');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return formatCleanText(String(str))
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -7175,7 +9336,21 @@
         t.className = 'system-toast';
         document.body.appendChild(t);
       }
-      t.innerText = msg;
+      let cleanMsg = String(msg || '');
+      let iconSvg = '';
+      if (cleanMsg.startsWith('\u2713') || cleanMsg.toLowerCase().includes('success') || cleanMsg.toLowerCase().includes('complete') || cleanMsg.toLowerCase().includes('authenticated') || cleanMsg.toLowerCase().includes('unlocked') || cleanMsg.toLowerCase().includes('saved') || cleanMsg.toLowerCase().includes('reset')) {
+        cleanMsg = cleanMsg.replace(/^\u2713\s*/, '');
+        iconSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>`;
+      } else if (cleanMsg.startsWith('\u26A0') || cleanMsg.toLowerCase().includes('notice') || cleanMsg.toLowerCase().includes('required') || cleanMsg.toLowerCase().includes('warning') || cleanMsg.toLowerCase().includes('caution')) {
+        cleanMsg = cleanMsg.replace(/^\u26A0\s*/, '');
+        iconSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+      } else if (cleanMsg.startsWith('\u2715') || cleanMsg.toLowerCase().includes('fail') || cleanMsg.toLowerCase().includes('error') || cleanMsg.toLowerCase().includes('denied')) {
+        cleanMsg = cleanMsg.replace(/^\u2715\s*/, '');
+        iconSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF4D4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+      } else {
+        iconSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+      }
+      t.innerHTML = `${iconSvg}<span>${escapeHtml(cleanMsg)}</span>`;
       t.classList.add('visible');
       clearTimeout(t._timer);
       t._timer = setTimeout(() => {
@@ -7945,7 +10120,7 @@
       const industry = document.getElementById('pageDiscIndustryInput')?.value || 'Restaurants';
       const limit = document.getElementById('pageDiscLimitInput')?.value || '10';
       const batch = document.getElementById('pageDiscBatchInput')?.value || '10';
-      const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? true;
+      const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? false;
       const mode = document.getElementById('pageDiscModeInput')?.value || 'FREE_LOCAL';
 
       const mEl = document.getElementById('confirmSummaryMarket');
@@ -8028,7 +10203,7 @@
       const batch = parseInt(document.getElementById('pageDiscBatchInput')?.value || '10', 10);
       const mode = document.getElementById('pageDiscModeInput')?.value || 'FREE_LOCAL';
       const multiplier = parseInt(document.getElementById('pageDiscMultiplierInput')?.value || '5', 10);
-      const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? true;
+      const dryRun = document.getElementById('pageDiscDryRunInput')?.checked ?? false;
 
       const btnAction = document.getElementById('btnLaunchDiscoveryPageAction');
       const btnHeader = document.getElementById('btnPageRunDiscovery');
@@ -8134,6 +10309,7 @@
       const industry = document.getElementById('discIndustryInput')?.value || 'Restaurants';
       const limit = parseInt(document.getElementById('discLimitInput')?.value || '10', 10);
       const mode = document.getElementById('discModeInput')?.value || 'FREE_LOCAL';
+      const dryRun = document.getElementById('discDryRunInput')?.checked ?? document.getElementById('pageDiscDryRunInput')?.checked ?? false;
 
       const btn = document.getElementById('btnRunDiscoveryTask');
       if (btn) btn.disabled = true;
@@ -8142,7 +10318,7 @@
       if (progArea) progArea.style.display = 'block';
 
       const term = document.getElementById('discoveryTerminalLogs');
-      if (term) term.innerHTML = `[INIT] Dispatching boundary discovery task for ${city} (${industry})...\n`;
+      if (term) term.innerHTML = `[INIT] Dispatching boundary discovery task for ${city} (${industry}) | Mode: ${mode} | Dry-Run: ${dryRun ? 'TRUE' : 'FALSE'}...\n`;
 
       try {
         const res = await apiFetch('/api/search', {
@@ -8157,7 +10333,7 @@
             batch_size: 10,
             discovery_mode: mode,
             apify_enabled: false,
-            dry_run: true
+            dry_run: dryRun
           })
         });
 
@@ -8977,7 +11153,7 @@
     }
 
     // Initial Load
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       initInteractiveBackground();
       initRadarInteractions();
 
@@ -9005,9 +11181,15 @@
         'readiness': 'system',
         'settings': 'system'
       };
-      initBackendConfigInputs();
       navigateTo(legacyMap[h] || h);
-      loadAllData();
+      if (['settings', 'readiness', 'health', 'freshness', 'providers', 'safety'].includes(h)) {
+        switchSystemTab(h);
+      } else if (h === 'system') {
+        switchSystemTab('settings');
+      }
+      await initBackendConfigInputs();
+      await loadAllData();
+      initLeadsLayoutMode();
       window.addEventListener('resize', updateNavIndicator);
       setTimeout(updateNavIndicator, 60);
     });

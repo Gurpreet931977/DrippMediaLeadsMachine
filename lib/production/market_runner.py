@@ -614,7 +614,7 @@ class MarketRunner:
         self.enable_research = enable_research
         self.research_telemetry_records: List[Dict[str, Any]] = []
         self.operational_validator = operational_validator or OperationalValidator()
-        self.scorer = scorer or LeadScoringProvider()
+        self.scorer = scorer or LeadScoringProvider.create_optimized()
         self.contact_assessor = contact_assessor or ContactabilityAssessor()
         self.storage = storage_provider or GoogleSheetsStorageProvider()
 

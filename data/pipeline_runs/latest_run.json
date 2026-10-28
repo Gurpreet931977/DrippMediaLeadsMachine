@@ -1,9 +1,9 @@
 {
-  "run_id": "RUN-20261025_175730-9D96F8",
+  "run_id": "RUN-20261028_083047-82867F",
   "status": "CANCELLED",
-  "created_at": "2026-10-25T17:57:30.579086+00:00",
-  "started_at": "2026-10-25T17:57:30.579762+00:00",
-  "finished_at": "2026-10-25T17:57:30.580936+00:00",
+  "created_at": "2026-10-28T08:30:47.685216+00:00",
+  "started_at": "2026-10-28T08:30:47.685710+00:00",
+  "finished_at": "2026-10-28T08:30:47.686607+00:00",
   "elapsed_seconds": 0.0,
   "market": "Manchester, United Kingdom",
   "country": "United Kingdom",
@@ -64,10 +64,16 @@
     "saved_to_research_log": 0
   },
   "progress_logs": [
-    "[QUEUED] Pipeline run RUN-20261025_175730-9D96F8 initialized for Manchester, United Kingdom (Restaurants).",
+    "[QUEUED] Pipeline run RUN-20261028_083047-82867F initialized for Manchester, United Kingdom (Restaurants).",
     "[CONFIG] Target: 5 leads | Batch Size: 10 | Mode: HYBRID | Dry-Run: True",
-    "[RUNNING] Pipeline execution started at 2026-10-25T17:57:30.579762+00:00",
-    "[CANCELLED] Operator requested run cancellation at 2026-10-25T17:57:30.580936+00:00"
+    "[RUNNING] Pipeline execution started at 2026-10-28T08:30:47.685710+00:00",
+    "[CANCELLED] Operator requested run cancellation at 2026-10-28T08:30:47.686607+00:00"
   ],
-  "last_error": null
+  "last_error": null,
+  "run_classification": "SIMULATED_CANCELLED",
+  "is_simulated": true,
+  "is_incomplete": false,
+  "is_completed": false,
+  "is_failed": false,
+  "is_cancelled": true
 }
