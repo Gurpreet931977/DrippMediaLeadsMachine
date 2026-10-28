@@ -249,3 +249,70 @@ def test_pipeline_uses_optimized_scorer_by_default():
     assert pipe.scorer.min_reviews_outreach == 0
     assert pipe.scorer.min_rating_outreach is None
     assert pipe.scorer.allow_active_likely is True
+
+
+# =========================================================================
+# 5. DISTRACTION-FREE PAGE FULL FOCUS MODE & FULLSCREEN DECOUPLING
+# =========================================================================
+
+def test_page_full_focus_mode_and_fullscreen_decoupling():
+    """
+    Verify strict architectural decoupling between:
+    1. Top navbar OS Fullscreen button (#navFullscreenBtn -> toggleFullscreenMode).
+    2. Lower Leads workspace Page Full button (#workspaceFsBtn -> toggleWorkspaceFocusMode).
+    """
+    html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # 1. Top navbar OS Fullscreen button
+    assert 'id="navFullscreenBtn"' in html
+    assert 'onclick="toggleFullscreenMode()"' in html
+
+    # 2. Workspace Page Full Focus Mode button
+    assert 'id="workspaceFsBtn"' in html
+    assert 'onclick="toggleWorkspaceFocusMode()"' in html
+    assert 'Page Full' in html
+
+    # 3. CSS for distraction-free focus mode
+    assert 'body.workspace-focus-mode .nav-header' in html
+    assert 'body.workspace-focus-mode .app-viewport' in html
+    assert 'body.workspace-focus-mode #workspaceFsBtn' in html
+
+    # 4. Decoupled JS: updateFullscreenUI should NOT overwrite workspaceFsBtn
+    assert 'function updateFullscreenUI(isFullscreen)' in html
+    assert 'function updateWorkspaceFocusUI(active)' in html
+    assert 'function toggleWorkspaceFocusMode(' in html
+
+    # Ensure updateFullscreenUI does not touch workspaceFsBtn
+    fn_match = re.search(r'function updateFullscreenUI\([^\)]*\)\s*\{([\s\S]*?)\n\s*\}', html)
+    assert fn_match is not None
+    assert 'workspaceFsBtn' not in fn_match.group(1), "updateFullscreenUI must not mutate workspaceFsBtn"
+
+
+def test_leads_workspace_sort_and_list_mode():
+    """
+    Verify that:
+    1. Leads workspace has Sort By selector with 7 sort options.
+    2. List view layout toggle button (#btnViewList) and list table styling are present.
+    """
+    html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Sort selector and options
+    assert 'id="leadsSortSelect"' in html
+    assert 'value="score_desc"' in html
+    assert 'value="reviews_asc"' in html
+    assert 'value="reviews_desc"' in html
+    assert 'value="rating_desc"' in html
+    assert 'value="rating_asc"' in html
+    assert 'value="name_asc"' in html
+    assert 'value="outreach_status"' in html
+
+    # List view layout toggle and renderer
+    assert 'id="btnViewList"' in html
+    assert 'setLeadsLayoutMode(\'list\')' in html
+    assert 'lead-workspace-split.list-view' in html
+    assert 'lead-list-row' in html
+

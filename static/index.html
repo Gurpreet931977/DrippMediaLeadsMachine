@@ -1993,6 +1993,50 @@
       padding: 0.3rem 0.55rem;
     }
 
+    /* DISTRACTION-FREE PAGE FULL SCREEN (WORKSPACE FOCUS MODE) */
+    body.workspace-focus-mode .nav-header {
+      transform: translateY(-130%);
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.workspace-focus-mode .mobile-bottom-nav {
+      transform: translateY(130%);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.workspace-focus-mode .app-viewport {
+      max-width: 100% !important;
+      width: 100% !important;
+      padding-top: 0.75rem !important;
+      padding-left: 2rem !important;
+      padding-right: 2rem !important;
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.workspace-focus-mode .lead-stream-pane,
+    body.workspace-focus-mode .lead-inspector-pane {
+      height: calc(100vh - 195px) !important;
+      max-height: calc(100vh - 195px) !important;
+      transition: height 0.28s ease;
+    }
+    body.workspace-focus-mode.app-fullscreen .lead-stream-pane,
+    body.workspace-focus-mode.app-fullscreen .lead-inspector-pane {
+      height: calc(100vh - 170px) !important;
+      max-height: calc(100vh - 170px) !important;
+    }
+    body.workspace-focus-mode #workspaceFsBtn {
+      background: var(--accent-yellow) !important;
+      color: #000000 !important;
+      font-weight: 700;
+      border-color: var(--accent-yellow) !important;
+      box-shadow: 0 0 14px rgba(255, 229, 0, 0.45);
+    }
+    body.workspace-focus-mode #workspaceFsBtn svg {
+      stroke: #000000 !important;
+    }
+
     /* Right Inspector Section - Dedicated Framed Scrollable Panel */
     .lead-inspector-pane {
       height: calc(100vh - 280px);
@@ -4560,11 +4604,11 @@
             </select>
           </div>
 
-          <!-- Fullscreen Option -->
-          <button id="workspaceFsBtn" class="btn-pill btn-pill-secondary btn-workspace-fs" onclick="toggleFullscreenMode()" title="Toggle Fullscreen Mode (F / F11)">
-            <svg class="fs-icon-enter" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            <svg class="fs-icon-exit" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-            <span class="fs-text">Full Screen</span>
+          <!-- Page Full Screen / Focus Mode Option (Distraction-Free Leads Research) -->
+          <button id="workspaceFsBtn" class="btn-pill btn-pill-secondary btn-workspace-fs" onclick="toggleWorkspaceFocusMode()" title="Page Full (Focus Mode): Hide navigation &amp; distractions to research leads">
+            <svg class="fs-icon-enter" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            <svg class="fs-icon-exit" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>
+            <span class="fs-text">Page Full</span>
           </button>
 
           <span class="status-capsule" style="font-size:0.68rem;">Staging Protected</span>
@@ -6933,6 +6977,14 @@
       const validViews = ['home', 'discovery', 'leads', 'pipeline', 'system'];
       if (!validViews.includes(dest)) dest = 'home';
 
+      if (dest !== 'leads' && document.body.classList.contains('workspace-focus-mode')) {
+        if (typeof updateWorkspaceFocusUI === 'function') {
+          updateWorkspaceFocusUI(false);
+        } else {
+          document.body.classList.remove('workspace-focus-mode');
+        }
+      }
+
       document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
       const targetView = document.getElementById(`view-${dest}`);
       if (targetView) targetView.classList.add('active');
@@ -8594,6 +8646,7 @@
       if (sortSelect) {
         sortSelect.value = currentLeadsSort;
       }
+      updateWorkspaceFocusUI(false);
     }
 
     function handleLeadsSortChange(val) {
@@ -8641,7 +8694,7 @@
     function updateFullscreenUI(isFullscreen) {
       document.body.classList.toggle('app-fullscreen', isFullscreen);
 
-      // Top navbar button
+      // Top navbar button (OS Fullscreen)
       const navBtn = document.getElementById('navFullscreenBtn');
       if (navBtn) {
         const enterIcon = navBtn.querySelector('.fs-icon-enter');
@@ -8652,19 +8705,6 @@
         if (txt) txt.innerText = isFullscreen ? 'Exit Full' : 'Fullscreen';
         navBtn.classList.toggle('active', isFullscreen);
         navBtn.setAttribute('title', isFullscreen ? 'Exit Fullscreen (F / F11 / Esc)' : 'Toggle Fullscreen Mode (F / F11)');
-      }
-
-      // Workspace header button
-      const wsBtn = document.getElementById('workspaceFsBtn');
-      if (wsBtn) {
-        const enterIcon = wsBtn.querySelector('.fs-icon-enter');
-        const exitIcon = wsBtn.querySelector('.fs-icon-exit');
-        const txt = wsBtn.querySelector('.fs-text');
-        if (enterIcon) enterIcon.style.display = isFullscreen ? 'none' : 'inline-block';
-        if (exitIcon) exitIcon.style.display = isFullscreen ? 'inline-block' : 'none';
-        if (txt) txt.innerText = isFullscreen ? 'Exit Full' : 'Full Screen';
-        wsBtn.classList.toggle('active', isFullscreen);
-        wsBtn.setAttribute('title', isFullscreen ? 'Exit Fullscreen (F / F11 / Esc)' : 'Toggle Fullscreen Mode (F / F11)');
       }
     }
 
@@ -8707,6 +8747,40 @@
         } else {
           updateFullscreenUI(false);
         }
+      }
+    }
+
+    // ========================================================================
+    // DISTRACTION-FREE PAGE FULL SCREEN (LEADS WORKSPACE FOCUS MODE)
+    // ========================================================================
+    let isWorkspaceFocusMode = false;
+
+    function updateWorkspaceFocusUI(active) {
+      isWorkspaceFocusMode = Boolean(active);
+      document.body.classList.toggle('workspace-focus-mode', isWorkspaceFocusMode);
+
+      const wsBtn = document.getElementById('workspaceFsBtn');
+      if (wsBtn) {
+        const enterIcon = wsBtn.querySelector('.fs-icon-enter');
+        const exitIcon = wsBtn.querySelector('.fs-icon-exit');
+        const txt = wsBtn.querySelector('.fs-text');
+        if (enterIcon) enterIcon.style.display = isWorkspaceFocusMode ? 'none' : 'inline-block';
+        if (exitIcon) exitIcon.style.display = isWorkspaceFocusMode ? 'inline-block' : 'none';
+        if (txt) txt.innerText = isWorkspaceFocusMode ? 'Exit Page Full' : 'Page Full';
+        wsBtn.classList.toggle('active', isWorkspaceFocusMode);
+        wsBtn.setAttribute('title', isWorkspaceFocusMode 
+          ? 'Exit Page Full Focus Mode (Esc)' 
+          : 'Page Full (Focus Mode): Hide navigation & distractions to research leads');
+      }
+    }
+
+    function toggleWorkspaceFocusMode(forcedState) {
+      const nextState = (typeof forcedState === 'boolean') ? forcedState : !isWorkspaceFocusMode;
+      updateWorkspaceFocusUI(nextState);
+      if (nextState) {
+        showToast('Page Full: Distraction-free research mode active (Esc to exit)');
+      } else {
+        showToast('Navigation restored');
       }
     }
 
@@ -9106,13 +9180,20 @@
       if (e.key === '4') { navigateTo('pipeline'); return; }
       if (e.key === '5') { navigateTo('system'); return; }
 
-      // Escape closes open modals or drawers
+      // Escape closes open modals or drawers, or exits workspace focus mode
       if (e.key === 'Escape') {
+        const isDrawerOpen = Boolean(document.getElementById('leadDrawer')?.classList.contains('open'));
+        const isModalOpen = Boolean(document.querySelector('.evidence-modal-backdrop.open, #batch87Modal.open, #travelModeSheet.open, #cmdPaletteModal.open'));
+        
         closeLeadDrawer();
         closeTravelModeSheet();
         closeBatch87Modal();
         closeEvidenceModal();
         closeCmdPalette();
+
+        if (!isDrawerOpen && !isModalOpen && document.body.classList.contains('workspace-focus-mode')) {
+          toggleWorkspaceFocusMode(false);
+        }
         return;
       }
 
